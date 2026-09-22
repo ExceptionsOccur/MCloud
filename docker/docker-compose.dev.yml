@@ -52,7 +52,7 @@ services:
     working_dir: /app
     volumes:
       - ../frontend:/app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install && npm run dev -- --host 127.0.0.1"
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install && npm run dev -- --host 0.0.0.0"
     depends_on:
       - backend
 
