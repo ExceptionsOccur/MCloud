@@ -45,8 +45,7 @@
         <el-option v-for="item in assetTypeOptions" :key="item" :label="item" :value="item" />
       </el-select>
       <el-select v-model="filters.cpu_arch" placeholder="CPU架构" clearable @change="v => hostStore.setFilter('cpu_arch', v)" style="width: 130px">
-        <el-option label="C86" value="C86" />
-        <el-option label="ARM" value="ARM" />
+        <el-option v-for="item in cpuArchOptions" :key="item.value" :label="item.label" :value="item.value" />
       </el-select>
       <el-select v-model="filters.is_db_server" placeholder="数据库服务器" clearable @change="v => hostStore.setFilter('is_db_server', v)" style="width: 140px">
         <el-option label="是" value="1" />
@@ -70,7 +69,7 @@ import { useHostStore } from '../stores/host'
 import { useCloudResourceStore } from '../stores/cloudResource'
 import { exportCSV, downloadTemplate } from '../api/csv'
 import { downloadBlob } from '../utils'
-import { statusOptions, envTypeOptions, assetTypeOptions } from '../utils'
+import { statusOptions, envTypeOptions, assetTypeOptions, cpuArchOptions } from '../utils'
 
 const hostStore = useHostStore()
 const cloudStore = useCloudResourceStore()
