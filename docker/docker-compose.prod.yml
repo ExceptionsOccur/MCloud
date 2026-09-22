@@ -1,0 +1,45 @@
+# 生产环境：数据库 + 单容器应用
+# 使用前：cp .env.example .env 并修改 JWT_SECRET 等敏感值
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mcloud-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mcloud:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: mcloud
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_SSLMODE: ${DB_SSLMODE}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_HOURS: ${JWT_EXPIRES_HOURS}
+      SERVER_MODE: ${SERVER_MODE}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
