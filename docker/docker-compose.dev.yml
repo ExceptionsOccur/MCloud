@@ -1,4 +1,4 @@
-# 开发环境：数据库 + 单容器应用
+# 开发环境：数据库 + Go 后端（热重载）+ Node 前端（HMR）
 # 使用前：cp .env.example .env 并按需修改
 services:
   postgres:
@@ -19,16 +19,16 @@ services:
       timeout: 5s
       retries: 5
 
-  mcloud-dev:
+  backend:
     build:
-      context: ..
-      dockerfile: backend/Dockerfile
-    container_name: mcloud-dev
+      context: ../backend
+      dockerfile: Dockerfile.dev
+    container_name: mcloud-backend-dev
     restart: unless-stopped
     ports:
-      - "5678:5678"
+      - "5677:5677"
     environment:
-      DB_HOST: ${DB_HOST}
+      DB_HOST: postgres
       DB_PORT: ${DB_PORT}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -36,10 +36,25 @@ services:
       DB_SSLMODE: ${DB_SSLMODE}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_HOURS: ${JWT_EXPIRES_HOURS}
-      SERVER_MODE: ${SERVER_MODE}
+      SERVER_PORT: "5677"
+    volumes:
+      - ../backend:/app
     depends_on:
       postgres:
         condition: service_healthy
+
+  frontend:
+    image: node:20-alpine
+    container_name: mcloud-frontend-dev
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    working_dir: /app
+    volumes:
+      - ../frontend:/app
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install && npm run dev -- --host 127.0.0.1"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:

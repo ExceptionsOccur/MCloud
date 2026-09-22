@@ -87,14 +87,14 @@ export const useCloudResourceStore = defineStore('cloudResource', () => {
 
           stats[region] = {
             running: {
-              cpu: sumField(runningHosts, 'cpu'),
-              memory: sumField(runningHosts, 'memory'),
+              cpu: sumField(runningVm, 'cpu'),
+              memory: sumField(runningVm, 'memory'),
               storage: sumStorage(runningVm),
               bare_metal: runningHosts.filter(h => h.asset_type === '裸金属服务器').length
             },
             stopped: {
-              cpu: sumField(stoppedHosts, 'cpu'),
-              memory: sumField(stoppedHosts, 'memory'),
+              cpu: sumField(stoppedVm, 'cpu'),
+              memory: sumField(stoppedVm, 'memory'),
               storage: sumStorage(stoppedVm),
               bare_metal: stoppedHosts.filter(h => h.asset_type === '裸金属服务器').length
             }

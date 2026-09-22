@@ -62,9 +62,11 @@ func newBusinessAgg(key string) *businessAgg {
 
 func (a *businessAgg) add(h models.Host, project, company, applicant string) {
 	a.group.HostCount++
-	a.group.CPU += h.CPU
-	a.group.Memory += h.Memory
-	a.group.Storage += h.SystemDisk + h.DataDisk
+	if h.AssetType != "裸金属服务器" {
+		a.group.CPU += h.CPU
+		a.group.Memory += h.Memory
+		a.group.Storage += h.SystemDisk + h.DataDisk
+	}
 	if h.Status == "运行中" {
 		a.group.Running++
 	} else if h.Status == "已停止" || h.Status == "已关机" {
