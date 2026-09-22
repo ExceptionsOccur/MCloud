@@ -176,10 +176,13 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { useHostStore } from '../stores/host'
+import { useCloudResourceStore } from '../stores/cloudResource'
 import { ElMessage } from 'element-plus'
-import { statusOptions, envTypeOptions, assetTypeOptions, regionOptions, cpuArchOptions } from '../utils'
+import { statusOptions, envTypeOptions, assetTypeOptions, cpuArchOptions } from '../utils'
 
 const hostStore = useHostStore()
+const cloudStore = useCloudResourceStore()
+const regionOptions = computed(() => cloudStore.allRegions)
 
 const visible = ref(false)
 const mode = ref('create')

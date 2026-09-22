@@ -101,3 +101,12 @@ func (ctrl *HostController) Delete(c *gin.Context) {
 
 	Success(c, nil)
 }
+
+func (ctrl *HostController) ListRegions(c *gin.Context) {
+	regions, err := ctrl.service.ListRegions()
+	if err != nil {
+		Error(c, 50001, "查询失败: "+err.Error())
+		return
+	}
+	Success(c, regions)
+}

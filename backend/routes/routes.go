@@ -31,6 +31,7 @@ func SetupRoutes(r *gin.Engine) {
 	hosts.Use(middleware.JWTAuth())
 	{
 		hosts.GET("", host.Filter)
+		hosts.GET("/regions", host.ListRegions)
 		hosts.GET("/:id", host.Get)
 		hosts.POST("", host.Create)
 		hosts.PUT("/:id", host.Update)

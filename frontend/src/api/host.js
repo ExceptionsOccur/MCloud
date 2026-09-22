@@ -4,6 +4,10 @@ export function getHosts(params) {
   return api.get('/hosts', { params })
 }
 
+export function getRegions() {
+  return api.get('/hosts/regions')
+}
+
 export function getHost(id) {
   return api.get(`/hosts/${id}`)
 }

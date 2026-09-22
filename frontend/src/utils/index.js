@@ -18,7 +18,6 @@ export function formatTime(time) {
 export const statusOptions = ['运行中', '已停止', '已关机', '待确认']
 export const envTypeOptions = ['测试', '生产']
 export const assetTypeOptions = ['虚拟机', '裸金属服务器']
-export const regionOptions = ['region-a', 'region-b']
 export const cpuArchOptions = [
   { label: 'C86', value: 'C86' },
   { label: 'X86', value: 'X86' },

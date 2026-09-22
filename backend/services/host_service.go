@@ -112,6 +112,15 @@ func (s *HostService) Filter(req FilterHostRequest) (*ListHostResponse, error) {
 	}, nil
 }
 
+func (s *HostService) ListRegions() ([]string, error) {
+	var regions []string
+	result := database.DB.Model(&models.Host{}).Distinct().Where("region != ''").Pluck("region", &regions)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return regions, nil
+}
+
 func (s *HostService) GetByID(id uint) (*models.Host, error) {
 	var host models.Host
 	result := database.DB.Preload("Application").First(&host, id)

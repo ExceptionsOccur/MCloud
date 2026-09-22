@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getCloudResources } from '../api/cloud_resource'
-import { getHosts } from '../api/host'
+import { getHosts, getRegions } from '../api/host'
 
 const EMPTY_STAT = { cpu: 0, memory: 0, storage: 0, bare_metal: 0 }
 
@@ -13,13 +13,55 @@ function sumStorage(hosts) {
   return hosts.reduce((sum, h) => sum + (h.system_disk || 0) + (h.data_disk || 0), 0)
 }
 
+async function fetchAllHostsByRegion(region) {
+  const allHosts = []
+  let page = 1
+  const pageSize = 100
+  while (true) {
+    const res = await getHosts({ region, page, page_size: pageSize })
+    if (res.code !== 0) break
+    const hosts = res.data.hosts || []
+    allHosts.push(...hosts)
+    if (allHosts.length >= res.data.total || hosts.length < pageSize) break
+    page++
+  }
+  return allHosts
+}
+
+function computeRegionStats(hosts) {
+  const runningHosts = hosts.filter(h => h.status === '运行中')
+  const stoppedHosts = hosts.filter(h => h.status === '已停止' || h.status === '已关机')
+  const runningVm = runningHosts.filter(h => h.asset_type !== '裸金属服务器')
+  const stoppedVm = stoppedHosts.filter(h => h.asset_type !== '裸金属服务器')
+  return {
+    running: {
+      cpu: sumField(runningVm, 'cpu'),
+      memory: sumField(runningVm, 'memory'),
+      storage: sumStorage(runningVm),
+      bare_metal: runningHosts.filter(h => h.asset_type === '裸金属服务器').length
+    },
+    stopped: {
+      cpu: sumField(stoppedVm, 'cpu'),
+      memory: sumField(stoppedVm, 'memory'),
+      storage: sumStorage(stoppedVm),
+      bare_metal: stoppedHosts.filter(h => h.asset_type === '裸金属服务器').length
+    }
+  }
+}
+
 export const useCloudResourceStore = defineStore('cloudResource', () => {
   const resources = ref([])
   const loading = ref(false)
   const regionHostStats = ref({})
+  const hostRegions = ref([])
 
   const regionList = computed(() => {
-    return resources.value.map(r => r.region)
+    return resources.value.map(r => r.region).filter(Boolean)
+  })
+
+  const allRegions = computed(() => {
+    const set = new Set([...regionList.value, ...hostRegions.value].filter(Boolean))
+    return [...set].sort()
   })
 
   function getRegionResource(region) {
@@ -59,46 +101,23 @@ export const useCloudResourceStore = defineStore('cloudResource', () => {
   async function fetchStatistics() {
     loading.value = true
     try {
-      const res = await getCloudResources()
-      if (res.code === 0) {
-        resources.value = res.data || []
+      const [cloudRes, regionsRes] = await Promise.all([
+        getCloudResources(),
+        getRegions()
+      ])
+
+      if (cloudRes.code === 0) {
+        resources.value = cloudRes.data || []
       }
 
-      const regions = ['region-a', 'region-b']
+      const dbRegions = regionsRes.code === 0 ? (regionsRes.data || []) : []
+      hostRegions.value = dbRegions
+
       const stats = {}
-      for (const region of regions) {
+      for (const region of dbRegions) {
         try {
-          let allHosts = []
-          let page = 1
-          const pageSize = 100
-          while (true) {
-            const hostRes = await getHosts({ region, page, page_size: pageSize })
-            if (hostRes.code !== 0) break
-            const hosts = hostRes.data.hosts || []
-            allHosts = allHosts.concat(hosts)
-            if (allHosts.length >= hostRes.data.total || hosts.length < pageSize) break
-            page++
-          }
-
-          const runningHosts = allHosts.filter(h => h.status === '运行中')
-          const stoppedHosts = allHosts.filter(h => h.status === '已停止' || h.status === '已关机')
-          const runningVm = runningHosts.filter(h => h.asset_type !== '裸金属服务器')
-          const stoppedVm = stoppedHosts.filter(h => h.asset_type !== '裸金属服务器')
-
-          stats[region] = {
-            running: {
-              cpu: sumField(runningVm, 'cpu'),
-              memory: sumField(runningVm, 'memory'),
-              storage: sumStorage(runningVm),
-              bare_metal: runningHosts.filter(h => h.asset_type === '裸金属服务器').length
-            },
-            stopped: {
-              cpu: sumField(stoppedVm, 'cpu'),
-              memory: sumField(stoppedVm, 'memory'),
-              storage: sumStorage(stoppedVm),
-              bare_metal: stoppedHosts.filter(h => h.asset_type === '裸金属服务器').length
-            }
-          }
+          const hosts = await fetchAllHostsByRegion(region)
+          stats[region] = computeRegionStats(hosts)
         } catch {
           stats[region] = { running: { ...EMPTY_STAT }, stopped: { ...EMPTY_STAT } }
         }
@@ -109,9 +128,22 @@ export const useCloudResourceStore = defineStore('cloudResource', () => {
     }
   }
 
+  async function fetchRegions() {
+    const [cloudRes, regionsRes] = await Promise.all([
+      getCloudResources(),
+      getRegions()
+    ])
+    if (cloudRes.code === 0) {
+      resources.value = cloudRes.data || []
+    }
+    if (regionsRes.code === 0) {
+      hostRegions.value = (regionsRes.data || []).filter(Boolean)
+    }
+  }
+
   return {
-    resources, loading, regionHostStats, regionList,
+    resources, loading, regionHostStats, regionList, allRegions,
     getRegionResource, getRegionRunning, getRegionStopped, getRegionUsed, getRegionUnused,
-    fetchStatistics
+    fetchStatistics, fetchRegions
   }
 })

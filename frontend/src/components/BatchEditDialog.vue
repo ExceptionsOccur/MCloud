@@ -70,13 +70,16 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { batchUpdateHosts } from '../api/host'
 import { useHostStore } from '../stores/host'
+import { useCloudResourceStore } from '../stores/cloudResource'
 import { ElMessage } from 'element-plus'
-import { statusOptions, envTypeOptions, assetTypeOptions, regionOptions } from '../utils'
+import { statusOptions, envTypeOptions, assetTypeOptions } from '../utils'
 
 const hostStore = useHostStore()
+const cloudStore = useCloudResourceStore()
+const regionOptions = computed(() => cloudStore.allRegions)
 const visible = ref(false)
 const submitting = ref(false)
 const selectedIds = ref([])

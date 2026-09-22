@@ -3,7 +3,7 @@
     <el-header class="app-header">
       <div class="header-left">
         <h1>MCloud</h1>
-        <span>云平台主机资产管理</span>
+        <span>云平台资产管理</span>
       </div>
       <div class="header-center">
         <router-link to="/" class="nav-tab" :class="{ active: $route.path === '/' }">主机管理</router-link>
@@ -47,6 +47,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useHostStore } from '../stores/host'
+import { useCloudResourceStore } from '../stores/cloudResource'
 import SearchToolbar from '../components/SearchToolbar.vue'
 import HostTable from '../components/HostTable.vue'
 import HostFormDialog from '../components/HostFormDialog.vue'
@@ -59,6 +60,7 @@ import CloudResourceDialog from '../components/CloudResourceDialog.vue'
 const router = useRouter()
 const authStore = useAuthStore()
 const hostStore = useHostStore()
+const cloudStore = useCloudResourceStore()
 
 const hostFormDialog = ref(null)
 const batchAddDialog = ref(null)
@@ -70,6 +72,7 @@ const cloudResourceDialog = ref(null)
 onMounted(() => {
   authStore.fetchUserInfo()
   hostStore.fetchHosts()
+  cloudStore.fetchRegions()
 })
 
 function handleCommand(command) {

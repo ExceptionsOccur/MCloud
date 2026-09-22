@@ -1,5 +1,5 @@
 <template>
-  <div class="resource-statistics">
+  <div class="resource-statistics" :class="{ 'full-height': regions.length < 3 }">
     <el-header class="app-header">
       <div class="header-left">
         <h1>MCloud</h1>
@@ -31,7 +31,7 @@
     <div class="main-content" v-loading="cloudStore.loading">
       <div v-if="cloudStore.loading" class="loading-placeholder"></div>
       <template v-else>
-        <div class="summary-section">
+        <div class="summary-section" :style="{ gridTemplateColumns: gridCols }">
           <div v-for="region in regions" :key="region" class="summary-card">
             <div class="card-header">
               <h3>{{ region }}</h3>
@@ -58,7 +58,7 @@
           </div>
         </div>
 
-        <div class="chart-columns">
+        <div class="chart-columns" :style="{ gridTemplateColumns: gridCols }">
           <div v-for="region in regions" :key="region" class="chart-column">
             <h2 class="section-title">{{ region }}资源使用情况</h2>
             <div class="chart-grid">
@@ -90,7 +90,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useCloudResourceStore } from '../stores/cloudResource'
@@ -110,7 +110,8 @@ const cloudStore = useCloudResourceStore()
 const changePasswordDialog = ref(null)
 const cloudResourceDialog = ref(null)
 
-const regions = ['region-a', 'region-b']
+const regions = computed(() => cloudStore.allRegions)
+const gridCols = computed(() => `repeat(${Math.max(1, Math.min(regions.value.length, 2))}, 1fr)`)
 
 const resourceRows = [
   { name: 'vCPU', unit: '核', totalField: 'vcpu', usedField: 'cpu', hasUsage: true },
@@ -224,9 +225,12 @@ function getPieOption(region, totalField, field, label) {
 
 <style scoped>
 .resource-statistics {
-  height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+.resource-statistics.full-height {
+  height: 100vh;
   overflow: hidden;
 }
 

@@ -1,7 +1,7 @@
 <template>
   <el-dialog v-model="visible" title="云资源录入" width="560px" :close-on-click-modal="false">
     <el-tabs v-model="activeRegion">
-      <el-tab-pane v-for="region in regions" :key="region" :label="region" :name="region">
+      <el-tab-pane v-for="region in dialogRegions" :key="region" :label="region" :name="region">
         <el-form :model="forms[region]" label-width="120px" size="default">
           <el-form-item v-for="f in fields" :key="f.key" :label="f.label">
             <el-input
@@ -23,11 +23,11 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { getCloudResources, updateCloudResource } from '../api/cloud_resource'
+import { getRegions } from '../api/host'
 import { ElMessage } from 'element-plus'
 
 const emit = defineEmits(['saved'])
 
-const regions = ['region-a', 'region-b']
 const fields = [
   { key: 'physical_cpu', label: '物理CPU(核)' },
   { key: 'vcpu', label: 'vCPU(核)' },
@@ -40,7 +40,8 @@ const fields = [
 
 const visible = ref(false)
 const saving = ref(false)
-const activeRegion = ref(regions[0])
+const activeRegion = ref('')
+const dialogRegions = ref([])
 const forms = reactive({})
 
 function emptyForm() {
@@ -50,7 +51,7 @@ function emptyForm() {
 }
 
 function resetForms() {
-  regions.forEach(r => { forms[r] = emptyForm() })
+  cloudStore.allRegions.forEach(r => { forms[r] = emptyForm() })
 }
 
 function onInput(region, key, value) {
@@ -58,22 +59,26 @@ function onInput(region, key, value) {
 }
 
 async function open() {
-  resetForms()
   visible.value = true
-  try {
-    const res = await getCloudResources()
-    if (res.code === 0) {
-      ;(res.data || []).forEach(item => {
-        if (forms[item.region]) {
-          fields.forEach(f => {
-            forms[item.region][f.key] = String(item[f.key] ?? 0)
-          })
-        }
+  const [regionsRes, cloudRes] = await Promise.all([getRegions(), getCloudResources()])
+  const dbRegions = regionsRes.code === 0 ? (regionsRes.data || []).filter(Boolean) : []
+  const cloudList = cloudRes.code === 0 ? (cloudRes.data || []) : []
+
+  const allR = [...new Set([...dbRegions, ...cloudList.map(r => r.region)].filter(Boolean))].sort()
+  dialogRegions.value = allR
+  Object.keys(forms).forEach(k => delete forms[k])
+  allR.forEach(r => { forms[r] = emptyForm() })
+
+  if (allR.length) {
+    activeRegion.value = allR[0]
+  }
+  cloudList.forEach(item => {
+    if (forms[item.region]) {
+      fields.forEach(f => {
+        forms[item.region][f.key] = String(item[f.key] ?? 0)
       })
     }
-  } catch (e) {
-    // ignore
-  }
+  })
 }
 
 async function handleSave() {
