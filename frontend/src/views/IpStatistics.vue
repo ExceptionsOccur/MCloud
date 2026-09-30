@@ -224,7 +224,7 @@ function applyProbeResult(data) {
     if (data.color === 'red') {
       ElMessage.error(`${data.ip} 已确认使用`)
     } else if (data.color === 'yellow') {
-      ElMessage.warning(`${data.ip} 已标记为空记录`)
+      ElMessage.warning(`${data.ip} 探测完成，状态待确认`)
     } else {
       ElMessage.success(`${data.ip} 探测完成，IP未使用`)
     }

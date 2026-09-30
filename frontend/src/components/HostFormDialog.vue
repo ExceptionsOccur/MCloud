@@ -7,6 +7,66 @@
   >
     <el-form ref="formRef" :model="form" :rules="rules" label-width="120px" :disabled="mode === 'view'">
       <el-tabs v-model="activeTab">
+        <el-tab-pane label="申请信息" name="apply">
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="申请单位">
+                <el-input v-model="form.apply_unit" placeholder="请输入申请单位" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="申请人">
+                <el-select
+                  v-model="form.applicant"
+                  placeholder="选择已有人员，或直接输入新人员"
+                  clearable
+                  filterable
+                  allow-create
+                  default-first-option
+                  style="width: 100%"
+                  :filter-method="handleApplicantFilter"
+                  @change="handleApplicantChange"
+                  @visible-change="handleApplicantVisibleChange"
+                >
+                  <el-option v-for="p in filteredPersons" :key="p.id" :label="personLabel(p)" :value="p.name" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="联系方式">
+                <el-input v-model="form.applicant_contact" placeholder="请输入联系方式" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="所属项目">
+                <el-input v-model="form.project" placeholder="请输入所属项目" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item label="申请理由">
+            <el-input v-model="form.apply_reason" type="textarea" :rows="2" placeholder="请输入申请理由" />
+          </el-form-item>
+          <el-form-item label="申请配置">
+            <el-input v-model="form.apply_config" type="textarea" :rows="2" placeholder="请输入申请配置" />
+          </el-form-item>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="申请时间">
+                <el-input v-model="form.apply_time" placeholder="如: 2025-01-01" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="对象存储">
+                <el-input v-model="form.object_storage_size" placeholder="如: 500GB" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item label="备注">
+            <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="请输入备注" />
+          </el-form-item>
+        </el-tab-pane>
         <el-tab-pane label="技术信息" name="tech">
           <el-row :gutter="16">
             <el-col :span="12">
@@ -116,64 +176,6 @@
           </el-form-item>
         </el-tab-pane>
 
-        <el-tab-pane label="申请信息" name="apply">
-          <el-row :gutter="16">
-            <el-col :span="12">
-              <el-form-item label="申请单位">
-                <el-input v-model="form.apply_unit" placeholder="请输入申请单位" />
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="申请人">
-                <el-select
-                  v-model="form.applicant"
-                  placeholder="选择已有人员，或直接输入新人员"
-                  clearable
-                  filterable
-                  allow-create
-                  default-first-option
-                  style="width: 100%"
-                  @change="handleApplicantChange"
-                >
-                  <el-option v-for="p in personOptions" :key="p.id" :label="personLabel(p)" :value="p.name" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-          </el-row>
-          <el-row :gutter="16">
-            <el-col :span="12">
-              <el-form-item label="联系方式">
-                <el-input v-model="form.applicant_contact" placeholder="请输入联系方式" />
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="所属项目">
-                <el-input v-model="form.project" placeholder="请输入所属项目" />
-              </el-form-item>
-            </el-col>
-          </el-row>
-          <el-form-item label="申请理由">
-            <el-input v-model="form.apply_reason" type="textarea" :rows="2" placeholder="请输入申请理由" />
-          </el-form-item>
-          <el-form-item label="申请配置">
-            <el-input v-model="form.apply_config" type="textarea" :rows="2" placeholder="请输入申请配置" />
-          </el-form-item>
-          <el-row :gutter="16">
-            <el-col :span="12">
-              <el-form-item label="申请时间">
-                <el-input v-model="form.apply_time" placeholder="如: 2025-01-01" />
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="对象存储">
-                <el-input v-model="form.object_storage_size" placeholder="如: 500GB" />
-              </el-form-item>
-            </el-col>
-          </el-row>
-          <el-form-item label="备注">
-            <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="请输入备注" />
-          </el-form-item>
-        </el-tab-pane>
       </el-tabs>
     </el-form>
 
@@ -199,7 +201,7 @@ const regionOptions = computed(() => cloudStore.allRegions)
 const visible = ref(false)
 const mode = ref('create')
 const submitting = ref(false)
-const activeTab = ref('tech')
+const activeTab = ref('apply')
 const editId = ref(null)
 const formRef = ref(null)
 
@@ -229,22 +231,66 @@ function personLabel(p) {
   return p.unit ? `${p.name} · ${p.unit}` : p.name
 }
 
+const applicantQuery = ref('')
+
+function handleApplicantFilter(q) {
+  applicantQuery.value = (q || '').trim()
+}
+
+const filteredPersons = computed(() => {
+  const q = applicantQuery.value.toLowerCase()
+  if (!q) return personOptions.value
+  return personOptions.value.filter(p =>
+    personLabel(p).toLowerCase().includes(q) || p.name.toLowerCase().includes(q)
+  )
+})
+
+function applyPerson(p) {
+  form.person_id = p.id
+  form.applicant = p.name
+  form.apply_unit = p.unit || ''
+  form.applicant_contact = p.contact || ''
+}
+
 function handleApplicantChange(val) {
   const name = (val || '').trim()
+  applicantQuery.value = ''
   const p = personOptions.value.find(item => item.name === name)
-  if (p) {
-    form.person_id = p.id
-    form.applicant = p.name
-    form.apply_unit = p.unit || ''
-    form.applicant_contact = p.contact || ''
-  } else {
-    // 手动输入的申请人：提交时新增至人员库
-    form.person_id = ''
+  if (p) applyPerson(p)
+  else form.person_id = ''
+}
+
+function handleApplicantVisibleChange(open) {
+  if (open) return
+  commitPendingApplicant()
+}
+
+// 下拉关闭时把未回车提交的手动输入落到表单，保证确定时会新增人员
+function commitPendingApplicant() {
+  const q = applicantQuery.value
+  applicantQuery.value = ''
+  if (!q || q === form.applicant) return
+
+  const exact = personOptions.value.find(p => p.name === q || personLabel(p) === q)
+  if (exact) {
+    if (exact.id !== form.person_id) applyPerson(exact)
+    return
   }
+
+  // 只输了筛选关键字（仍有前缀匹配项）则视为未敲定，保持原值
+  const lower = q.toLowerCase()
+  const similar = personOptions.value.some(p =>
+    p.name.toLowerCase().startsWith(lower) || personLabel(p).toLowerCase().startsWith(lower)
+  )
+  if (similar) return
+
+  form.applicant = q
+  form.person_id = ''
 }
 
 // 确定提交时关联的人员ID：已有人员直接关联，新输入的先写入人员库
 async function resolvePersonId() {
+  commitPendingApplicant()
   const name = (form.applicant || '').trim()
   if (!name) return ''
 
@@ -296,7 +342,8 @@ async function open(data) {
   resetForm()
   mode.value = data?.mode || 'create'
   editId.value = null
-  activeTab.value = 'tech'
+  activeTab.value = 'apply'
+  applicantQuery.value = ''
   await loadPersons()
 
   if (data?.data) {
@@ -350,7 +397,11 @@ async function open(data) {
 
 async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
-  if (!valid) return
+  if (!valid) {
+    // 必填项都在技术信息页，校验失败时跳回该页展示错误
+    activeTab.value = 'tech'
+    return
+  }
 
   submitting.value = true
   try {
