@@ -44,6 +44,7 @@ func SetupRoutes(r *gin.Engine) {
 	batchGroup.Use(middleware.JWTAuth())
 	{
 		batchGroup.POST("/hosts", batch.BatchCreate)
+		batchGroup.POST("/hosts/text", batch.BatchCreateText)
 		batchGroup.PUT("/hosts", batch.BatchUpdate)
 	}
 
@@ -85,6 +86,17 @@ func SetupRoutes(r *gin.Engine) {
 		subnetGroup.POST("", subnet.Create)
 		subnetGroup.PUT("/:id", subnet.Update)
 		subnetGroup.DELETE("/:id", subnet.Delete)
+	}
+
+	// Persons - protected
+	person := controllers.NewPersonController()
+	personGroup := api.Group("/persons")
+	personGroup.Use(middleware.JWTAuth())
+	{
+		personGroup.GET("", person.List)
+		personGroup.POST("", person.Create)
+		personGroup.PUT("/:id", person.Update)
+		personGroup.DELETE("/:id", person.Delete)
 	}
 
 	// WebSocket - token via query param

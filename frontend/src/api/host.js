@@ -28,6 +28,10 @@ export function batchCreateHosts(hosts) {
   return api.post('/batch/hosts', { hosts })
 }
 
+export function batchCreateHostsText(text) {
+  return api.post('/batch/hosts/text', { text })
+}
+
 export function batchUpdateHosts(ids, data) {
   return api.put('/batch/hosts', { ids, data })
 }

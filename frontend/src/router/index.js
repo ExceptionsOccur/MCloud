@@ -6,6 +6,7 @@ import HostManagement from '../views/HostManagement.vue'
 import ResourceStatistics from '../views/ResourceStatistics.vue'
 import IpStatistics from '../views/IpStatistics.vue'
 import BusinessStatistics from '../views/BusinessStatistics.vue'
+import PersonnelManagement from '../views/PersonnelManagement.vue'
 
 const routes = [
   {
@@ -36,6 +37,12 @@ const routes = [
     path: '/business-statistics',
     name: 'BusinessStatistics',
     component: BusinessStatistics,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/personnel',
+    name: 'PersonnelManagement',
+    component: PersonnelManagement,
     meta: { requiresAuth: true }
   }
 ]

@@ -69,7 +69,8 @@
 
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
-| POST | `/api/batch/hosts` | `batch.BatchCreate` | 批量添加 |
+| POST | `/api/batch/hosts` | `batch.BatchCreate` | 批量添加（JSON 数组） |
+| POST | `/api/batch/hosts/text` | `batch.BatchCreateText` | 批量添加（纯文本，每行一条记录，逗号分隔） |
 | PUT | `/api/batch/hosts` | `batch.BatchUpdate` | 批量编辑 |
 
 ### CSV 操作（需 JWT）
@@ -104,6 +105,15 @@
 | POST | `/api/ip-subnets` | `subnet.Create` | 新增网段（仅 /24，自动规范化网络地址） |
 | PUT | `/api/ip-subnets/:id` | `subnet.Update` | 修改网段 |
 | DELETE | `/api/ip-subnets/:id` | `subnet.Delete` | 删除网段 |
+
+### 人员管理（需 JWT）
+
+| 方法 | 路由 | Controller | 说明 |
+|------|------|-----------|------|
+| GET | `/api/persons` | `person.List` | 人员列表，`keyword` 模糊匹配姓名/联系方式/单位名称，返回含 `host_count`（关联主机数） |
+| POST | `/api/persons` | `person.Create` | 新增人员（`name` 必填） |
+| PUT | `/api/persons/:id` | `person.Update` | 修改人员 |
+| DELETE | `/api/persons/:id` | `person.Delete` | 删除人员；被主机引用时返回 `40901` |
 
 ---
 
@@ -163,6 +173,21 @@ POST /api/batch/hosts
 
 跳过 `private_ip` 已存在的条目，返回成功/跳过/错误数量。
 
+### 纯文本批量添加
+
+```json
+POST /api/batch/hosts/text
+{
+  "text": "区域,实例ID,主机名称,内网IP\nregion-a,ins-001,web-01,192.168.1.10"
+}
+```
+
+- 每行一条记录，字段以逗号分隔，列顺序与 CSV 模板一致（`区域,实例ID,主机名称,内网IP,公网IP,资产类型,操作系统,CPU核数,CPU架构,内存(GB),系统盘(GB),数据盘(GB),环境类型,是否数据库服务器,状态,开放端口,标签,申请单位,申请人,申请人联系方式,所属项目,申请理由,申请配置,申请时间,对象存储大小,备注`）
+- 至少需要前 3 列（区域、主机名称、内网IP），尾部列可省略（自动补空）
+- 支持双引号包裹含逗号的字段；空行与 `#` 开头的注释行跳过；首行为表头时自动跳过
+- 列数超过 26 或不足 3 列的行计入 `errors`
+- 返回 `{ "success": n, "skipped": n, "errors": n, "line_errors": ["第5行: ..."] }`，`line_errors` 最多 10 条
+
 ### 批量编辑
 
 ```json
@@ -179,6 +204,7 @@ PUT /api/batch/hosts
 
 - 仅修改 `data` 中包含的字段，留空字段不修改
 - `data` 中的字段自动按表分离：hosts 表字段更新 `hosts`，host_applications 表字段更新 `host_applications`
+- `data.person_id` 为数字时批量关联人员，为 `null` 时批量解除关联；人员不存在返回 `40001`
 
 ### IP 探测请求
 
@@ -201,3 +227,26 @@ POST /api/ip-subnets
 
 - 仅接受 `/24` IPv4 网段，否则返回 `40001`
 - `172.17.128.99/24` 会被规范化为 `172.17.128.0/24`
+
+### 人员请求体
+
+```json
+POST /api/persons
+{ "name": "张三", "contact": "13800000000", "unit": "某某研究院" }
+```
+
+- `name` 必填，`contact` / `unit` 可选
+- 姓名 + 联系方式 + 单位完全重复时返回 `40001`
+
+### 主机的人员关联
+
+`POST /api/hosts`、`PUT /api/hosts/:id` 支持 `person_id` 字段：
+
+```json
+{ "person_id": 1 }
+```
+
+- `person_id` 为 `null` 表示解除关联（仅 `PUT` 生效）
+- 指定的人员不存在时返回 `40001`
+- 列表与详情接口返回 `person` 对象（已关联时）
+- 前端「申请人」为下拉 + 手输：选择已有人员直接带出联系方式/单位；手输新人员时前端先调用 `POST /api/persons` 写入人员库，再用返回的 `id` 作为 `person_id`

@@ -22,7 +22,9 @@ type Host struct {
 	Status        string    `json:"status" gorm:"type:varchar(32)"`
 	OpenPorts     string    `json:"open_ports" gorm:"type:text"`
 	Tags          string    `json:"tags" gorm:"type:text"`
+	PersonID      *uint     `json:"person_id" gorm:"index"`
 	CreatedAt     time.Time `json:"created_at" gorm:"autoCreateTime"`
 
 	Application   *HostApplication `json:"application,omitempty" gorm:"foreignKey:HostID"`
+	Person        *Person         `json:"person,omitempty" gorm:"foreignKey:PersonID"`
 }

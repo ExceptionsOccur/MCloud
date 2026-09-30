@@ -37,7 +37,18 @@
       <el-row :gutter="16">
         <el-col :span="12">
           <el-form-item label="申请人">
-            <el-input v-model="data.applicant" placeholder="不修改请留空" />
+            <el-select
+              v-model="data.applicant"
+              placeholder="选择已有人员，或直接输入新人员"
+              clearable
+              filterable
+              allow-create
+              default-first-option
+              style="width: 100%"
+              @change="handleApplicantChange"
+            >
+              <el-option v-for="p in personOptions" :key="p.id" :label="personLabel(p)" :value="p.name" />
+            </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -53,11 +64,14 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="标签">
-            <el-input v-model="data.tags" placeholder="不修改请留空" />
+          <el-form-item label="联系方式">
+            <el-input v-model="data.applicant_contact" placeholder="不修改请留空" />
           </el-form-item>
         </el-col>
       </el-row>
+      <el-form-item label="标签">
+        <el-input v-model="data.tags" placeholder="不修改请留空" />
+      </el-form-item>
       <el-form-item label="备注">
         <el-input v-model="data.remark" type="textarea" :rows="2" placeholder="不修改请留空" />
       </el-form-item>
@@ -72,6 +86,7 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { batchUpdateHosts } from '../api/host'
+import { getPersons, createPerson } from '../api/person'
 import { useHostStore } from '../stores/host'
 import { useCloudResourceStore } from '../stores/cloudResource'
 import { ElMessage } from 'element-plus'
@@ -86,12 +101,71 @@ const selectedIds = ref([])
 
 const data = reactive({
   region: '', env_type: '', asset_type: '', status: '',
-  applicant: '', project: '', apply_unit: '', tags: '', remark: ''
+  applicant: '', project: '', apply_unit: '', applicant_contact: '',
+  tags: '', remark: '', person_id: ''
 })
 
-function open(ids) {
+const personOptions = ref([])
+
+async function loadPersons() {
+  try {
+    const res = await getPersons()
+    if (res.code === 0) {
+      personOptions.value = res.data || []
+    }
+  } catch {
+    // 错误提示由 axios 拦截器统一弹出
+  }
+}
+
+function personLabel(p) {
+  return p.unit ? `${p.name} · ${p.unit}` : p.name
+}
+
+function handleApplicantChange(val) {
+  const name = (val || '').trim()
+  const p = personOptions.value.find(item => item.name === name)
+  if (p) {
+    data.person_id = p.id
+    data.applicant = p.name
+    data.apply_unit = p.unit || ''
+    data.applicant_contact = p.contact || ''
+  } else {
+    // 手动输入的申请人：提交时新增至人员库
+    data.person_id = ''
+  }
+}
+
+// 返回 undefined=不修改关联；false=新增人员失败，需中止提交
+async function resolvePersonId() {
+  const name = (data.applicant || '').trim()
+  if (!name) return undefined
+
+  if (data.person_id) {
+    const linked = personOptions.value.find(p => p.id === data.person_id)
+    if (linked && linked.name === name) return data.person_id
+  }
+
+  const exist = personOptions.value.find(p => p.name === name)
+  if (exist) return exist.id
+
+  try {
+    const res = await createPerson({
+      name,
+      contact: (data.applicant_contact || '').trim(),
+      unit: (data.apply_unit || '').trim()
+    })
+    if (res.code === 0) return res.data.id
+  } catch {
+    // 错误提示由 axios 拦截器统一弹出
+  }
+  return false
+}
+
+async function open(ids) {
   selectedIds.value = ids || []
-  Object.keys(data).forEach(k => data[k] = '')
+  Object.keys(data).forEach(k => { data[k] = '' })
+  await loadPersons()
   visible.value = true
 }
 
@@ -115,6 +189,12 @@ async function handleSubmit() {
 
   submitting.value = true
   try {
+    const personId = await resolvePersonId()
+    if (personId === false) return
+    if (personId !== undefined) {
+      payload.person_id = personId
+    }
+
     const res = await batchUpdateHosts(selectedIds.value, payload)
     if (res.code === 0) {
       ElMessage.success('批量更新成功')

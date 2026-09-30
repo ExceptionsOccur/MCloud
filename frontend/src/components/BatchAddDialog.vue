@@ -1,16 +1,18 @@
 <template>
-  <el-dialog v-model="visible" title="批量添加主机" width="700px" :close-on-click-modal="false">
-    <p style="margin-bottom: 12px; color: #909399;">请输入 JSON 格式的主机数据，每条记录需要 region, name, private_ip 字段。</p>
-    <el-input v-model="jsonInput" type="textarea" :rows="12" placeholder='[
-  {
-    "region": "region-a",
-    "name": "web-01",
-    "private_ip": "192.168.1.10",
-    "asset_type": "虚拟机",
-    "env_type": "生产",
-    "status": "运行中"
-  }
-]' />
+  <el-dialog v-model="visible" title="批量添加主机" width="760px" :close-on-click-modal="false">
+    <div class="hint">
+      <p>每行一条记录，字段用逗号分隔，列顺序如下（至少填写前 3 列，其余列可省略）：</p>
+      <p class="columns">{{ columnOrder }}</p>
+      <p>支持用双引号包裹含逗号的字段；以 # 开头的行视为注释；首行可直接粘贴表头。</p>
+    </div>
+    <el-input
+      v-model="textInput"
+      type="textarea"
+      :rows="12"
+      placeholder="区域,实例ID,主机名称,内网IP,公网IP,资产类型,操作系统,CPU核数,CPU架构,内存(GB),系统盘(GB),数据盘(GB),环境类型,是否数据库服务器,状态,开放端口,标签,申请单位,申请人,申请人联系方式,所属项目,申请理由,申请配置,申请时间,对象存储大小,备注
+region-a,ins-001,web-01,192.168.1.10,,虚拟机,CentOS 7.9,4,X86,8,50,100,生产,否,运行中
+region-a,ins-002,db-01,192.168.1.11,,虚拟机,CentOS 7.9,8,X86,16,100,200,生产,是,运行中"
+    />
     <template #footer>
       <el-button @click="visible = false">取消</el-button>
       <el-button type="primary" :loading="submitting" @click="handleSubmit">提交</el-button>
@@ -20,36 +22,45 @@
 
 <script setup>
 import { ref } from 'vue'
-import { batchCreateHosts } from '../api/host'
+import { batchCreateHostsText } from '../api/host'
 import { ElMessage } from 'element-plus'
+
+const columnOrder = [
+  '区域', '实例ID', '主机名称', '内网IP', '公网IP',
+  '资产类型', '操作系统', 'CPU核数', 'CPU架构', '内存(GB)',
+  '系统盘(GB)', '数据盘(GB)', '环境类型', '是否数据库服务器',
+  '状态', '开放端口', '标签', '申请单位', '申请人', '申请人联系方式',
+  '所属项目', '申请理由', '申请配置', '申请时间', '对象存储大小', '备注'
+].join(' | ')
 
 const visible = ref(false)
 const submitting = ref(false)
-const jsonInput = ref('')
+const textInput = ref('')
 
 function open() {
-  jsonInput.value = ''
+  textInput.value = ''
   visible.value = true
 }
 
 async function handleSubmit() {
-  let hosts
-  try {
-    hosts = JSON.parse(jsonInput.value)
-    if (!Array.isArray(hosts)) {
-      ElMessage.error('请输入 JSON 数组格式')
-      return
-    }
-  } catch {
-    ElMessage.error('JSON 格式错误')
+  const text = textInput.value.trim()
+  if (!text) {
+    ElMessage.warning('请输入主机数据')
     return
   }
 
   submitting.value = true
   try {
-    const res = await batchCreateHosts(hosts)
+    const res = await batchCreateHostsText(text)
     if (res.code === 0) {
-      ElMessage.success(`成功 ${res.data.success} 条，跳过 ${res.data.skipped} 条，失败 ${res.data.errors} 条`)
+      const d = res.data
+      const summary = `成功 ${d.success} 条，跳过 ${d.skipped} 条，失败 ${d.errors} 条`
+      if (d.errors > 0) {
+        const detail = (d.line_errors || []).join('；')
+        ElMessage.warning(detail ? `${summary}：${detail}` : summary)
+      } else {
+        ElMessage.success(summary)
+      }
       visible.value = false
     }
   } finally {
@@ -65,3 +76,21 @@ import { onMounted, onUnmounted } from 'vue'
 onMounted(() => window.addEventListener('open-batch-add', handleOpenBatchAdd))
 onUnmounted(() => window.removeEventListener('open-batch-add', handleOpenBatchAdd))
 </script>
+
+<style scoped>
+.hint {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #909399;
+  line-height: 1.6;
+}
+
+.hint p {
+  margin: 0 0 4px;
+}
+
+.columns {
+  color: #606266;
+  word-break: break-all;
+}
+</style>

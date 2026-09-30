@@ -125,7 +125,18 @@
             </el-col>
             <el-col :span="12">
               <el-form-item label="申请人">
-                <el-input v-model="form.applicant" placeholder="请输入申请人" />
+                <el-select
+                  v-model="form.applicant"
+                  placeholder="选择已有人员，或直接输入新人员"
+                  clearable
+                  filterable
+                  allow-create
+                  default-first-option
+                  style="width: 100%"
+                  @change="handleApplicantChange"
+                >
+                  <el-option v-for="p in personOptions" :key="p.id" :label="personLabel(p)" :value="p.name" />
+                </el-select>
               </el-form-item>
             </el-col>
           </el-row>
@@ -177,6 +188,7 @@
 import { ref, reactive, computed } from 'vue'
 import { useHostStore } from '../stores/host'
 import { useCloudResourceStore } from '../stores/cloudResource'
+import { getPersons, createPerson } from '../api/person'
 import { ElMessage } from 'element-plus'
 import { statusOptions, envTypeOptions, assetTypeOptions, cpuArchOptions } from '../utils'
 
@@ -195,10 +207,67 @@ const form = reactive({
   region: '', name: '', instance_id: '', private_ip: '', public_ip: '',
   asset_type: '', os: '', cpu: '', cpu_arch: '', memory: '', disk: '',
   system_disk: '', data_disk: '', env_type: '', is_db_server: false,
-  status: '', open_ports: '', tags: '',
+  status: '', open_ports: '', tags: '', person_id: '',
   apply_unit: '', applicant: '', applicant_contact: '', project: '',
   apply_reason: '', apply_config: '', apply_time: '', object_storage_size: '', remark: ''
 })
+
+const personOptions = ref([])
+
+async function loadPersons() {
+  try {
+    const res = await getPersons()
+    if (res.code === 0) {
+      personOptions.value = res.data || []
+    }
+  } catch {
+    // 错误提示由 axios 拦截器统一弹出
+  }
+}
+
+function personLabel(p) {
+  return p.unit ? `${p.name} · ${p.unit}` : p.name
+}
+
+function handleApplicantChange(val) {
+  const name = (val || '').trim()
+  const p = personOptions.value.find(item => item.name === name)
+  if (p) {
+    form.person_id = p.id
+    form.applicant = p.name
+    form.apply_unit = p.unit || ''
+    form.applicant_contact = p.contact || ''
+  } else {
+    // 手动输入的申请人：提交时新增至人员库
+    form.person_id = ''
+  }
+}
+
+// 确定提交时关联的人员ID：已有人员直接关联，新输入的先写入人员库
+async function resolvePersonId() {
+  const name = (form.applicant || '').trim()
+  if (!name) return ''
+
+  if (form.person_id) {
+    const linked = personOptions.value.find(p => p.id === form.person_id)
+    if (linked && linked.name === name) return form.person_id
+  }
+
+  const exist = personOptions.value.find(p => p.name === name)
+  if (exist) return exist.id
+
+  try {
+    const res = await createPerson({
+      name,
+      contact: (form.applicant_contact || '').trim(),
+      unit: (form.apply_unit || '').trim()
+    })
+    if (res.code === 0) return res.data.id
+  } catch {
+    // 错误提示由 axios 拦截器统一弹出
+  }
+  return false
+}
 
 const rules = {
   region: [{ required: true, message: '请选择区域', trigger: 'change' }],
@@ -223,11 +292,12 @@ function resetForm() {
   })
 }
 
-function open(data) {
+async function open(data) {
   resetForm()
   mode.value = data?.mode || 'create'
   editId.value = null
   activeTab.value = 'tech'
+  await loadPersons()
 
   if (data?.data) {
     const h = data.data
@@ -249,6 +319,7 @@ function open(data) {
     form.status = h.status || ''
     form.open_ports = h.open_ports || ''
     form.tags = h.tags || ''
+    form.person_id = h.person_id ?? ''
     editId.value = h.id
 
     if (h.application) {
@@ -262,6 +333,16 @@ function open(data) {
       form.object_storage_size = h.application.object_storage_size || ''
       form.remark = h.application.remark || ''
     }
+
+    // 已关联人员但申请信息为空时，从人员库回填
+    if (form.person_id) {
+      const p = personOptions.value.find(item => item.id === form.person_id)
+      if (p) {
+        if (!form.applicant) form.applicant = p.name
+        if (!form.apply_unit) form.apply_unit = p.unit
+        if (!form.applicant_contact) form.applicant_contact = p.contact
+      }
+    }
   }
 
   visible.value = true
@@ -273,7 +354,11 @@ async function handleSubmit() {
 
   submitting.value = true
   try {
+    const personId = await resolvePersonId()
+    if (personId === false) return
+
     const payload = { ...form }
+    payload.person_id = personId || null
     ;['cpu', 'memory', 'disk', 'system_disk', 'data_disk'].forEach(key => {
       payload[key] = Number(payload[key]) || 0
     })
