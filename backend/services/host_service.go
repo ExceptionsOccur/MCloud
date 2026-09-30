@@ -1,6 +1,8 @@
 package services
 
 import (
+	"encoding/csv"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -8,12 +10,53 @@ import (
 
 	"mcloud/database"
 	"mcloud/models"
+	"mcloud/utils"
 )
 
 type HostService struct{}
 
 func NewHostService() *HostService {
 	return &HostService{}
+}
+
+// parsePersonID 将批量更新中的 person_id 原始值转换为 *uint，nil 表示解除关联
+func parsePersonID(v interface{}) (*uint, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var id uint
+	switch n := v.(type) {
+	case float64:
+		id = uint(n)
+	case int:
+		id = uint(n)
+	case int64:
+		id = uint(n)
+	case uint:
+		id = n
+	case string:
+		parsed, err := strconv.ParseUint(strings.TrimSpace(n), 10, 64)
+		if err != nil {
+			return nil, errors.New("无效的人员ID")
+		}
+		id = uint(parsed)
+	default:
+		return nil, errors.New("无效的人员ID")
+	}
+	return &id, nil
+}
+
+// validatePersonID 校验人员关联，personID 为 nil 表示解除关联
+func validatePersonID(personID *uint) error {
+	if personID == nil {
+		return nil
+	}
+	var count int64
+	database.DB.Model(&models.Person{}).Where("id = ?", *personID).Count(&count)
+	if count == 0 {
+		return ErrPersonNotFound
+	}
+	return nil
 }
 
 type ListHostResponse struct {
@@ -99,7 +142,7 @@ func (s *HostService) Filter(req FilterHostRequest) (*ListHostResponse, error) {
 
 	var hosts []models.Host
 	offset := (req.Page - 1) * req.PageSize
-	result := db.Preload("Application").Offset(offset).Limit(req.PageSize).Order("id ASC").Find(&hosts)
+	result := db.Preload("Application").Preload("Person").Offset(offset).Limit(req.PageSize).Order("id ASC").Find(&hosts)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -123,11 +166,31 @@ func (s *HostService) ListRegions() ([]string, error) {
 
 func (s *HostService) GetByID(id uint) (*models.Host, error) {
 	var host models.Host
-	result := database.DB.Preload("Application").First(&host, id)
+	result := database.DB.Preload("Application").Preload("Person").First(&host, id)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	return &host, nil
+}
+
+// OptionalUint 区分「未传」与「显式传 null」，用于可清空的关联字段
+type OptionalUint struct {
+	Value   *uint
+	Present bool
+}
+
+func (o *OptionalUint) UnmarshalJSON(b []byte) error {
+	o.Present = true
+	if string(b) == "null" {
+		o.Value = nil
+		return nil
+	}
+	var v uint
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	o.Value = &v
+	return nil
 }
 
 type CreateHostRequest struct {
@@ -149,6 +212,7 @@ type CreateHostRequest struct {
 	Status        string `json:"status"`
 	OpenPorts     string `json:"open_ports"`
 	Tags          string `json:"tags"`
+	PersonID      OptionalUint `json:"person_id"`
 
 	ApplyUnit        string `json:"apply_unit"`
 	Applicant        string `json:"applicant"`
@@ -193,6 +257,13 @@ func (s *HostService) Create(req CreateHostRequest) (uint, error) {
 
 	if req.IsDBServer != nil {
 		host.IsDBServer = *req.IsDBServer
+	}
+
+	if req.PersonID.Present {
+		if err := validatePersonID(req.PersonID.Value); err != nil {
+			return 0, err
+		}
+		host.PersonID = req.PersonID.Value
 	}
 
 	if err := tx.Create(&host).Error; err != nil {
@@ -241,6 +312,7 @@ type UpdateHostRequest struct {
 	Status        string `json:"status"`
 	OpenPorts     string `json:"open_ports"`
 	Tags          string `json:"tags"`
+	PersonID      OptionalUint `json:"person_id"`
 
 	ApplyUnit        *string `json:"apply_unit"`
 	Applicant        *string `json:"applicant"`
@@ -324,6 +396,12 @@ func (s *HostService) Update(id uint, req UpdateHostRequest) error {
 	}
 	if req.Tags != "" {
 		updates["tags"] = req.Tags
+	}
+	if req.PersonID.Present {
+		if err := validatePersonID(req.PersonID.Value); err != nil {
+			return err
+		}
+		updates["person_id"] = req.PersonID.Value
 	}
 
 	if len(updates) > 0 {
@@ -421,9 +499,93 @@ type BatchCreateRequest struct {
 }
 
 type BatchCreateResponse struct {
-	Success int `json:"success"`
-	Skipped int `json:"skipped"`
-	Errors  int `json:"errors"`
+	Success    int      `json:"success"`
+	Skipped    int      `json:"skipped"`
+	Errors     int      `json:"errors"`
+	LineErrors []string `json:"line_errors,omitempty"`
+}
+
+// appendLineError 记录失败行明细，最多保留 10 条
+func appendLineError(list []string, msg string) []string {
+	if len(list) >= 10 {
+		return list
+	}
+	return append(list, msg)
+}
+
+// parseCSVLine 按 CSV 规则解析单行（支持双引号包裹含逗号的字段）
+func parseCSVLine(line string) ([]string, error) {
+	reader := csv.NewReader(strings.NewReader(line))
+	reader.LazyQuotes = true
+	reader.FieldsPerRecord = -1
+	return reader.Read()
+}
+
+type BatchCreateTextRequest struct {
+	Text string `json:"text" binding:"required"`
+}
+
+// BatchCreateFromText 纯文本批量添加：每行一条记录，逗号分隔，列顺序与 CSV 模板一致（最多26列）
+func (s *HostService) BatchCreateFromText(text string) (*BatchCreateResponse, error) {
+	resp := &BatchCreateResponse{}
+	headerSkipped := false
+
+	for i, raw := range strings.Split(text, "\n") {
+		lineNo := i + 1
+		line := strings.TrimSpace(raw)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		row, err := parseCSVLine(line)
+		if err != nil {
+			resp.Errors++
+			resp.LineErrors = appendLineError(resp.LineErrors, fmt.Sprintf("第%d行: 格式错误(%v)", lineNo, err))
+			continue
+		}
+
+		// 跳过表头行（允许直接粘贴带表头的内容）
+		if !headerSkipped && len(row) > 0 && strings.TrimSpace(row[0]) == utils.CSVHeaders[0] {
+			headerSkipped = true
+			continue
+		}
+
+		if len(row) > len(utils.CSVHeaders) {
+			resp.Errors++
+			resp.LineErrors = appendLineError(resp.LineErrors,
+				fmt.Sprintf("第%d行: 列数超出 %d 列", lineNo, len(utils.CSVHeaders)))
+			continue
+		}
+		if len(row) < 3 {
+			resp.Errors++
+			resp.LineErrors = appendLineError(resp.LineErrors,
+				fmt.Sprintf("第%d行: 至少需要3列(区域,主机名称,内网IP)", lineNo))
+			continue
+		}
+		for len(row) < len(utils.CSVHeaders) {
+			row = append(row, "")
+		}
+
+		req, err := s.ParseCSVRowToCreateHost(row)
+		if err != nil {
+			resp.Errors++
+			resp.LineErrors = appendLineError(resp.LineErrors, fmt.Sprintf("第%d行: %v", lineNo, err))
+			continue
+		}
+
+		if _, err := s.Create(req); err != nil {
+			if strings.Contains(err.Error(), "已存在") {
+				resp.Skipped++
+			} else {
+				resp.Errors++
+				resp.LineErrors = appendLineError(resp.LineErrors, fmt.Sprintf("第%d行: %v", lineNo, err))
+			}
+		} else {
+			resp.Success++
+		}
+	}
+
+	return resp, nil
 }
 
 func (s *HostService) BatchCreate(req BatchCreateRequest) (*BatchCreateResponse, error) {
@@ -504,6 +666,18 @@ func (s *HostService) BatchUpdate(req BatchUpdateRequest) error {
 		} else {
 			hostUpdates[k] = v
 		}
+	}
+
+	// person_id 归一化为 *uint（nil 表示解除关联），并校验人员存在
+	if v, ok := hostUpdates["person_id"]; ok {
+		personID, err := parsePersonID(v)
+		if err != nil {
+			return err
+		}
+		if err := validatePersonID(personID); err != nil {
+			return err
+		}
+		hostUpdates["person_id"] = personID
 	}
 
 	tx := database.DB.Begin()

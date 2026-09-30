@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"strconv"
 
 	"mcloud/services"
@@ -43,6 +44,10 @@ func (ctrl *HostController) Create(c *gin.Context) {
 
 	id, err := ctrl.service.Create(req)
 	if err != nil {
+		if errors.Is(err, services.ErrPersonNotFound) {
+			Error(c, 40001, err.Error())
+			return
+		}
 		Error(c, 40901, err.Error())
 		return
 	}
@@ -64,6 +69,10 @@ func (ctrl *HostController) Update(c *gin.Context) {
 	}
 
 	if err := ctrl.service.Update(uint(id), req); err != nil {
+		if errors.Is(err, services.ErrPersonNotFound) {
+			Error(c, 40001, err.Error())
+			return
+		}
 		Error(c, 40901, err.Error())
 		return
 	}

@@ -133,7 +133,7 @@ go/
         │
         ├── stores/                # Pinia 状态：auth / host / cloudResource / stats / business
         ├── api/                   # API 封装：index / auth / host / csv / cloud_resource / stats / subnet
-        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics
+        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement
         ├── components/            # 组件：工具栏/表格/各类弹窗
         │
         ├── utils/
@@ -147,11 +147,12 @@ go/
 
 ## 数据模型
 
-数据库共 5 张表：
+数据库共 6 张表：
 
 | 表 | 模型 | 说明 |
 |----|------|------|
 | `users` | `models/user.go` | 用户认证 |
+| `persons` | `models/person.go` | 人员信息（姓名/联系方式/单位名称） |
 | `hosts` | `models/host.go` | 主机技术信息 |
 | `host_applications` | `models/host_application.go` | 主机申请信息（与 hosts 一对一） |
 | `cloud_resources` | `models/cloud_resource.go` | 云资源总览（按区域） |
@@ -168,6 +169,16 @@ go/
 | 锁定截止时间 | `locked_until` | TIMESTAMPTZ | |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 | 最后登录时间 | `last_login` | TIMESTAMPTZ | |
+
+### persons 表（人员信息）
+
+| 字段 | 列名 | 类型 | 约束 |
+|------|------|------|------|
+| ID | `id` | SERIAL | PRIMARY KEY |
+| 姓名 | `name` | VARCHAR(64) | NOT NULL |
+| 联系方式 | `contact` | VARCHAR(64) | |
+| 单位名称 | `unit` | VARCHAR(128) | |
+| 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 
 ### hosts 表（技术信息）
 
@@ -192,6 +203,7 @@ go/
 | 状态 | `status` | VARCHAR(32) | 可选值：运行中、已停止、已关机、待确认 |
 | 开放端口 | `open_ports` | TEXT | 如 "80,443,22/tcp" |
 | 标签 | `tags` | TEXT | |
+| 人员ID | `person_id` | BIGINT | 可空，FK → persons(id) |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 
 ### host_applications 表（申请信息）
@@ -239,6 +251,8 @@ go/
 - `instance_id` 可选，用于关联云平台实例
 - `is_db_server` 使用 PostgreSQL 原生 BOOLEAN
 - `host_applications.host_id` 外键关联 `hosts.id`，级联删除
+- `hosts.person_id` 外键关联 `persons(id)`，可空；人员被主机引用时禁止删除（应用层校验，返回 `40901`）
+- `persons.name` 必填，姓名 + 联系方式 + 单位完全重复视为同一人员
 - `ip_subnets.cidr` 仅允许 `/24` IPv4 网段，写入时自动规范化为网络地址（末位归 0）
 - 系统**不预置默认网段**，由用户在「IP统计 → 管理网段」中维护
 - **GORM 列名陷阱**：`CIDR` 字段默认会被命名为 `c_id_r`，模型已显式指定 `gorm:"column:cidr"`

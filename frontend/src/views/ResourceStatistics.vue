@@ -20,6 +20,7 @@
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="cloudResource">云资源录入</el-dropdown-item>
+              <el-dropdown-item command="personnel">人员录入</el-dropdown-item>
               <el-dropdown-item command="changePassword">修改密码</el-dropdown-item>
               <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
             </el-dropdown-menu>
@@ -135,6 +136,8 @@ function handleCommand(command) {
     changePasswordDialog.value?.open()
   } else if (command === 'cloudResource') {
     cloudResourceDialog.value?.open()
+  } else if (command === 'personnel') {
+    router.push('/personnel')
   }
 }
 
