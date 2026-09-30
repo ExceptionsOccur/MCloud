@@ -180,7 +180,7 @@ GET /api/hosts
   → ws://.../api/ws/probe?token=xxx
   → routes/routes.go（校验 query token）
   → controllers/websocket.go      HandleProbeWS() → handleProbeMessage()（每请求独立 goroutine）
-  → services/stats_service.go     Probe()（ICMP + TCP22/3389 → 颜色状态机 → 必要时写空记录）
+  → services/stats_service.go     Probe()（ICMP + TCP22/3389 → 颜色状态机，仅返回颜色不写库）
   → 回推 { ip, color }
 ```
 

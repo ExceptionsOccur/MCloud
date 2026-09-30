@@ -144,8 +144,6 @@ func (s *StatsService) Probe(req ProbeRequest) (*ProbeResponse, error) {
 			if req.Color == "green" {
 				newColor = "green"
 			} else {
-				newHost := models.Host{PrivateIP: req.IP, Name: req.IP}
-				database.DB.Create(&newHost)
 				newColor = "yellow"
 			}
 		} else if hasData {
@@ -154,14 +152,10 @@ func (s *StatsService) Probe(req ProbeRequest) (*ProbeResponse, error) {
 			newColor = "yellow"
 		}
 	} else {
-		if !hasRecord {
-			newHost := models.Host{PrivateIP: req.IP, Name: req.IP}
-			database.DB.Create(&newHost)
-			newColor = "yellow"
-		} else if hasData {
+		// IP 被占用但表中无主机记录时，不再新增空记录，仅返回颜色
+		newColor = "yellow"
+		if hasData {
 			newColor = "red"
-		} else {
-			newColor = "yellow"
 		}
 	}
 
