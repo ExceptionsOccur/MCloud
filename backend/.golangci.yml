@@ -1,47 +1,63 @@
+version: "2"
 run:
-  timeout: 3m
   modules-download-mode: readonly
-
 linters:
-  disable-all: true
+  default: none
   enable:
     - errcheck
     - govet
+    - ineffassign
+    - misspell
     - staticcheck
     - unused
-    - gosimple
-    - ineffassign
-    - typecheck
-    - gofmt
-    - goimports
-    - misspell
-
-linters-settings:
-  errcheck:
-    check-blank: true
-    exclude-functions:
-      - (io.Closer).Close
-      - (net.Listener).Close
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment
-  gofmt:
-    simplify: true
-  goimports:
-    local-prefixes: mcloud
-  misspell:
-    locale: US
-
+  settings:
+    errcheck:
+      check-blank: true
+      exclude-functions:
+        - (io.Closer).Close
+        - (net.Listener).Close
+    govet:
+      disable:
+        - fieldalignment
+      enable-all: true
+    misspell:
+      locale: US
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+        path: _test\.go
+      - linters:
+          - errcheck
+          - govet
+          - staticcheck
+        path: vendor/
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-    - path: vendor/
-      linters:
-        - errcheck
-        - govet
-        - staticcheck
   max-issues-per-linter: 0
   max-same-issues: 0
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes:
+        - mcloud
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

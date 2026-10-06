@@ -8,7 +8,6 @@ import (
 	"mcloud/config"
 	"mcloud/models"
 
-	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -17,8 +16,7 @@ import (
 var DB *gorm.DB
 
 func Connect() {
-	godotenv.Load()
-
+	// 前置依赖：调用方必须先执行 config.Load()（.env 加载在那里完成）
 	cfg := config.AppConfig
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",

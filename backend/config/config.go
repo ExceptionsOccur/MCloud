@@ -1,6 +1,9 @@
 package config
 
 import (
+	"errors"
+	"io/fs"
+	"log"
 	"os"
 	"strconv"
 
@@ -8,22 +11,25 @@ import (
 )
 
 type Config struct {
-	DBHost         string
-	DBPort         string
-	DBUser         string
-	DBPassword     string
-	DBName         string
-	DBSSLMode      string
-	JWTSecret      string
-	JWTExpiresHrs  int
-	ServerPort     string
-	ServerMode     string
+	DBHost        string
+	DBPort        string
+	DBUser        string
+	DBPassword    string
+	DBName        string
+	DBSSLMode     string
+	JWTSecret     string
+	JWTExpiresHrs int
+	ServerPort    string
+	ServerMode    string
 }
 
 var AppConfig *Config
 
 func Load() {
-	godotenv.Load()
+	// .env 为可选文件：容器/CI 环境由 docker-compose 注入环境变量，缺失属正常情况
+	if err := godotenv.Load(); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		log.Printf("加载 .env 失败: %v", err)
+	}
 
 	appConfig := &Config{
 		DBHost:        getEnv("DB_HOST", "localhost"),

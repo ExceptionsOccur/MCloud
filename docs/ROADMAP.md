@@ -26,6 +26,7 @@
 ## todo（按优先级）
 
 - [ ] **T-002** 后端 `services/host_service.go` 拆分 ｜ P1 ｜ 负责: —
+  - 依赖：T-018（先清零 lint 再拆分，避免格式/errcheck 修改与拆分 diff 冲突）
   - 内容：拆为 `host_service.go`（CRUD/筛选）+ `host_batch_service.go`（文本/结构化批量）+ `host_csv_service.go`（行映射、导入导出）
   - 定位：`backend/services/host_service.go`（18 个函数，22KB）；回写 `docs/CODE_INDEX.md` 服务索引
   - 验收标准：`cd backend && go build ./...` 与 `golangci-lint run ./...` 通过；**对外 API 行为零变化**；`docs/CODE_INDEX.md` 服务索引同步
@@ -111,6 +112,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-018 | 后端 lint 清零 + golangci-lint v2 配置迁移（`.golangci.yml` v1→v2、修 20 个问题、DEVELOPMENT Linter 章节同步） | 2026-10-06 | `ec2bed6` | 验收：`go build` + `golangci-lint run ./...` exit 0；CSV 解析容错语义经临时冒烟测试确认不变 |
 | T-001 | 协作文档体系改造（AGENTS 改为 AI 入口、ROADMAP 改为任务队列、删除 ONBOARDING、分支策略对齐 main+feature） | 2026-10-06 | `0237d40` | 验收：无 ONBOARDING 链接残留、AGENTS 含状态快照/会话协议/验证命令、md 链接锚点全通 |
 | — | 2026-09 及之前的交付项 | — | 见 `git log` | 详细记录见 [PROJECT_STATUS.md](./PROJECT_STATUS.md#近期变更记录) |
 
