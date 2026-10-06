@@ -21,13 +21,7 @@
 
 ## in_progress
 
-- [ ] **T-018** 后端 lint 清零 + golangci-lint v2 配置迁移 ｜ P1 ｜ 负责: AI/opencode ｜ 认领: 2026-10-06
-  - 背景：本机 golangci-lint 为 **v2.14.0**，而 `backend/.golangci.yml` 仍是 v1 格式 → `run` 直接 `exit 3`（配置未被读取）；用 v2 重跑项目既有规则集实得 **20 个问题**
-  - 内容：① `golangci-lint migrate` 把 `.golangci.yml` 升到 v2（gosimple 并入 staticcheck、gofmt/goimports 移入 `formatters`）② 修完 20 个问题且**不改对外 API 行为**
-  - 定位：`backend/.golangci.yml`；errcheck —— `config/config.go:26`、`database/postgres.go:20`（`godotenv.Load`）、`controllers/websocket.go:76,80`（`json.Marshal`/`WriteMessage`）、`services/host_service.go:705-708`（4×`strconv.Atoi`）、`utils/csv.go:82,84`（`writer.Write`）；gofmt —— `config/config.go`、`models/user.go`、`models/host.go`、`models/cloud_resource.go`、`services/host_service.go:197`；goimports —— `services/stats_service.go:6`；ineffassign —— `controllers/response.go:24`；staticcheck QF —— `services/business_stats.go:70`、`services/host_service.go:128,710`
-  - 验收标准：`cd backend && go build ./...` 与 `PATH=$PATH:$(go env GOPATH)/bin golangci-lint run ./...` 均 exit 0；CSV 导入导出与 WebSocket 探测行为不变；`docs/DEVELOPMENT.md` Linter 章节的规则集与 v2 配置一致
-  - 回写：PROJECT_STATUS 变更记录 + 技术债表（若有）、DEVELOPMENT Linter 章节、AGENTS 状态快照 `last_updated`
-  - 分支：`chore/lint-v2`
+（无。按「认领规则」从 `todo` 中取 1 条 P0/P1 移入此处）
 
 ## todo（按优先级）
 
@@ -118,6 +112,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-018 | 后端 lint 清零 + golangci-lint v2 配置迁移（`.golangci.yml` v1→v2、修 20 个问题、DEVELOPMENT Linter 章节同步） | 2026-10-06 | `ec2bed6` | 验收：`go build` + `golangci-lint run ./...` exit 0；CSV 解析容错语义经临时冒烟测试确认不变 |
 | T-001 | 协作文档体系改造（AGENTS 改为 AI 入口、ROADMAP 改为任务队列、删除 ONBOARDING、分支策略对齐 main+feature） | 2026-10-06 | `0237d40` | 验收：无 ONBOARDING 链接残留、AGENTS 含状态快照/会话协议/验证命令、md 链接锚点全通 |
 | — | 2026-09 及之前的交付项 | — | 见 `git log` | 详细记录见 [PROJECT_STATUS.md](./PROJECT_STATUS.md#近期变更记录) |
 
