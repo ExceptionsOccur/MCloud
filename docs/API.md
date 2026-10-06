@@ -120,7 +120,7 @@
 
 ## WebSocket 探测帧协议
 
-`GET /api/ws/probe?token=<JWT>`（`routes.go` 将连接升级为 WebSocket；浏览器 WS 请求无法携带 `Authorization` 头，故 token 走 query）。`token` 缺失返回 `40101`（当前仅校验非空，不校验 JWT 有效性——已知限制）。
+`GET /api/ws/probe?token=<JWT>`（`routes.go` 将连接升级为 WebSocket；浏览器 WS 请求无法携带 `Authorization` 头，故 token 走 query）。`token` 缺失返回 `40101`（当前仅校验非空，不校验 JWT 有效性——已知限制，`T-022` 已入队修复）。
 
 双向均为 **Text frame + JSON**：
 
