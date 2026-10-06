@@ -241,7 +241,7 @@ docs: AGENTS.md 补充IP网段管理API
 2. **可编译**：提交前确保 `go build ./...` 通过、前端无语法错误
 3. **不提交敏感信息**：`.env`、密钥、密码、Token 一律不入库
 4. **不提交产物**：`dist/`、编译二进制、`node_modules/` 通过 `.gitignore` 排除
-5. **只在需要时提交**：未经明确要求不主动 commit / push
+5. **只在需要时提交**：未经明确要求不主动 commit / push；例外条款与提交号回写时序以 [AGENTS.md](../AGENTS.md) 红线 5 与「回写协议」为准（人类明确要求提交时，验证全绿后可 commit，禁止 push 除非明说）
 6. **先看后提**：提交前 `git status` + `git diff` 确认改动范围
 
 ### 文档回写文风（防膨胀）
@@ -372,10 +372,11 @@ docker-compose -f docker-compose.prod.yml up -d --build
 接到任务后、动手写代码前，必须完成以下步骤：
 
 1. **同步最新代码**：`git checkout main && git pull`
-2. **创建功能分支**：`git checkout -b feat/<简短描述>` 或 `fix/<简短描述>`
-3. **确认影响范围**：阅读任务需求，判断涉及哪些模块（后端/前端/数据库），列出可能改动的文件
-4. **如有数据模型变更**：先说明新字段/新表的设计，获得确认后再动手
-5. **同步环境**：`cd docker && docker-compose -f docker-compose.dev.yml up -d` 确保数据库可用
+2. **临时需求先入队**：需求不在 ROADMAP 队列时，先按 [AGENTS.md · 会话协议 A.0](../AGENTS.md#会话协议) 的「临时任务入队」新建任务条目并确认验收标准，再继续
+3. **创建功能分支**：`git checkout -b feat/<简短描述>` 或 `fix/<简短描述>`（分支步骤细则见 AGENTS.md 协议 A 第 4 步）
+4. **确认影响范围**：阅读任务需求，判断涉及哪些模块（后端/前端/数据库），列出可能改动的文件
+5. **如有数据模型变更**：先说明新字段/新表的设计，获得确认后再动手
+6. **同步环境**：`cd docker && docker-compose -f docker-compose.dev.yml up -d` 确保数据库可用
 
 ### 任务进行中
 
@@ -402,6 +403,7 @@ docker-compose -f docker-compose.prod.yml up -d --build
    - 任务状态 → 更新 `docs/ROADMAP.md`（领任务 → `in_progress`，完成 → `done`；它是任务状态的唯一事实来源）
 3. **提交 PR**：
    - PR 描述包含：改了什么、为什么改、影响范围（哪些接口/表/页面受影响）
+   - 人类指令明确要求提交时：验证全绿后 `git commit`（禁止 push 除非明说）；提交号回填 ROADMAP `done` 与 PROJECT_STATUS 变更记录，再补 `docs:` 提交并跑绿 `check_docs.sh`（时序见 AGENTS.md「提交号回写时序」）
    - 合并回 `main`，删除功能分支
 
 ---

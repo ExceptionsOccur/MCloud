@@ -8,11 +8,20 @@
 
 ### A. 开工前（顺序执行）
 
+**A.0 临时任务入队**（仅当人类指定的需求不在 ROADMAP `todo`/`blocked` 时执行，否则跳过本步）：
+
+1. 分配 ID：取 ROADMAP 已出现的 `T-xxx` 最大值 + 1，**永不复用**
+2. 在 ROADMAP `todo` 区新建条目，按字段约定填写：内容 / 优先级（默认 `P1`，人类可指定）/ 验收标准（客观可判定）/ 定位（依据 [docs/CODE_INDEX.md](./docs/CODE_INDEX.md) 补齐，补不出先声明不盲写）/ 分支 / 回写
+3. 确认门槛：验收标准主观歧义，或涉及敏感字段/口径（存储方式、外键、数据迁移策略等）→ **先向人类确认**，再进入 `in_progress`
+
+然后按下列步骤执行：
+
 1. 读本文件的「状态快照」与「核心约定（红线）」，并与 [docs/ROADMAP.md](./docs/ROADMAP.md) 比对（`last_updated` / todo 队列 / `next_task`）——不一致时**先修快照**（以 ROADMAP 为准）
-2. 读 [docs/ROADMAP.md](./docs/ROADMAP.md)（任务状态的**唯一事实来源**），认领 1 条优先级最高的 `todo` 任务
+2. 读 [docs/ROADMAP.md](./docs/ROADMAP.md)（任务状态的**唯一事实来源**），认领 1 条优先级最高的 `todo` 任务（A.0 入队的临时任务即为该条）
 3. **认领 = 先改文件再写代码**：把该任务移到 `in_progress`，填写负责标识与日期
-4. **定位代码**：查 [docs/CODE_INDEX.md](./docs/CODE_INDEX.md) 的「功能→代码映射」「请求链路」与 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) 目录结构，把涉及文件写进该任务的「定位」字段——任务已带「定位」则核对并以其为起点，没有则必须补齐；**补不出（找不到实现位置）时先在输出中声明，不得盲写代码**
-5. 按任务的「验收标准」倒推实现方案；涉及公共文件（`routes/`、`models/`、本文件）时先在输出中声明影响范围
+4. **创建分支**（认领后、写代码前）：`git checkout main && git pull && git checkout -b <分支名>`；分支名取任务「分支」字段，未写则按红线 8 推导（`feat/fix/docs/refactor/<简短描述>`）；一个分支只对应 1 条任务，**禁止直接 push `main`**
+5. **定位代码**：查 [docs/CODE_INDEX.md](./docs/CODE_INDEX.md) 的「功能→代码映射」「请求链路」与 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) 目录结构，把涉及文件写进该任务的「定位」字段——任务已带「定位」则核对并以其为起点，没有则必须补齐；**补不出（找不到实现位置）时先在输出中声明，不得盲写代码**
+6. 按任务的「验收标准」倒推实现方案；涉及公共文件（`routes/`、`models/`、本文件）时先在输出中声明影响范围
 
 ### B. 结束前（回写协议，未回写视为任务未完成）
 
@@ -24,12 +33,29 @@
 | 4 | 刷新本文件「状态快照」，全量对齐 ROADMAP（`last_updated`、todo 队列、`next_task`、`in_progress`、`blocked`） | 本文件 |
 | 5 | 全部「验证命令」跑绿（文档改动含 `bash scripts/check_docs.sh`） | — |
 
+### 提交号回写时序（与红线 5 配套）
+
+1. 代码 + 文档初稿完成（ROADMAP 任务仍在 `in_progress`，`done` 表「提交」列暂留 `-`）
+2. 验证命令全绿（含 `check_docs.sh`；此时 `done` 表无本任务 SHA，`shas` 检查不涉及）
+3. 人类已明确要求提交 → `git commit`（原子提交：代码 + 文档 + ROADMAP 状态变更；**禁止 push**，除非人类明说）
+4. 用真实 SHA 回填 ROADMAP `done` 表「提交」列 + [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md) 变更记录
+5. 补一个 `docs:` 提交（仅含上述回填字段）
+6. 再跑 `bash scripts/check_docs.sh` → 退出码 0（`shas` 校验真实 SHA 在 git 历史中存在）
+7. 合并回 `main` 后删除功能分支（生命周期 ≤ 1 周）
+
 ### C. 冲突与降级规则
 
 - 状态快照与 ROADMAP 不一致 → **以 ROADMAP 为准**，并修复快照
 - 文档与代码不一致 → **以代码为准**，修复文档（`docs:` 提交）
 - 验收标准无法满足 → 任务改 `blocked` 并写明**具体阻塞条件**（泛泛的"困难"不算），不要留在 `in_progress`
 - 需求本身有歧义 → 停下来向人类确认，不要自行扩大范围
+
+### D. 会话中断与接管
+
+- 新会话开工时若 ROADMAP `in_progress` 非空：
+  - 「负责」标识非当前会话/非人类指令的进行中任务 → **不得接管**，不得清理其分支；按 A.2 从 `todo` 取 1 条
+  - 人类明确要求接管/继续 → 走认领流程，更新「负责」为当前会话标识
+- 分支残留清理仅限：任务已 `done` 且人类要求，或该分支属于当前会话
 
 ## 状态快照
 
@@ -76,6 +102,8 @@ MCloud 是云平台主机资产信息管理系统：**Go (Gin) 后端 + Vue 3 SP
 3. **配置外置**：数据库连接、密钥一律走环境变量，**禁止硬编码**
 4. **GORM 列名**：缩写字段（如 `CIDR`）必须显式 `gorm:"column:xxx"`，否则生成 `c_id_r` 错误列名
 5. **提交**：Conventional Commits（`feat:` / `fix:` / `docs:` …）；**未经明确要求不主动 commit / push**
+   - 例外：人类会话指令中明确要求提交（如「完成后提交」）时，agent 在验证命令全绿后可执行 `git commit`；`git push` 仍须人类明说
+   - 未提提交时：验证通过后停在「待提交」，在输出中说明，由人类决定；提交号回写步骤见「回写协议」
 6. **敏感信息**：`.env`、密钥、密码、Token **不入库**
 7. **改动聚焦 + 修改权限**：只改当前任务验收标准内的代码，**不顺手重构**。可改范围按文件类别判定：
    - **状态与同步类**（`docs/ROADMAP.md`、`docs/PROJECT_STATUS.md`、责任矩阵指定的同步文档）→ **必须**随任务回写，这是义务，不算违规
