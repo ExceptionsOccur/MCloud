@@ -19,7 +19,7 @@
 | # | 动作 | 目标文件 |
 |---|------|----------|
 | 1 | 任务状态 → `done`，填完成时间与提交号 | [docs/ROADMAP.md](./docs/ROADMAP.md) |
-| 2 | 功能完成度、变更记录（日期 + 提交号 + 一行摘要） | [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md) |
+| 2 | 功能完成度、变更记录（日期 + 提交号 + **一行摘要 ≤120 字，禁止 ①②③ 枚举**） | [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md) |
 | 3 | 按下方「文档更新责任矩阵」同步受影响文档 | `docs/*.md` |
 | 4 | 刷新本文件「状态快照」，全量对齐 ROADMAP（`last_updated`、todo 队列、`next_task`、`in_progress`、`blocked`） | 本文件 |
 | 5 | 全部「验证命令」跑绿（文档改动含 `bash scripts/check_docs.sh`） | — |

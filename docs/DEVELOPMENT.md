@@ -244,6 +244,18 @@ docs: AGENTS.md 补充IP网段管理API
 5. **只在需要时提交**：未经明确要求不主动 commit / push
 6. **先看后提**：提交前 `git status` + `git diff` 确认改动范围
 
+### 文档回写文风（防膨胀）
+
+状态文档只保留「可导航的摘要」，细节归 git，避免 PROJECT_STATUS / ROADMAP 无限膨胀：
+
+| 位置 | 上限 | 禁止 |
+|------|------|------|
+| `PROJECT_STATUS.md` 变更记录 | 每条 **≤ 120 字**，一行摘要：`sha` + type + 任务 ID + 结果 | ①②③ 枚举子改动；粘贴验收全文；重复 commit message |
+| `ROADMAP.md` done 备注 | 只写验收结论（命令通过 / 行为确认），**≤ 80 字** | 实现步骤流水账；与变更记录重复的长文 |
+
+- 归档：done 条目 / 变更记录超过 **3 个月**移入汇总行或删除（ROADMAP 归档规则、PROJECT_STATUS 变更记录说明）
+- 细节优先级：commit message（完整）> ROADMAP done 备注（验收）> PROJECT_STATUS 变更记录（一行）> AGENTS 快照（无历史）
+
 ### 提交前自检清单
 
 - [ ] 改动是否聚焦、无无关文件

@@ -2,7 +2,7 @@
 
 > 本文档记录 MCloud 的**功能完成度、变更记录与已知问题**；任务队列与排期见 [ROADMAP.md](./ROADMAP.md)，执行协议见 [AGENTS.md](../AGENTS.md)。
 >
-> **维护规则**：功能合并进 `main` 时，由该 PR 作者当日更新「近期变更记录」与「功能完成度」；技术债发现即记，不集中补。文档入口见 [AGENTS.md](../AGENTS.md)。
+> **维护规则**：功能合并进 `main` 时，由该 PR 作者当日更新「近期变更记录」与「功能完成度」；技术债发现即记，不集中补。**变更记录每条 ≤ 120 字一行摘要，禁止 ①②③ 枚举**（细则见 [DEVELOPMENT.md](./DEVELOPMENT.md) 文档回写文风）。文档入口见 [AGENTS.md](../AGENTS.md)。
 
 ## 功能完成度
 
@@ -29,20 +29,17 @@
 
 ## 近期变更记录
 
-> 按日期倒序，保留最近 3 个月；每条注明提交号，完整历史用 `git log --oneline`。
+> 按日期倒序，保留最近 3 个月；每条注明提交号，完整历史用 `git log --oneline`。文风：每条 ≤ 120 字一行摘要，禁止枚举（见 [DEVELOPMENT.md](./DEVELOPMENT.md) 文档回写文风）。
 
 ### 2026-10-06
 
-- `42d4c10` `docs:` **T-023 文档卫生清理 + 移除 CI/CD 规划内容**：① ROADMAP T-002/T-003 过期 T-018 依赖改为「已解除」；② T-007 CI 流水线从 todo 移入「已取消」（人类确认：项目暂不引入 CI/CD，检验由 agent 完成任务后本地执行验证命令）；③ AGENTS 分支协议与 DEVELOPMENT 门禁章节同步改写为本地验证口径，删除 CI 流水线小节；④ PROJECT_STATUS 功能完成度删 CI 行并加计数行（核心功能 10/10、待开发 6、技术债 10），技术债表删「无 CI 流水线」；⑤ CODE_INDEX 顶部加行号口径说明，ROADMAP「定位」字段改为优先函数名/路由路径；⑥ AGENTS 快照对齐（todo 无 T-007、已知风险去 CI、功能完成度计数）
-- `6187228` `docs:` **T-017 文档事实修正与协议补强**：A 事实修正 7 项（ARCHITECTURE 表数 5→6、目录树删幽灵 `backend/.env.example` 并补 `Dockerfile.dev`/`docker/.env.example`/`.golangci.yml`/`.eslintrc.cjs`/`package-lock.json`+标快照日期、3 处 SQL 计数 8→7、T-015 `public_ip` 行号复核为 9 处、README 迁移口径改「AutoMigrate 兜底 + SQL 归档」、T-002 定位实测复核、T-012 验收计数一致性由 T-021 接线）；B 门禁前置 3 项（全仓门禁 `npm run lint`→`lint:check` 并注明 `--fix` 会改文件、AGENTS 验证命令加工具前置 Go/Node/PATH/golangci-v2、DEVELOPMENT 双清单同步）；C 快照协议 4 项（`next_task` 字段、协议 A 步骤 1 加快照↔ROADMAP 比对、回写第 4 步明确刷新对象、功能完成度缩为摘要+指向）；E 补缺（BUSINESS_LOGIC「人员管理」、API「WebSocket 探测帧协议」，均对码实测）；F 入队 T-019 抽 Layout/AppNav、T-020 `ServerPort` 硬编码（技术债表加行）；`check_docs.sh` 0 errors/0 warnings
-- `81f442a` `feat:` **T-021 文档一致性自动校验脚本**：新增 `scripts/check_docs.sh`（bash+coreutils，零依赖），5 项检查——links（全量 md 相对链接与 GitHub slug 锚点，含 CJK 标题）、tree（ARCHITECTURE 目录树双向比对真实文件）、snapshot（AGENTS 快照 ↔ ROADMAP 的 todo/in_progress/next_task）、counts（`N 个 SQL`/`N 张表`/`N 个函数` 等计数与仓库实际）、shas（done 表提交号在 git 历史中存在）；支持 `--only`/`--list`；接线 AGENTS 验证命令与回写协议步骤 5、ROADMAP T-012 验收与 T-007 CI 内容；当前基线 5 errors/6 warnings 全部为已知文档漂移（由 T-017 修复），注入坏锚点与快照不一致可正确报错退出
-- `ec2bed6` `chore:` **T-018 后端 lint 清零 + golangci-lint v2 配置迁移**：`backend/.golangci.yml` 由 v1 升级为 v2 格式（此前 v2.14.0 读不了 v1 配置，`golangci-lint run` 直接 `exit 3`）；修复全部 20 个问题——errcheck 10（`godotenv.Load`×2、WebSocket `Marshal`/`WriteMessage`、CSV `strconv.Atoi`×4 与 `writer.Write`×2）、gofmt 5、goimports 1、ineffassign 1、staticcheck QF 3；CSV 行解析抽出 `atoiOrZero` 保持容错语义，`BuildCSVOutput` 改为返回 error 并在 controller 处理；DEVELOPMENT Linter 章节同步 v2 规则集
+- `bcfb410` `docs:` **T-024** 文档回写文风上限（字段「文风」+ DEVELOPMENT 章节 + 压缩超长条目）
+- `42d4c10` `docs:` **T-023** 文档卫生 + 移除 CI/CD 规划（T-007 入已取消、门禁改 agent 本地验证、完成度计数）
+- `6187228` `docs:` **T-017** 文档事实修正与协议补强（快照协议、门禁前置、业务文档补缺）
+- `81f442a` `feat:` **T-021** 文档一致性校验脚本 `check_docs.sh`（links/tree/snapshot/counts/shas）
+- `ec2bed6` `chore:` **T-018** 后端 lint 清零 + golangci-lint v2 配置迁移
 
-> 本日文档改造整体提交于 `0237d40`（下述各条为该提交内的细分变更）。
-
-- `docs:` **T-001 协作文档体系改造**：AGENTS.md 重写为 AI 协作入口（状态快照 + 会话/回写协议 + 术语表 + 验证命令）；`ROADMAP.md` 改造为任务队列（T-xxx、验收标准、状态流转，唯一事实来源）；删除 `docs/ONBOARDING.md` 内容并入 AGENTS.md；分支策略对齐为 `main + feature`；修正 README 端口、ARCHITECTURE 目录树、DEVELOPMENT 中的 `develop` 残留
-- `docs:` 红线 7 改为**按文件类别的修改权限**（状态同步类必须回写 / 协议条文默认禁止、仅人类发起的 `docs:` 任务可改 / 构建文件始终禁止），消除与回写协议的冲突；DEVELOPMENT.md 核心原则第 5 条同步
-- `docs:` 新增待开发任务 `T-013` 零信任台账（字段已确认）、`T-014` 域名台账（字段待细化）、`T-015` `hosts.public_ip` 改布尔「是否做了映射」+ 双台账关联；均为 P2 暂缓，依赖与待确认项见 ROADMAP
+> 本日文档改造整体提交于 `0237d40`（T-001 协作文档体系 + 红线 7 按文件类别授权 + 入队 T-013/T-014/T-015；细分见该提交 message）。
 - `docs:` 会话协议新增第 4 步「定位代码」（读 CODE_INDEX 补齐任务「定位」字段，补不出先声明不盲写）；ROADMAP 字段约定新增「定位」，14 条 todo 任务已回填涉及文件清单
 - `docs:` 补齐 CODE_INDEX 缺失的**人员管理模块**（models/controllers/services/api/views/功能映射/`persons` 表 共 8 处）；修正 README「4 个功能页面」为 5 个并补 `/personnel` 与设置菜单入口
 - `docs:` **统一迁移口径**（消除红线 9 与运行时的矛盾）：迁移 SQL = 归档/评审要求（不被执行），运行时由启动时 `AutoMigrate` 兜底——DEVELOPMENT.md 迁移规范加口径表、AGENTS 红线 9 改写、PROJECT_STATUS 注意事项 8 与 ARCHITECTURE 目录树同步（代码事实：`go.mod` 无 goose，`Migrate()` 仅 AutoMigrate+seedAdmin）

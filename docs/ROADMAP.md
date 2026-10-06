@@ -14,6 +14,7 @@
 | 验收标准 | 客观可判定（命令通过 / 文件存在 / 行为可复现），禁止主观描述 |
 | 定位 | 涉及文件清单，来源 `docs/CODE_INDEX.md`「功能→代码映射」；**领任务后必须核对/补齐**。优先写**函数名/路由路径**等稳定锚点；行号仅为快照（以 grep 复核为准，可省略），补不出先声明、不盲写 |
 | 回写 | 完成后必须更新的文档（通常由 AGENTS.md 责任矩阵推导，此处列出例外） |
+| 文风 | done 备注只写验收结论（≤ 80 字）；PROJECT_STATUS 变更记录每条一行摘要（≤ 120 字），**禁止** ①②③ 枚举子改动与粘贴验收全文（细则见 [DEVELOPMENT.md](./DEVELOPMENT.md) 文档回写文风） |
 
 **认领规则**：一次只领 **1 条** `P0/P1` 任务；领用 = 把该条移到 `in_progress` 并填写负责字段（在写任何代码之前先改本文件）。
 
@@ -128,11 +129,12 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
-| T-023 | 文档卫生清理 + 移除 CI/CD 规划内容（修 T-002/T-003 过期依赖、T-007 入已取消、AGENTS/DEVELOPMENT/PROJECT_STATUS 同步、CODE_INDEX 行号口径、完成度计数） | 2026-10-06 | `42d4c10` | 验收：`bash scripts/check_docs.sh` 0 errors/0 warnings；规划语境无 T-007/CI 流水线残留；协议条文改动（AGENTS 分支协议、DEVELOPMENT 门禁章节）经人类授权 |
-| T-017 | 文档事实修正与协议补强（A 事实修正 7 项、B 门禁前置 3 项、C 快照协议 4 项、E 业务文档补缺 2 项、F 入队 T-019/T-020） | 2026-10-06 | `6187228` | 验收：`bash scripts/check_docs.sh` 0 errors/0 warnings；E1/E2 章节与代码一致；协议条文改动仅限 B/C 列明项 |
-| T-021 | 文档一致性自动校验脚本 `scripts/check_docs.sh`（5 项检查 links/tree/snapshot/counts/shas + AGENTS/ROADMAP 4 处接线） | 2026-10-06 | `81f442a` | 验收：基线输出 5 errors/6 warnings 与已知漂移完全一致不误报；注入坏锚点/坏快照 → exit 1，恢复后 exit 0；`bash -n` 通过；T-012/T-007 验收已接线 |
-| T-018 | 后端 lint 清零 + golangci-lint v2 配置迁移（`.golangci.yml` v1→v2、修 20 个问题、DEVELOPMENT Linter 章节同步） | 2026-10-06 | `ec2bed6` | 验收：`go build` + `golangci-lint run ./...` exit 0；CSV 解析容错语义经临时冒烟测试确认不变 |
-| T-001 | 协作文档体系改造（AGENTS 改为 AI 入口、ROADMAP 改为任务队列、删除 ONBOARDING、分支策略对齐 main+feature） | 2026-10-06 | `0237d40` | 验收：无 ONBOARDING 链接残留、AGENTS 含状态快照/会话协议/验证命令、md 链接锚点全通 |
+| T-024 | 文档回写文风上限（防膨胀） | 2026-10-06 | `bcfb410` | 验收：`check_docs.sh` 0 errors；三处口径一致；超长条目已压缩 |
+| T-023 | 文档卫生清理 + 移除 CI/CD 规划内容 | 2026-10-06 | `42d4c10` | 验收：`check_docs.sh` 0 errors；规划语境无 T-007/CI 残留；协议改动经人类授权 |
+| T-017 | 文档事实修正与协议补强 | 2026-10-06 | `6187228` | 验收：`check_docs.sh` 0 errors；协议条文改动仅限任务列明项 |
+| T-021 | 文档一致性自动校验脚本 `scripts/check_docs.sh` | 2026-10-06 | `81f442a` | 验收：5 项检查可用；注入坏数据可正确报错退出 |
+| T-018 | 后端 lint 清零 + golangci-lint v2 配置迁移 | 2026-10-06 | `ec2bed6` | 验收：`go build` + `golangci-lint run ./...` exit 0 |
+| T-001 | 协作文档体系改造（AGENTS/ROADMAP/删除 ONBOARDING） | 2026-10-06 | `0237d40` | 验收：无 ONBOARDING 残留；md 链接锚点全通 |
 | — | 2026-09 及之前的交付项 | — | 见 `git log` | 详细记录见 [PROJECT_STATUS.md](./PROJECT_STATUS.md#近期变更记录) |
 
-> 归档规则：done 条目保留 3 个月后可移入上方汇总行；**ID 不复用**。
+> 归档规则：done 条目保留 3 个月后可移入上方汇总行；**ID 不复用**。备注只写验收结论（≤ 80 字），见 [DEVELOPMENT.md](./DEVELOPMENT.md) 文档回写文风。
