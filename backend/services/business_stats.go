@@ -67,9 +67,10 @@ func (a *businessAgg) add(h models.Host, project, company, applicant string) {
 		a.group.Memory += h.Memory
 		a.group.Storage += h.SystemDisk + h.DataDisk
 	}
-	if h.Status == "运行中" {
+	switch h.Status {
+	case "运行中":
 		a.group.Running++
-	} else if h.Status == "已停止" || h.Status == "已关机" {
+	case "已停止", "已关机":
 		a.group.Stopped++
 	}
 	a.group.Hosts = append(a.group.Hosts, BusinessHost{

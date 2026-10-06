@@ -21,7 +21,7 @@ func Success(c *gin.Context, data interface{}) {
 }
 
 func Error(c *gin.Context, code int, message string) {
-	httpCode := http.StatusOK
+	var httpCode int
 	switch {
 	case code >= 40000 && code < 40100:
 		httpCode = http.StatusBadRequest

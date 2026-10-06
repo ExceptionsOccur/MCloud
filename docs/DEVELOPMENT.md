@@ -269,9 +269,10 @@ docs: AGENTS.md 补充IP网段管理API
 cd backend && golangci-lint run ./...
 ```
 
-- 配置文件：`backend/.golangci.yml`
-- 必须通过的规则：`errcheck`、`govet`、`staticcheck`、`unused`、`gosimple`
-- 提交前执行：`go build ./...` + `golangci-lint run`
+- 配置文件：`backend/.golangci.yml`（**golangci-lint v2 格式**，`version: "2"`；`gosimple` 已并入 `staticcheck`，`gofmt`/`goimports` 移入 `formatters`）
+- 启用的检查：`errcheck`、`govet`、`staticcheck`、`unused`、`ineffassign`、`misspell` + 格式化 `gofmt`、`goimports`（`local-prefixes: mcloud`）
+- **工具前置**：golangci-lint 安装在 `$(go env GOPATH)/bin`，若该目录不在 `PATH` 需先 `export PATH=$PATH:$(go env GOPATH)/bin`；v1 版本无法读取 v2 配置（会以 `unsupported version of the configuration` 退出）
+- 提交前执行：`go build ./...` + `golangci-lint run ./...`
 
 ### 前端（Vue/JS）
 

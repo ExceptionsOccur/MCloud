@@ -73,9 +73,15 @@ func handleProbeMessage(conn *websocket.Conn, message []byte, mu *sync.Mutex) {
 		IP:    req.IP,
 		Color: resp.Color,
 	}
-	respBytes, _ := json.Marshal(data)
+	respBytes, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("探测响应序列化失败(%s): %v", req.IP, err)
+		return
+	}
 
 	mu.Lock()
 	defer mu.Unlock()
-	conn.WriteMessage(websocket.TextMessage, respBytes)
+	if err := conn.WriteMessage(websocket.TextMessage, respBytes); err != nil {
+		log.Printf("探测响应推送失败(%s): %v", req.IP, err)
+	}
 }

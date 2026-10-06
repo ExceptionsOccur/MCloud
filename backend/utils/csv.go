@@ -73,16 +73,23 @@ func ParseCSV(content string) ([][]string, error) {
 	return records, nil
 }
 
-func BuildCSVOutput(headers []string, rows [][]string) string {
+func BuildCSVOutput(headers []string, rows [][]string) (string, error) {
 	var buf bytes.Buffer
 	// Write BOM for Excel UTF-8 compatibility
 	buf.WriteString("\ufeff")
 
 	writer := csv.NewWriter(&buf)
-	writer.Write(headers)
+	if err := writer.Write(headers); err != nil {
+		return "", err
+	}
 	for _, row := range rows {
-		writer.Write(row)
+		if err := writer.Write(row); err != nil {
+			return "", err
+		}
 	}
 	writer.Flush()
-	return buf.String()
+	if err := writer.Error(); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }

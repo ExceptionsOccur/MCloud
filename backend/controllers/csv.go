@@ -97,7 +97,11 @@ func (ctrl *CSVController) Export(c *gin.Context) {
 	database.DB.Preload("Application").Find(&hosts)
 
 	rows := ctrl.hostService.ExportToCSVRows(hosts)
-	csvContent := utils.BuildCSVOutput(utils.CSVHeaders, rows)
+	csvContent, err := utils.BuildCSVOutput(utils.CSVHeaders, rows)
+	if err != nil {
+		Error(c, 50001, "生成CSV导出失败")
+		return
+	}
 
 	c.Header("Content-Type", "text/csv; charset=utf-8")
 	c.Header("Content-Disposition", "attachment; filename=hosts_export.csv")
@@ -105,7 +109,11 @@ func (ctrl *CSVController) Export(c *gin.Context) {
 }
 
 func (ctrl *CSVController) Template(c *gin.Context) {
-	csvContent := utils.BuildCSVOutput(utils.CSVHeaders, nil)
+	csvContent, err := utils.BuildCSVOutput(utils.CSVHeaders, nil)
+	if err != nil {
+		Error(c, 50001, "生成CSV模板失败")
+		return
+	}
 	c.Header("Content-Type", "text/csv; charset=utf-8")
 	c.Header("Content-Disposition", "attachment; filename=import_template.csv")
 	c.String(http.StatusOK, csvContent)

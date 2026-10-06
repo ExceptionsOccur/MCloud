@@ -125,12 +125,13 @@ func (s *HostService) Filter(req FilterHostRequest) (*ListHostResponse, error) {
 		db = db.Where("region = ?", req.Region)
 	}
 	if req.ApplicantEmpty != "" {
-		if req.ApplicantEmpty == "1" {
+		switch req.ApplicantEmpty {
+		case "1":
 			db = db.Where(`
 				hosts.id IN (SELECT ha.host_id FROM host_applications ha WHERE COALESCE(ha.applicant, '') = '')
 				OR hosts.id NOT IN (SELECT ha2.host_id FROM host_applications ha2)
 			`)
-		} else if req.ApplicantEmpty == "0" {
+		case "0":
 			db = db.Where(`
 				hosts.id IN (SELECT ha.host_id FROM host_applications ha WHERE COALESCE(ha.applicant, '') != '')
 			`)
@@ -194,35 +195,35 @@ func (o *OptionalUint) UnmarshalJSON(b []byte) error {
 }
 
 type CreateHostRequest struct {
-	Region        string `json:"region" binding:"required"`
-	InstanceID    string `json:"instance_id"`
-	Name          string `json:"name" binding:"required"`
-	PrivateIP     string `json:"private_ip" binding:"required"`
-	PublicIP      string `json:"public_ip"`
-	AssetType     string `json:"asset_type"`
-	OS            string `json:"os"`
-	CPU           int    `json:"cpu"`
-	CPUArch       string `json:"cpu_arch"`
-	Memory        int    `json:"memory"`
-	Disk          int    `json:"disk"`
-	SystemDisk    int    `json:"system_disk"`
-	DataDisk      int    `json:"data_disk"`
-	EnvType       string `json:"env_type"`
-	IsDBServer    *bool  `json:"is_db_server"`
-	Status        string `json:"status"`
-	OpenPorts     string `json:"open_ports"`
-	Tags          string `json:"tags"`
-	PersonID      OptionalUint `json:"person_id"`
+	Region     string       `json:"region" binding:"required"`
+	InstanceID string       `json:"instance_id"`
+	Name       string       `json:"name" binding:"required"`
+	PrivateIP  string       `json:"private_ip" binding:"required"`
+	PublicIP   string       `json:"public_ip"`
+	AssetType  string       `json:"asset_type"`
+	OS         string       `json:"os"`
+	CPU        int          `json:"cpu"`
+	CPUArch    string       `json:"cpu_arch"`
+	Memory     int          `json:"memory"`
+	Disk       int          `json:"disk"`
+	SystemDisk int          `json:"system_disk"`
+	DataDisk   int          `json:"data_disk"`
+	EnvType    string       `json:"env_type"`
+	IsDBServer *bool        `json:"is_db_server"`
+	Status     string       `json:"status"`
+	OpenPorts  string       `json:"open_ports"`
+	Tags       string       `json:"tags"`
+	PersonID   OptionalUint `json:"person_id"`
 
-	ApplyUnit        string `json:"apply_unit"`
-	Applicant        string `json:"applicant"`
-	ApplicantContact string `json:"applicant_contact"`
-	Project          string `json:"project"`
-	ApplyReason      string `json:"apply_reason"`
-	ApplyConfig      string `json:"apply_config"`
-	ApplyTime        string `json:"apply_time"`
+	ApplyUnit         string `json:"apply_unit"`
+	Applicant         string `json:"applicant"`
+	ApplicantContact  string `json:"applicant_contact"`
+	Project           string `json:"project"`
+	ApplyReason       string `json:"apply_reason"`
+	ApplyConfig       string `json:"apply_config"`
+	ApplyTime         string `json:"apply_time"`
 	ObjectStorageSize string `json:"object_storage_size"`
-	Remark           string `json:"remark"`
+	Remark            string `json:"remark"`
 }
 
 func (s *HostService) Create(req CreateHostRequest) (uint, error) {
@@ -294,35 +295,35 @@ func (s *HostService) Create(req CreateHostRequest) (uint, error) {
 }
 
 type UpdateHostRequest struct {
-	Region        string `json:"region"`
-	InstanceID    string `json:"instance_id"`
-	Name          string `json:"name"`
-	PrivateIP     string `json:"private_ip"`
-	PublicIP      string `json:"public_ip"`
-	AssetType     string `json:"asset_type"`
-	OS            string `json:"os"`
-	CPU           int    `json:"cpu"`
-	CPUArch       string `json:"cpu_arch"`
-	Memory        int    `json:"memory"`
-	Disk          int    `json:"disk"`
-	SystemDisk    int    `json:"system_disk"`
-	DataDisk      int    `json:"data_disk"`
-	EnvType       string `json:"env_type"`
-	IsDBServer    *bool  `json:"is_db_server"`
-	Status        string `json:"status"`
-	OpenPorts     string `json:"open_ports"`
-	Tags          string `json:"tags"`
-	PersonID      OptionalUint `json:"person_id"`
+	Region     string       `json:"region"`
+	InstanceID string       `json:"instance_id"`
+	Name       string       `json:"name"`
+	PrivateIP  string       `json:"private_ip"`
+	PublicIP   string       `json:"public_ip"`
+	AssetType  string       `json:"asset_type"`
+	OS         string       `json:"os"`
+	CPU        int          `json:"cpu"`
+	CPUArch    string       `json:"cpu_arch"`
+	Memory     int          `json:"memory"`
+	Disk       int          `json:"disk"`
+	SystemDisk int          `json:"system_disk"`
+	DataDisk   int          `json:"data_disk"`
+	EnvType    string       `json:"env_type"`
+	IsDBServer *bool        `json:"is_db_server"`
+	Status     string       `json:"status"`
+	OpenPorts  string       `json:"open_ports"`
+	Tags       string       `json:"tags"`
+	PersonID   OptionalUint `json:"person_id"`
 
-	ApplyUnit        *string `json:"apply_unit"`
-	Applicant        *string `json:"applicant"`
-	ApplicantContact *string `json:"applicant_contact"`
-	Project          *string `json:"project"`
-	ApplyReason      *string `json:"apply_reason"`
-	ApplyConfig      *string `json:"apply_config"`
-	ApplyTime        *string `json:"apply_time"`
+	ApplyUnit         *string `json:"apply_unit"`
+	Applicant         *string `json:"applicant"`
+	ApplicantContact  *string `json:"applicant_contact"`
+	Project           *string `json:"project"`
+	ApplyReason       *string `json:"apply_reason"`
+	ApplyConfig       *string `json:"apply_config"`
+	ApplyTime         *string `json:"apply_time"`
 	ObjectStorageSize *string `json:"object_storage_size"`
-	Remark           *string `json:"remark"`
+	Remark            *string `json:"remark"`
 }
 
 func (s *HostService) Update(id uint, req UpdateHostRequest) error {
@@ -465,33 +466,33 @@ func (s *HostService) Delete(id uint) error {
 }
 
 type BatchCreateItem struct {
-	Region        string `json:"region" binding:"required"`
-	InstanceID    string `json:"instance_id"`
-	Name          string `json:"name" binding:"required"`
-	PrivateIP     string `json:"private_ip" binding:"required"`
-	PublicIP      string `json:"public_ip"`
-	AssetType     string `json:"asset_type"`
-	OS            string `json:"os"`
-	CPU           int    `json:"cpu"`
-	CPUArch       string `json:"cpu_arch"`
-	Memory        int    `json:"memory"`
-	Disk          int    `json:"disk"`
-	SystemDisk    int    `json:"system_disk"`
-	DataDisk      int    `json:"data_disk"`
-	EnvType       string `json:"env_type"`
-	IsDBServer    *bool  `json:"is_db_server"`
-	Status        string `json:"status"`
-	OpenPorts     string `json:"open_ports"`
-	Tags          string `json:"tags"`
-	Applicant     string `json:"applicant"`
-	Project       string `json:"project"`
-	ApplyUnit     string `json:"apply_unit"`
-	ApplyReason   string `json:"apply_reason"`
-	ApplyConfig   string `json:"apply_config"`
-	ApplyTime     string `json:"apply_time"`
+	Region            string `json:"region" binding:"required"`
+	InstanceID        string `json:"instance_id"`
+	Name              string `json:"name" binding:"required"`
+	PrivateIP         string `json:"private_ip" binding:"required"`
+	PublicIP          string `json:"public_ip"`
+	AssetType         string `json:"asset_type"`
+	OS                string `json:"os"`
+	CPU               int    `json:"cpu"`
+	CPUArch           string `json:"cpu_arch"`
+	Memory            int    `json:"memory"`
+	Disk              int    `json:"disk"`
+	SystemDisk        int    `json:"system_disk"`
+	DataDisk          int    `json:"data_disk"`
+	EnvType           string `json:"env_type"`
+	IsDBServer        *bool  `json:"is_db_server"`
+	Status            string `json:"status"`
+	OpenPorts         string `json:"open_ports"`
+	Tags              string `json:"tags"`
+	Applicant         string `json:"applicant"`
+	Project           string `json:"project"`
+	ApplyUnit         string `json:"apply_unit"`
+	ApplyReason       string `json:"apply_reason"`
+	ApplyConfig       string `json:"apply_config"`
+	ApplyTime         string `json:"apply_time"`
 	ObjectStorageSize string `json:"object_storage_size"`
-	Remark        string `json:"remark"`
-	ApplicantContact string `json:"applicant_contact"`
+	Remark            string `json:"remark"`
+	ApplicantContact  string `json:"applicant_contact"`
 }
 
 type BatchCreateRequest struct {
@@ -600,33 +601,33 @@ func (s *HostService) BatchCreate(req BatchCreateRequest) (*BatchCreateResponse,
 		}
 
 		req2 := CreateHostRequest{
-			Region:             item.Region,
-			InstanceID:         item.InstanceID,
-			Name:               item.Name,
-			PrivateIP:          item.PrivateIP,
-			PublicIP:           item.PublicIP,
-			AssetType:          item.AssetType,
-			OS:                 item.OS,
-			CPU:                item.CPU,
-			CPUArch:            item.CPUArch,
-			Memory:             item.Memory,
-			Disk:               item.Disk,
-			SystemDisk:         item.SystemDisk,
-			DataDisk:           item.DataDisk,
-			EnvType:            item.EnvType,
-			IsDBServer:         item.IsDBServer,
-			Status:             item.Status,
-			OpenPorts:          item.OpenPorts,
-			Tags:               item.Tags,
-			Applicant:          item.Applicant,
-			Project:            item.Project,
-			ApplyUnit:          item.ApplyUnit,
-			ApplyReason:        item.ApplyReason,
-			ApplyConfig:        item.ApplyConfig,
-			ApplyTime:          item.ApplyTime,
-			ObjectStorageSize:  item.ObjectStorageSize,
-			Remark:             item.Remark,
-			ApplicantContact:   item.ApplicantContact,
+			Region:            item.Region,
+			InstanceID:        item.InstanceID,
+			Name:              item.Name,
+			PrivateIP:         item.PrivateIP,
+			PublicIP:          item.PublicIP,
+			AssetType:         item.AssetType,
+			OS:                item.OS,
+			CPU:               item.CPU,
+			CPUArch:           item.CPUArch,
+			Memory:            item.Memory,
+			Disk:              item.Disk,
+			SystemDisk:        item.SystemDisk,
+			DataDisk:          item.DataDisk,
+			EnvType:           item.EnvType,
+			IsDBServer:        item.IsDBServer,
+			Status:            item.Status,
+			OpenPorts:         item.OpenPorts,
+			Tags:              item.Tags,
+			Applicant:         item.Applicant,
+			Project:           item.Project,
+			ApplyUnit:         item.ApplyUnit,
+			ApplyReason:       item.ApplyReason,
+			ApplyConfig:       item.ApplyConfig,
+			ApplyTime:         item.ApplyTime,
+			ObjectStorageSize: item.ObjectStorageSize,
+			Remark:            item.Remark,
+			ApplicantContact:  item.ApplicantContact,
 		}
 
 		_, err := s.Create(req2)
@@ -697,48 +698,54 @@ func (s *HostService) BatchUpdate(req BatchUpdateRequest) error {
 	return nil
 }
 
+// atoiOrZero 解析 CSV 数字列，非数字或超范围时返回 0（保持既有导入容错语义）
+func atoiOrZero(s string) int {
+	n, err := strconv.Atoi(strings.TrimSpace(s))
+	if err != nil {
+		return 0
+	}
+	return n
+}
+
 func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, error) {
 	if len(row) < 26 {
 		return CreateHostRequest{}, fmt.Errorf("列数不足，需要26列，实际%d列", len(row))
 	}
 
-	cpu, _ := strconv.Atoi(strings.TrimSpace(row[7]))
-	memory, _ := strconv.Atoi(strings.TrimSpace(row[9]))
-	systemDisk, _ := strconv.Atoi(strings.TrimSpace(row[10]))
-	dataDisk, _ := strconv.Atoi(strings.TrimSpace(row[11]))
+	cpu := atoiOrZero(row[7])
+	memory := atoiOrZero(row[9])
+	systemDisk := atoiOrZero(row[10])
+	dataDisk := atoiOrZero(row[11])
 
-	isDB := false
-	if strings.TrimSpace(row[13]) == "是" || strings.TrimSpace(row[13]) == "true" || strings.TrimSpace(row[13]) == "1" {
-		isDB = true
-	}
+	isDB := strings.TrimSpace(row[13]) == "是" || strings.TrimSpace(row[13]) == "true" || strings.TrimSpace(row[13]) == "1"
 
 	return CreateHostRequest{
-		Region:             strings.TrimSpace(row[0]),
-		InstanceID:         strings.TrimSpace(row[1]),
-		Name:               strings.TrimSpace(row[2]),
-		PrivateIP:          strings.TrimSpace(row[3]),
-		PublicIP:           strings.TrimSpace(row[4]),
-		AssetType:          strings.TrimSpace(row[5]),
-		OS:                 strings.TrimSpace(row[6]),
-		CPU:                cpu,
-		CPUArch:            strings.TrimSpace(row[8]),
-		Memory:             memory,
-		SystemDisk:         systemDisk,
-		DataDisk:           dataDisk,
-		EnvType:            strings.TrimSpace(row[12]),
-		IsDBServer:         &isDB,
-		Status:             strings.TrimSpace(row[14]),
-		OpenPorts:          strings.TrimSpace(row[15]),
-		Tags:               strings.TrimSpace(row[16]),
-		ApplyUnit:          strings.TrimSpace(row[17]),
-		Applicant:          strings.TrimSpace(row[18]),
-		ApplicantContact:   strings.TrimSpace(row[19]),
-		Project:            strings.TrimSpace(row[20]),
-		ApplyReason:        strings.TrimSpace(row[21]),
-		ApplyConfig:        strings.TrimSpace(row[22]),
-		ApplyTime:          strings.TrimSpace(row[23]),
-		ObjectStorageSize:  strings.TrimSpace(row[24]),
-		Remark:             strings.TrimSpace(row[25]),
+		Region:            strings.TrimSpace(row[0]),
+		InstanceID:        strings.TrimSpace(row[1]),
+		Name:              strings.TrimSpace(row[2]),
+		PrivateIP:         strings.TrimSpace(row[3]),
+		PublicIP:          strings.TrimSpace(row[4]),
+		AssetType:         strings.TrimSpace(row[5]),
+		OS:                strings.TrimSpace(row[6]),
+		CPU:               cpu,
+		CPUArch:           strings.TrimSpace(row[8]),
+		Memory:            memory,
+		SystemDisk:        systemDisk,
+		DataDisk:          dataDisk,
+		EnvType:           strings.TrimSpace(row[12]),
+		IsDBServer:        &isDB,
+		Status:            strings.TrimSpace(row[14]),
+		OpenPorts:         strings.TrimSpace(row[15]),
+		Tags:              strings.TrimSpace(row[16]),
+		ApplyUnit:         strings.TrimSpace(row[17]),
+		Applicant:         strings.TrimSpace(row[18]),
+		ApplicantContact:  strings.TrimSpace(row[19]),
+		Project:           strings.TrimSpace(row[20]),
+		ApplyReason:       strings.TrimSpace(row[21]),
+		ApplyConfig:       strings.TrimSpace(row[22]),
+		ApplyTime:         strings.TrimSpace(row[23]),
+		ObjectStorageSize: strings.TrimSpace(row[24]),
+		Remark:            strings.TrimSpace(row[25]),
 	}, nil
 }
 
