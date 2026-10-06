@@ -40,11 +40,13 @@
 
 - **前端**：单页应用，`/api` 请求经 Axios，IP 探测走 WebSocket 长连接
 - **后端**：分层架构，启动时 GORM AutoMigrate 自动建表 + 种子数据
-- **数据库**：PostgreSQL，5 张业务表
+- **数据库**：PostgreSQL，6 张表
 
 ---
 
 ## 目录结构
+
+> 快照日期：2026-10-06（由 `scripts/check_docs.sh` 的 tree 检查守护：树中文件必须存在、已跟踪文件必须登记）
 
 ```
 go/
@@ -64,14 +66,16 @@ go/
 │
 ├── docker/                        # 容器化配置
 │   ├── docker-compose.dev.yml     # 开发环境（DB + 后端热重载 + 前端 HMR）
-│   └── docker-compose.prod.yml    # 生产环境（DB + 单容器应用）
+│   ├── docker-compose.prod.yml    # 生产环境（DB + 单容器应用）
+│   └── .env.example               # 环境变量模板（复制为 .env 后使用）
 │
 ├── backend/                       # Go 后端 + Docker 构建
 │   ├── main.go                    # 入口：启动 Gin、连接 DB、运行迁移、注册路由
 │   ├── go.mod
 │   ├── go.sum
-│   ├── .env.example               # 环境变量模板
 │   ├── Dockerfile                 # 多阶段构建（Node 前端 + Go 后端 → Alpine 运行）
+│   ├── Dockerfile.dev             # 开发镜像（air 热重载）
+│   ├── .golangci.yml              # golangci-lint v2 配置
 │   ├── nginx.conf                 # Nginx 配置（SPA + /api 反代 + WebSocket）
 │   ├── run.sh                     # 容器启动脚本（Nginx + Go）
 │   │
@@ -128,6 +132,8 @@ go/
 └── frontend/                      # Vue 3 前端
     ├── index.html
     ├── package.json
+    ├── package-lock.json
+    ├── .eslintrc.cjs              # ESLint 配置（eslint:recommended + vue 插件）
     ├── vite.config.js             # 代理 /api 到后端（ws: true 支持 WebSocket）
     │
     └── src/

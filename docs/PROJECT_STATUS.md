@@ -32,6 +32,7 @@
 
 ### 2026-10-06
 
+- `6187228` `docs:` **T-017 文档事实修正与协议补强**：A 事实修正 7 项（ARCHITECTURE 表数 5→6、目录树删幽灵 `backend/.env.example` 并补 `Dockerfile.dev`/`docker/.env.example`/`.golangci.yml`/`.eslintrc.cjs`/`package-lock.json`+标快照日期、3 处 SQL 计数 8→7、T-015 `public_ip` 行号复核为 9 处、README 迁移口径改「AutoMigrate 兜底 + SQL 归档」、T-002 定位实测复核、T-012 验收计数一致性由 T-021 接线）；B 门禁前置 3 项（全仓门禁 `npm run lint`→`lint:check` 并注明 `--fix` 会改文件、AGENTS 验证命令加工具前置 Go/Node/PATH/golangci-v2、DEVELOPMENT 双清单同步）；C 快照协议 4 项（`next_task` 字段、协议 A 步骤 1 加快照↔ROADMAP 比对、回写第 4 步明确刷新对象、功能完成度缩为摘要+指向）；E 补缺（BUSINESS_LOGIC「人员管理」、API「WebSocket 探测帧协议」，均对码实测）；F 入队 T-019 抽 Layout/AppNav、T-020 `ServerPort` 硬编码（技术债表加行）；`check_docs.sh` 0 errors/0 warnings
 - `81f442a` `feat:` **T-021 文档一致性自动校验脚本**：新增 `scripts/check_docs.sh`（bash+coreutils，零依赖），5 项检查——links（全量 md 相对链接与 GitHub slug 锚点，含 CJK 标题）、tree（ARCHITECTURE 目录树双向比对真实文件）、snapshot（AGENTS 快照 ↔ ROADMAP 的 todo/in_progress/next_task）、counts（`N 个 SQL`/`N 张表`/`N 个函数` 等计数与仓库实际）、shas（done 表提交号在 git 历史中存在）；支持 `--only`/`--list`；接线 AGENTS 验证命令与回写协议步骤 5、ROADMAP T-012 验收与 T-007 CI 内容；当前基线 5 errors/6 warnings 全部为已知文档漂移（由 T-017 修复），注入坏锚点与快照不一致可正确报错退出
 - `ec2bed6` `chore:` **T-018 后端 lint 清零 + golangci-lint v2 配置迁移**：`backend/.golangci.yml` 由 v1 升级为 v2 格式（此前 v2.14.0 读不了 v1 配置，`golangci-lint run` 直接 `exit 3`）；修复全部 20 个问题——errcheck 10（`godotenv.Load`×2、WebSocket `Marshal`/`WriteMessage`、CSV `strconv.Atoi`×4 与 `writer.Write`×2）、gofmt 5、goimports 1、ineffassign 1、staticcheck QF 3；CSV 行解析抽出 `atoiOrZero` 保持容错语义，`BuildCSVOutput` 改为返回 error 并在 controller 处理；DEVELOPMENT Linter 章节同步 v2 规则集
 
@@ -43,7 +44,7 @@
 - `docs:` 会话协议新增第 4 步「定位代码」（读 CODE_INDEX 补齐任务「定位」字段，补不出先声明不盲写）；ROADMAP 字段约定新增「定位」，14 条 todo 任务已回填涉及文件清单
 - `docs:` 补齐 CODE_INDEX 缺失的**人员管理模块**（models/controllers/services/api/views/功能映射/`persons` 表 共 8 处）；修正 README「4 个功能页面」为 5 个并补 `/personnel` 与设置菜单入口
 - `docs:` **统一迁移口径**（消除红线 9 与运行时的矛盾）：迁移 SQL = 归档/评审要求（不被执行），运行时由启动时 `AutoMigrate` 兜底——DEVELOPMENT.md 迁移规范加口径表、AGENTS 红线 9 改写、PROJECT_STATUS 注意事项 8 与 ARCHITECTURE 目录树同步（代码事实：`go.mod` 无 goose，`Migrate()` 仅 AutoMigrate+seedAdmin）
-- `docs:` 排查确认 **goose 从未实装**（8 个 `-- +goose` SQL 从未执行、`go.mod`/`go.sum` 无依赖、全仓库无调用）；按人类决定暂不实装，新增 `T-016` 入队并标注"口径反转回写"要求
+- `docs:` 排查确认 **goose 从未实装**（7 个 `-- +goose` SQL 从未执行、`go.mod`/`go.sum` 无依赖、全仓库无调用）；按人类决定暂不实装，新增 `T-016` 入队并标注"口径反转回写"要求
 
 ### 2026-09-30
 
@@ -88,6 +89,7 @@
 | GORM 列名 | 缩写字段（如 `CIDR`）默认命名异常（`c_id_r`），须显式 `gorm:"column:xxx"` |
 | 探测依赖 ping | 依赖宿主机 `ping` 命令；Linux `-W` 单位为秒，已改用 context 控制 100ms 超时 |
 | 密码哈希强度 | SHA-256 + 盐，非慢哈希，生产环境建议升级 bcrypt |
+| ServerPort 硬编码 | `config.go:43` 默认值 `"5677"` 违反红线 3（配置外置），待改环境变量，`T-020` 已入队 |
 
 ## 注意事项
 

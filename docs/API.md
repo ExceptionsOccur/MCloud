@@ -6,6 +6,7 @@
 
 - [统一响应格式](#统一响应格式)
 - [路由总览](#路由总览)
+- [WebSocket 探测帧协议](#websocket-探测帧协议)
 - [筛选参数说明](#筛选参数说明)
 - [批量操作请求体](#批量操作请求体)
 
@@ -114,6 +115,33 @@
 | POST | `/api/persons` | `person.Create` | 新增人员（`name` 必填） |
 | PUT | `/api/persons/:id` | `person.Update` | 修改人员 |
 | DELETE | `/api/persons/:id` | `person.Delete` | 删除人员；被主机引用时返回 `40901` |
+
+---
+
+## WebSocket 探测帧协议
+
+`GET /api/ws/probe?token=<JWT>`（`routes.go` 将连接升级为 WebSocket；浏览器 WS 请求无法携带 `Authorization` 头，故 token 走 query）。`token` 缺失返回 `40101`（当前仅校验非空，不校验 JWT 有效性——已知限制）。
+
+双向均为 **Text frame + JSON**：
+
+**客户端 → 服务端**（单帧探测请求，对应 `WSProbeRequest`）：
+
+```json
+{ "ip": "172.17.128.5", "color": "green" }
+```
+
+- `ip` 或 `color` 缺一 → 服务端静默丢弃（无响应帧）
+- 非法 JSON → 静默丢弃
+
+**服务端 → 客户端**（探测结果，对应 `WSProbeResponse`）：
+
+```json
+{ "ip": "172.17.128.5", "color": "yellow" }
+```
+
+- `color` 为探测后的**新颜色**（状态机见 [BUSINESS_LOGIC · IP 连通性探测](./BUSINESS_LOGIC.md#ip-连通性探测颜色状态机)）
+- 探测执行失败（`stats.Probe` 返回 error）→ 不回帧
+- 多帧并发：每条请求在独立 goroutine 中探测，回帧经互斥锁**串行写**避免帧交织；读循环遇错即退出并关闭连接，一条连接可连续发送多帧复用
 
 ---
 

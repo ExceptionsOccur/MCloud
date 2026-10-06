@@ -249,7 +249,7 @@ docs: AGENTS.md 补充IP网段管理API
 - [ ] 改动是否聚焦、无无关文件
 - [ ] 后端 `go build ./...` 是否通过
 - [ ] 后端 `golangci-lint run ./...` 是否通过
-- [ ] 前端 `npm run lint` 是否通过
+- [ ] 前端 `npm run lint:check` 是否通过（门禁用 `lint:check`；`npm run lint` 带 `--fix` 会改写文件，仅用于本地修复）
 - [ ] 是否引入硬编码配置/密钥
 - [ ] 数据库模型变更是否已写迁移 SQL
 - [ ] API 约定（响应格式、错误码）是否一致
@@ -277,11 +277,12 @@ cd backend && golangci-lint run ./...
 ### 前端（Vue/JS）
 
 ```bash
-cd frontend && npm run lint
+cd frontend && npm run lint:check
 ```
 
 - 配置文件：`frontend/.eslintrc.cjs`
-- 提交前执行：`npm run lint` + `npm run build`
+- 两个脚本的区别：`lint:check` = 纯检查（`eslint . --ext .js,.vue`，**门禁与 CI 用这个**）；`lint` = 同参数 + `--fix` **会改写文件**，仅用于本地批量修复
+- 提交前执行：`npm run lint:check` + `npm run build`
 
 ### CI 流水线（PR 触发）
 
@@ -388,7 +389,7 @@ docker-compose -f docker-compose.prod.yml up -d --build
 1. **本地自检**：
    - [ ] 后端 `go build ./...` 通过
    - [ ] 后端 `golangci-lint run ./...` 通过
-   - [ ] 前端 `npm run lint` 通过
+   - [ ] 前端 `npm run lint:check` 通过
    - [ ] 前端 `npm run build` 通过
    - [ ] 数据库模型变更已写迁移 SQL（`backend/migrations/YYYYMMDDHHMMSS_xxx.sql`）
 2. **文档同步**（完整对照见 [AGENTS.md · 文档更新责任矩阵](../AGENTS.md#文档更新责任矩阵)）：

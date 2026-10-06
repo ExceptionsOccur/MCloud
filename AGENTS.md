@@ -8,7 +8,7 @@
 
 ### A. 开工前（顺序执行）
 
-1. 读本文件的「状态快照」与「核心约定（红线）」
+1. 读本文件的「状态快照」与「核心约定（红线）」，并与 [docs/ROADMAP.md](./docs/ROADMAP.md) 比对（`last_updated` / todo 队列 / `next_task`）——不一致时**先修快照**（以 ROADMAP 为准）
 2. 读 [docs/ROADMAP.md](./docs/ROADMAP.md)（任务状态的**唯一事实来源**），认领 1 条优先级最高的 `todo` 任务
 3. **认领 = 先改文件再写代码**：把该任务移到 `in_progress`，填写负责标识与日期
 4. **定位代码**：查 [docs/CODE_INDEX.md](./docs/CODE_INDEX.md) 的「功能→代码映射」「请求链路」与 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) 目录结构，把涉及文件写进该任务的「定位」字段——任务已带「定位」则核对并以其为起点，没有则必须补齐；**补不出（找不到实现位置）时先在输出中声明，不得盲写代码**
@@ -21,7 +21,7 @@
 | 1 | 任务状态 → `done`，填完成时间与提交号 | [docs/ROADMAP.md](./docs/ROADMAP.md) |
 | 2 | 功能完成度、变更记录（日期 + 提交号 + 一行摘要） | [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md) |
 | 3 | 按下方「文档更新责任矩阵」同步受影响文档 | `docs/*.md` |
-| 4 | 刷新本文件「状态快照」，使其与 ROADMAP 一致 | 本文件 |
+| 4 | 刷新本文件「状态快照」，全量对齐 ROADMAP（`last_updated`、todo 队列、`next_task`、`in_progress`、`blocked`） | 本文件 |
 | 5 | 全部「验证命令」跑绿（文档改动含 `bash scripts/check_docs.sh`） | — |
 
 ### C. 冲突与降级规则
@@ -39,10 +39,11 @@
 |------|-----|
 | last_updated | 2026-10-06 |
 | in_progress | 无（按认领规则从 todo 取 1 条） |
+| next_task | `T-002` 后端 `host_service.go` 拆分（= ROADMAP todo 首条，P1 最高优先级） |
 | todo（P1） | `T-002` host_service 拆分 → `T-003` csv controller 下沉 → `T-004` composables 抽取 → `T-005` IpStatistics 拆分 → `T-006` 测试骨架 → `T-007` CI 落地 |
-| todo（P2） | `T-008` 报表导出、`T-009` bcrypt 升级、`T-010` 路由拆分、`T-011` ping 解耦、`T-012` 文档巡检、`T-013` 零信任台账、`T-014` 域名台账、`T-015` 公网IP字段改映射布尔+关联、`T-016` Goose 执行器实装（暂不执行） |
+| todo（P2） | `T-008` 报表导出、`T-009` bcrypt 升级、`T-010` 路由拆分、`T-011` ping 解耦、`T-012` 文档巡检、`T-013` 零信任台账、`T-014` 域名台账、`T-015` 公网IP字段改映射布尔+关联、`T-016` Goose 执行器实装（暂不执行）、`T-019` 抽 Layout/AppNav、`T-020` config ServerPort 硬编码（暂不执行） |
 | blocked | 无 |
-| 功能完成度 | 主机管理 / 资源统计 / IP 统计 / 业务统计 / 人员管理 / 认证 / 云资源 / 部署 均完成；报表、测试、CI、零信任台账、域名台账、公网IP关联待开发 |
+| 功能完成度 | 核心资产管理功能均完成；报表、测试、CI、零信任台账、域名台账、公网IP关联待开发（完整口径见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
 | 已知风险 | 无 CI、无测试、`host_service.go` 22KB 待拆分、`csv.go` 违反红线 1、密码为 SHA-256（详见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
 
 ## 项目速览
@@ -125,14 +126,19 @@ main ← 唯一主干，只接受 PR，禁止直接 push
 # 后端改动
 cd backend && go build ./... && golangci-lint run ./...
 
-# 前端改动
-cd frontend && npm run lint && npm run build
+# 前端改动（门禁用 lint:check；npm run lint 带 --fix 会改写文件，仅用于本地修复）
+cd frontend && npm run lint:check && npm run build
 
 # 文档改动（链接/锚点、目录树、状态快照、计数、提交号一致性全量校验）
 bash scripts/check_docs.sh
 # 数据库改动
 cd backend && go build ./...   # 确认模型可编译 + 迁移 SQL 文件已按 YYYYMMDDHHMMSS_xxx.sql 命名
 ```
+
+**工具前置**（环境搭好一次即可）：
+
+- Go 1.22+、Node 18+；数据库与容器一律走 `docker/`（红线 11）
+- golangci-lint 安装在 `$(go env GOPATH)/bin`，该目录不在 `PATH` 时先 `export PATH=$PATH:$(go env GOPATH)/bin`；须用能读 v2 配置的版本（v1 会报 `unsupported version of the configuration`，v2.14.0 已验证）
 
 ## 文档地图
 
@@ -171,6 +177,6 @@ cd backend && go build ./...   # 确认模型可编译 + 迁移 SQL 文件已按
 | 开发环境启动 | `cd docker && cp .env.example .env && docker-compose -f docker-compose.dev.yml up -d` |
 | 仅数据库 | `cd docker && docker-compose -f docker-compose.dev.yml up -d postgres` |
 | 后端编译 / Lint | `cd backend && go build ./...` / `golangci-lint run ./...` |
-| 前端开发 / 构建 / Lint | `cd frontend && npm run dev` / `npm run build` / `npm run lint` |
+| 前端开发 / 构建 / Lint | `cd frontend && npm run dev` / `npm run build` / `npm run lint:check`（检查；修复用 `npm run lint`） |
 | 重置 admin 密码 | `cd backend && go run ./cmd/resetpw/main.go [新密码]` |
 | 生产部署 | `cd docker && cp .env.example .env && docker-compose -f docker-compose.prod.yml up -d --build` |
