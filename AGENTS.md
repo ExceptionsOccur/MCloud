@@ -22,7 +22,7 @@
 | 2 | 功能完成度、变更记录（日期 + 提交号 + 一行摘要） | [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md) |
 | 3 | 按下方「文档更新责任矩阵」同步受影响文档 | `docs/*.md` |
 | 4 | 刷新本文件「状态快照」，使其与 ROADMAP 一致 | 本文件 |
-| 5 | 全部「验证命令」跑绿 | — |
+| 5 | 全部「验证命令」跑绿（文档改动含 `bash scripts/check_docs.sh`） | — |
 
 ### C. 冲突与降级规则
 
@@ -128,7 +128,8 @@ cd backend && go build ./... && golangci-lint run ./...
 # 前端改动
 cd frontend && npm run lint && npm run build
 
-# 文档改动（相对链接与锚点可解析；无 md lint 工具，人工/脚本核对）
+# 文档改动（链接/锚点、目录树、状态快照、计数、提交号一致性全量校验）
+bash scripts/check_docs.sh
 # 数据库改动
 cd backend && go build ./...   # 确认模型可编译 + 迁移 SQL 文件已按 YYYYMMDDHHMMSS_xxx.sql 命名
 ```
