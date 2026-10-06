@@ -21,19 +21,6 @@
 
 ## in_progress
 
-- [ ] **T-017** 文档事实修正与协议补强 ｜ P1 ｜ 负责: AI/opencode ｜ 认领: 2026-10-06
-  - 背景：2026-10-06 全量评估发现的文档漂移与协议缺口，校验器 `scripts/check_docs.sh`（T-021）已能机器化定位其中的计数/目录树/快照类问题
-  - 内容：
-    - **A 事实修正（7 项）**：① ARCHITECTURE 数据模型表数改 6 ② 目录树删 `backend/.env.example`（不存在）、补 `Dockerfile.dev`/`docker/.env.example`/`.golangci.yml`/`.eslintrc.cjs`/`package-lock.json` 并标树快照日期 ③ T-002 定位「18 个函数，22KB」实测复核（T-018 后为 18 函数，以实测为准）④ 3 处 SQL 计数 8→7（PROJECT_STATUS、ROADMAP×2）⑤ T-015 定位 `host_service.go` `public_ip` 处数与行号 grep 复核（原记 8 处，补 L100）⑥ README 技术栈「ORM/迁移」口径修正（SQL 文件为归档，运行时 AutoMigrate 兜底）⑦ T-012 验收计数一致性（T-021 已接线，复核即可）
-    - **B 门禁与前置（3 项，协议条文，人类已授权）**：① 门禁命令改 `npm run lint:check` 并注明 `lint` 带 `--fix` 会改文件 ② AGENTS 验证命令章节加「工具前置」（Go 1.22+/Node 18+/`export PATH=$PATH:$(go env GOPATH)/bin`/golangci-lint v2 已迁移/docker 环境）③ DEVELOPMENT 同步
-    - **C 快照可靠性（4 项，协议条文，人类已授权）**：① 快照新增 `next_task` 字段（= todo 首条 `T-002`）② 会话协议 A 步骤 1 加「比对快照与 ROADMAP（last_updated/todo/next_task），不一致先修快照」③ 回写协议第 4 步刷新对象明确含 `next_task`/`last_updated`/todo 队列 ④ 快照「功能完成度」行缩为一行摘要 + 指向 `PROJECT_STATUS.md#功能完成度`
-    - **E 业务文档补缺（2 项）**：① `BUSINESS_LOGIC.md` 新增「人员管理」（重复判定/40901/手输自动建人员）② `API.md` 新增「WebSocket 探测帧协议」
-    - **F 入队（2 项，仅登记不实现）**：`T-019` 抽 Layout/AppNav、`T-020` `config.go` `ServerPort` 硬编码违反红线 3
-  - 定位：`docs/ARCHITECTURE.md`、`README.md:60`、`docs/ROADMAP.md`、`docs/PROJECT_STATUS.md`、`AGENTS.md`（快照+协议A/回写4+验证命令）、`docs/DEVELOPMENT.md`、`docs/BUSINESS_LOGIC.md`、`docs/API.md`；源码复核 `backend/services/host_service.go`（public_ip）、`backend/config/config.go` ServerPort、`frontend/src/views/*.vue`（nav-tab 重复）、`backend/services/person_service.go`（E1）、探测 WS handler（E2）
-  - 验收标准：`bash scripts/check_docs.sh` **0 errors 0 warnings**；E1/E2 章节与代码事实一致；T-019/T-020 入队且 AGENTS 快照同步；协议条文改动仅限上述 B/C 列明项；`bash -n scripts/check_docs.sh` 通过
-  - 回写：ROADMAP（T-017 done、T-019/T-020 入队）、PROJECT_STATUS 变更记录、AGENTS 快照（含 `next_task`）、责任矩阵指定文档
-  - 分支：`docs/doc-drift-fix`
-
 （认领规则：从 `todo` 取 1 条 P0/P1 移入此处）
 
 ## todo（按优先级）
@@ -136,6 +123,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-017 | 文档事实修正与协议补强（A 事实修正 7 项、B 门禁前置 3 项、C 快照协议 4 项、E 业务文档补缺 2 项、F 入队 T-019/T-020） | 2026-10-06 | `6187228` | 验收：`bash scripts/check_docs.sh` 0 errors/0 warnings；E1/E2 章节与代码一致；协议条文改动仅限 B/C 列明项 |
 | T-021 | 文档一致性自动校验脚本 `scripts/check_docs.sh`（5 项检查 links/tree/snapshot/counts/shas + AGENTS/ROADMAP 4 处接线） | 2026-10-06 | `81f442a` | 验收：基线输出 5 errors/6 warnings 与已知漂移完全一致不误报；注入坏锚点/坏快照 → exit 1，恢复后 exit 0；`bash -n` 通过；T-012/T-007 验收已接线 |
 | T-018 | 后端 lint 清零 + golangci-lint v2 配置迁移（`.golangci.yml` v1→v2、修 20 个问题、DEVELOPMENT Linter 章节同步） | 2026-10-06 | `ec2bed6` | 验收：`go build` + `golangci-lint run ./...` exit 0；CSV 解析容错语义经临时冒烟测试确认不变 |
 | T-001 | 协作文档体系改造（AGENTS 改为 AI 入口、ROADMAP 改为任务队列、删除 ONBOARDING、分支策略对齐 main+feature） | 2026-10-06 | `0237d40` | 验收：无 ONBOARDING 链接残留、AGENTS 含状态快照/会话协议/验证命令、md 链接锚点全通 |

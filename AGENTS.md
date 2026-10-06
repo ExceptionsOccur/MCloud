@@ -38,7 +38,7 @@
 | 字段 | 值 |
 |------|-----|
 | last_updated | 2026-10-06 |
-| in_progress | `T-017` 文档事实修正与协议补强（认领 2026-10-06） |
+| in_progress | 无（按认领规则从 todo 取 1 条） |
 | next_task | `T-002` 后端 `host_service.go` 拆分（= ROADMAP todo 首条，P1 最高优先级） |
 | todo（P1） | `T-002` host_service 拆分 → `T-003` csv controller 下沉 → `T-004` composables 抽取 → `T-005` IpStatistics 拆分 → `T-006` 测试骨架 → `T-007` CI 落地 |
 | todo（P2） | `T-008` 报表导出、`T-009` bcrypt 升级、`T-010` 路由拆分、`T-011` ping 解耦、`T-012` 文档巡检、`T-013` 零信任台账、`T-014` 域名台账、`T-015` 公网IP字段改映射布尔+关联、`T-016` Goose 执行器实装（暂不执行）、`T-019` 抽 Layout/AppNav、`T-020` config ServerPort 硬编码（暂不执行） |
