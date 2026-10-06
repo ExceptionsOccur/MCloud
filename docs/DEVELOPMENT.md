@@ -20,7 +20,7 @@
 2. **统一响应**：所有 API 通过 `controllers.Success` / `controllers.Error` 返回，禁止直接 `c.JSON`
 3. **配置外置**：敏感信息与可变配置一律走环境变量，禁止硬编码
 4. **约定优先**：命名、目录、格式遵循项目既有约定，不引入风格不一致的写法
-5. **最小改动**：改动聚焦当前需求，不顺手重构无关代码；未经明确要求，不得修改约束文件（`AGENTS.md`、`docs/*.md`）、构建文件（`Dockerfile`、`docker-compose*.yml`、`.golangci.yml`、`.eslintrc.cjs`、`nginx.conf`）
+5. **最小改动 + 修改权限**：改动聚焦当前需求，不顺手重构无关代码。文件按类别判定权限：`docs/ROADMAP.md`、`docs/PROJECT_STATUS.md` 及责任矩阵指定的同步文档**必须随任务回写**；协议条文（[AGENTS.md](../AGENTS.md) 的会话协议/红线、本文件规范）**仅当任务验收标准明确写明才可改**；构建文件（`Dockerfile`、`docker-compose*.yml`、`.golangci.yml`、`.eslintrc.cjs`、`nginx.conf`）**未经人类明确要求禁止修改**。完整分类见 AGENTS.md 红线 7
 6. **可验证**：提交前确保编译通过、关键路径自测通过
 
 ---
@@ -111,23 +111,30 @@ c.JSON(400, gin.H{"error": "..."})
 
 ### 数据库迁移规范
 
-多人同时修改数据模型时，必须通过迁移文件协调，**禁止仅依赖 AutoMigrate**。
+**统一口径（2026-10-06 确认，消除红线 9 与运行时行为的表述矛盾）**：
+
+| 层面 | 机制 | 说明 |
+|------|------|------|
+| 归档 / 评审 | `backend/migrations/*.sql` | **红线 9 的迁移 SQL 是归档要求**：随模型变更一起提交，供追溯与多人协调；**运行时不会被执行**（`go.mod` 无 goose 依赖，代码中无加载逻辑） |
+| 运行时 | `database/postgres.go` → `Migrate()` | 启动时执行 `AutoMigrate()` + `seedAdmin()`，由它**兜底**应用结构变更 |
+
+> 一句话：**SQL 必须写（归档），AutoMigrate 实际执行（兜底），两者不冲突**。SQL 防止 schema 变更无历史，AutoMigrate 负责落地。若未来需要真正执行 SQL（如生产结构管控），执行 [ROADMAP](./ROADMAP.md) 的 `T-016`（Goose 执行器实装），届时本口径随该任务反转更新。
 
 **迁移文件规则**：
 
 1. 迁移文件存放在 `backend/migrations/`，命名格式：`YYYYMMDDHHMMSS_<描述>.sql`
 2. 每次模型变更（新增字段、改类型、加索引、加约束）必须写对应的 SQL 迁移文件
 3. 迁移文件一旦提交，**禁止修改或删除**（已执行的迁移不可变）
-4. `database/postgres.go` 中的 `AutoMigrate()` 仅用于本地开发快速验证，**不可作为唯一迁移手段**
+4. 运行时**只**执行 `AutoMigrate()`，SQL 文件不参与执行——因此 **SQL 内容必须与模型定义保持一致**，否则归档与实际结构会漂移（这正是红线 9 存在的意义）
 
 **多人协作流程**：
 
 ```
-1. 拉取最新 develop
+1. 拉取最新 main
 2. 创建迁移文件（如 20260322120000_add_status_index.sql）
-3. 在本地执行迁移验证
+3. 本地启动，确认 AutoMigrate 应用后的结构与 SQL 描述一致
 4. 提交 PR（迁移文件 + 模型变更 + 业务代码一起）
-5. 合并后其他开发者拉取代码，启动时自动执行新迁移
+5. 合并后其他开发者拉取代码，启动时由 AutoMigrate 应用新结构（SQL 文件仅归档，不被执行）
 ```
 
 **冲突预防**：
@@ -252,7 +259,9 @@ docs: AGENTS.md 补充IP网段管理API
 
 ## Linter 与 CI 门禁
 
-提交代码前，必须在本地通过 linter 检查。CI 流水线会自动执行以下检查，不通过则拒绝合并。
+提交代码前，必须在本地通过 linter 检查。
+
+> ⚠️ **现状（2026-10-06）**：CI 流水线尚未落地（`.github/workflows` 不存在，任务 `T-007`），下述 PR 门禁为**规划目标**；在此之前以本地自检为准。
 
 ### 后端（Go）
 
@@ -358,7 +367,7 @@ docker-compose -f docker-compose.prod.yml up -d --build
 
 接到任务后、动手写代码前，必须完成以下步骤：
 
-1. **同步最新代码**：`git checkout develop && git pull`
+1. **同步最新代码**：`git checkout main && git pull`
 2. **创建功能分支**：`git checkout -b feat/<简短描述>` 或 `fix/<简短描述>`
 3. **确认影响范围**：阅读任务需求，判断涉及哪些模块（后端/前端/数据库），列出可能改动的文件
 4. **如有数据模型变更**：先说明新字段/新表的设计，获得确认后再动手
@@ -366,7 +375,7 @@ docker-compose -f docker-compose.prod.yml up -d --build
 
 ### 任务进行中
 
-1. 频繁拉取 `develop` 最新代码，减少合并冲突
+1. 频繁拉取 `main` 最新代码，减少合并冲突
 2. 每次提交前检查 `git status`，确认无无关文件混入
 3. 修改公共文件（`routes/routes.go`、`models/` 下的模型）时，主动通知相关开发者
 4. 一个功能分支只做一件事，不混入无关改动
@@ -381,14 +390,15 @@ docker-compose -f docker-compose.prod.yml up -d --build
    - [ ] 前端 `npm run lint` 通过
    - [ ] 前端 `npm run build` 通过
    - [ ] 数据库模型变更已写迁移 SQL（`backend/migrations/YYYYMMDDHHMMSS_xxx.sql`）
-2. **文档同步**：
+2. **文档同步**（完整对照见 [AGENTS.md · 文档更新责任矩阵](../AGENTS.md#文档更新责任矩阵)）：
    - 新增/修改 API 接口 → 更新 `docs/API.md`
    - 新增/修改数据库字段 → 更新 `docs/ARCHITECTURE.md` 数据模型章节
    - 新增/删除路由 → 更新 `docs/CODE_INDEX.md`
    - 重要变更 → 更新 `docs/PROJECT_STATUS.md` 变更记录
+   - 任务状态 → 更新 `docs/ROADMAP.md`（领任务 → `in_progress`，完成 → `done`；它是任务状态的唯一事实来源）
 3. **提交 PR**：
    - PR 描述包含：改了什么、为什么改、影响范围（哪些接口/表/页面受影响）
-   - 合并回 `develop`，删除功能分支
+   - 合并回 `main`，删除功能分支
 
 ---
 

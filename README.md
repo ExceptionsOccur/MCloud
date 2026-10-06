@@ -80,8 +80,10 @@ docker-compose -f docker-compose.dev.yml up -d
 ```
 
 启动后：
-- 应用：`http://localhost:5678`
+- 前端（开发）：`http://localhost:5173`（Vite，`/api` 自动代理到后端）
+- 后端 API（开发）：`http://localhost:5677`
 - 数据库：`localhost:5432`
+- 生产环境（`docker-compose.prod.yml`）应用端口为 `5678`
 
 ### 2. 登录
 
@@ -98,7 +100,7 @@ docker-compose -f docker-compose.dev.yml up -d
 
 ## 页面与导航
 
-系统共 4 个功能页面，顶部导航 Tab 一一对应：
+系统共 5 个功能页面：4 个顶部导航 Tab + 人员录入页（设置菜单进入）：
 
 | 路由 | 页面 | 说明 |
 |------|------|------|
@@ -106,8 +108,9 @@ docker-compose -f docker-compose.dev.yml up -d
 | `/statistics` | 资源统计 | 云端总资源 + 使用占比饼图 |
 | `/ip-statistics` | IP 统计 | /24 网段位图 + 连通性探测 |
 | `/business-statistics` | 业务统计 | 项目/公司/人员资源聚合 |
+| `/personnel` | 人员管理 | 人员录入与维护，关联主机资产 |
 
-右上角设置菜单：**云资源录入** / **修改密码** / **退出登录**
+右上角设置菜单：**云资源录入** / **人员录入** / **修改密码** / **退出登录**
 
 ## 生产构建
 
@@ -136,10 +139,13 @@ go run ./cmd/resetpw/main.go Pass4MCloud
 
 ## 开发者文档
 
-- [AGENTS.md](./AGENTS.md) —— 项目总纲（统一入口）
+> **本项目以 AI 协作为主**：AI 会话只需读 [AGENTS.md](./AGENTS.md)（状态快照 + 执行协议已内联），即可知道当前进度与下一步工作；任务状态的唯一事实来源是 [docs/ROADMAP.md](./docs/ROADMAP.md)。
+
+- [AGENTS.md](./AGENTS.md) —— 项目总纲（AI 协作入口：状态快照、会话协议、红线、验证命令）
+- [docs/ROADMAP.md](./docs/ROADMAP.md) —— 任务队列（T-xxx、验收标准、状态流转）
+- [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md) —— 完成度、变更记录、技术债
 - [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) —— 架构与数据模型
 - [docs/API.md](./docs/API.md) —— API 约定
 - [docs/BUSINESS_LOGIC.md](./docs/BUSINESS_LOGIC.md) —— 关键业务逻辑
 - [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) —— 开发规范与准则
 - [docs/CODE_INDEX.md](./docs/CODE_INDEX.md) —— 代码索引
-- [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md) —— 项目状态与技术债

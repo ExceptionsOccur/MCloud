@@ -32,6 +32,7 @@
 | `backend/models/host_application.go` | `HostApplication` | `host_applications` |
 | `backend/models/cloud_resource.go` | `CloudResource` | `cloud_resources` |
 | `backend/models/ip_subnet.go` | `IPSubnet` | `ip_subnets` |
+| `backend/models/person.go` | `Person` | `persons` |
 
 ### 控制器（controllers/）
 
@@ -47,6 +48,7 @@
 | `controllers/cloud_resource.go` | 云资源列表、按区域更新 |
 | `controllers/stats.go` | IP 使用情况、单点探测、业务统计 |
 | `controllers/subnet.go` | IP 网段 CRUD |
+| `controllers/person.go` | 人员 CRUD（`List`/`Create`/`Update`/`Delete`） |
 | `controllers/websocket.go` | WebSocket 探测通道（并发处理探测请求） |
 
 ### 业务服务（services/）
@@ -59,6 +61,7 @@
 | `services/stats_service.go` | IP 使用统计 + 连通性探测 | `GetIPUsage`、`Probe`、`pingICMP`、`probeTCP` |
 | `services/business_stats.go` | 业务统计聚合 | `GetBusinessStats`（项目/公司/人员三维聚合） |
 | `services/subnet_service.go` | IP 网段管理 | `List`/`Create`/`Update`/`Delete`、`normalizeCIDR`（/24 校验） |
+| `services/person_service.go` | 人员管理 | `List`/`Create`/`Update`/`Delete`、`normalizePerson`；删除时校验关联主机数 |
 
 ### 中间件与工具
 
@@ -98,6 +101,7 @@
 | `api/cloud_resource.js` | `/cloud-resources` |
 | `api/stats.js` | `/stats/ip-usage`、`/stats/probe`、`/stats/business` |
 | `api/subnet.js` | `/ip-subnets` |
+| `api/person.js` | `/persons` |
 
 ### 状态管理（stores/）
 
@@ -118,6 +122,7 @@
 | `views/ResourceStatistics.vue` | `/statistics` | 资源统计（汇总表格 + 饼图） |
 | `views/IpStatistics.vue` | `/ip-statistics` | IP 统计（位图 + 探测 + 网段管理） |
 | `views/BusinessStatistics.vue` | `/business-statistics` | 业务统计（概览 + 柱状图 + 表格 + 下钻弹窗） |
+| `views/PersonnelManagement.vue` | `/personnel` | 人员管理（搜索 + 新增/编辑/删除，含关联主机数校验） |
 
 ### 组件（components/）
 
@@ -125,9 +130,9 @@
 |------|------|----------|
 | `SearchToolbar.vue` | 搜索框、筛选下拉、操作按钮 | HostManagement |
 | `HostTable.vue` | 主机列表表格 + 分页 | HostManagement |
-| `HostFormDialog.vue` | 新增/编辑/详情弹窗（技术+申请双 Tab） | HostManagement |
+| `HostFormDialog.vue` | 新增/编辑/详情弹窗（技术+申请双 Tab，含人员选择/手输自动建人员） | HostManagement |
 | `BatchAddDialog.vue` | 批量添加弹窗 | HostManagement |
-| `BatchEditDialog.vue` | 批量编辑弹窗 | HostManagement |
+| `BatchEditDialog.vue` | 批量编辑弹窗（含人员选择/手输自动建人员） | HostManagement |
 | `ImportDialog.vue` | CSV 导入弹窗 | HostManagement |
 | `ChangePasswordDialog.vue` | 修改密码弹窗 | 全部页面 |
 | `CloudResourceDialog.vue` | 云资源录入弹窗 | 全部页面（设置菜单） |
@@ -156,6 +161,8 @@
 | **IP 使用位图** | `controllers/stats.go` → `IPUsage` `services/stats_service.go` → `GetIPUsage` | `views/IpStatistics.vue` `stores/stats.js` |
 | **IP 连通性探测** | `controllers/websocket.go` `controllers/stats.go` → `Probe` `services/stats_service.go` → `Probe` | `views/IpStatistics.vue`（WebSocket + 颜色状态机） |
 | **IP 网段管理** | `controllers/subnet.go` `services/subnet_service.go` `models/ip_subnet.go` | `components/SubnetManageDialog.vue` `api/subnet.js` |
+| **人员管理** | `controllers/person.go` `services/person_service.go` `models/person.go` | `views/PersonnelManagement.vue` `api/person.js` |
+| **主机关联人员** | `services/host_service.go`（`person_id` 事务写入） | `components/HostFormDialog.vue` `components/BatchEditDialog.vue`（选择/手输自动新增） |
 | **业务统计** | `controllers/stats.go` → `BusinessStats` `services/business_stats.go` | `views/BusinessStatistics.vue` `stores/business.js` |
 | **密码重置工具** | `cmd/resetpw/main.go` `utils/password.go` | — |
 
@@ -214,3 +221,4 @@ PUT /api/cloud-resources
 | `host_applications` | `models/host_application.go` | `services/host_service.go`（随主机事务创建/更新/删除） |
 | `cloud_resources` | `models/cloud_resource.go` | `services/cloud_resource_service.go` |
 | `ip_subnets` | `models/ip_subnet.go` | `services/subnet_service.go`、`services/stats_service.go`（读取网段） |
+| `persons` | `models/person.go` | `services/person_service.go`；`hosts.person_id` 由 `services/host_service.go` 写入 |

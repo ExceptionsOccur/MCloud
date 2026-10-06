@@ -51,15 +51,16 @@ go/
 ├── README.md                      # 功能特性与使用说明
 ├── AGENTS.md                      # 项目总纲（统一入口）
 ├── docs/                          # 工程文档
+│   ├── ROADMAP.md                 # 任务队列（任务状态唯一事实来源）
 │   ├── DEVELOPMENT.md             # 开发规范与准则
 │   ├── ARCHITECTURE.md            # 架构与数据模型（本文件）
 │   ├── API.md                     # API 约定
 │   ├── BUSINESS_LOGIC.md          # 关键业务逻辑
 │   ├── CODE_INDEX.md              # 代码索引
-│   └── PROJECT_STATUS.md          # 开发情况与技术债
+│   └── PROJECT_STATUS.md          # 功能完成度、变更记录与技术债
 │
 ├── docker/                        # 容器化配置
-│   ├── docker-compose.dev.yml     # 开发环境（DB + 单容器应用）
+│   ├── docker-compose.dev.yml     # 开发环境（DB + 后端热重载 + 前端 HMR）
 │   └── docker-compose.prod.yml    # 生产环境（DB + 单容器应用）
 │
 ├── backend/                       # Go 后端 + Docker 构建
@@ -81,6 +82,7 @@ go/
 │   │   ├── user.go                # User 模型
 │   │   ├── host.go                # Host 模型
 │   │   ├── host_application.go    # HostApplication 模型
+│   │   ├── person.go              # Person 模型（人员信息）
 │   │   ├── cloud_resource.go      # CloudResource 模型
 │   │   └── ip_subnet.go           # IPSubnet 模型（IP 网段管理）
 │   │
@@ -91,18 +93,19 @@ go/
 │   │   ├── batch.go               # 批量添加/编辑
 │   │   ├── csv.go                 # CSV 导入/导出/模板
 │   │   ├── cloud_resource.go      # 云资源总览
+│   │   ├── person.go              # 人员 CRUD
 │   │   ├── stats.go               # 统计（IP 使用、探测、业务统计）
 │   │   ├── subnet.go              # IP 网段 CRUD
 │   │   └── websocket.go           # WebSocket IP 探测通道
 │   │
 │   ├── middleware/
-│   │   ├── jwt.go                 # JWT 认证中间件
-│   │   └── cors.go                # CORS 跨域中间件
+│   │   └── jwt.go                 # JWT 认证中间件 + CORS 中间件
 │   │
 │   ├── services/
 │   │   ├── auth_service.go        # 认证业务逻辑
-│   │   ├── host_service.go        # 主机业务逻辑
+│   │   ├── host_service.go        # 主机业务逻辑（CRUD + 批量 + CSV，待拆分）
 │   │   ├── cloud_resource_service.go # 云资源总览业务逻辑
+│   │   ├── person_service.go      # 人员业务逻辑
 │   │   ├── stats_service.go       # IP 使用统计 + 连通性探测
 │   │   ├── business_stats.go      # 业务统计聚合（项目/公司/人员）
 │   │   └── subnet_service.go      # IP 网段业务逻辑（/24 校验）
@@ -117,7 +120,7 @@ go/
 │   │   ├── password.go            # 密码哈希工具（SHA-256 + 盐）
 │   │   └── csv.go                 # CSV 解析/生成
 │   │
-│   └── migrations/                # Goose SQL 迁移文件（历史保留，实际用 AutoMigrate）
+│   └── migrations/                # 迁移 SQL（归档要求，运行时不执行；结构由启动时 AutoMigrate 兜底）
 │
 └── frontend/                      # Vue 3 前端
     ├── index.html
@@ -132,7 +135,7 @@ go/
         │   └── index.js           # 路由配置 + 路由守卫
         │
         ├── stores/                # Pinia 状态：auth / host / cloudResource / stats / business
-        ├── api/                   # API 封装：index / auth / host / csv / cloud_resource / stats / subnet
+        ├── api/                   # API 封装：index / auth / host / csv / cloud_resource / person / stats / subnet
         ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement
         ├── components/            # 组件：工具栏/表格/各类弹窗
         │

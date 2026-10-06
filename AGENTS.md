@@ -1,12 +1,53 @@
-# AGENTS.md
+# AGENTS.md — MCloud 项目总纲（AI 协作入口）
 
-> MCloud 项目总纲。本文件是 AI 协作与开发的**统一入口**，按需跳转到对应文档。
+> **本文件是所有 AI 协作会话的唯一必读入口**，核心状态与执行协议已内联，读完本文件即可开工，无需先读其他文档。
+> 人类可读的项目介绍见 [README.md](./README.md)；需要细节时按「文档地图」跳转。
+> **最后更新：2026-10-06**
+
+## 会话协议
+
+### A. 开工前（顺序执行）
+
+1. 读本文件的「状态快照」与「核心约定（红线）」
+2. 读 [docs/ROADMAP.md](./docs/ROADMAP.md)（任务状态的**唯一事实来源**），认领 1 条优先级最高的 `todo` 任务
+3. **认领 = 先改文件再写代码**：把该任务移到 `in_progress`，填写负责标识与日期
+4. **定位代码**：查 [docs/CODE_INDEX.md](./docs/CODE_INDEX.md) 的「功能→代码映射」「请求链路」与 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) 目录结构，把涉及文件写进该任务的「定位」字段——任务已带「定位」则核对并以其为起点，没有则必须补齐；**补不出（找不到实现位置）时先在输出中声明，不得盲写代码**
+5. 按任务的「验收标准」倒推实现方案；涉及公共文件（`routes/`、`models/`、本文件）时先在输出中声明影响范围
+
+### B. 结束前（回写协议，未回写视为任务未完成）
+
+| # | 动作 | 目标文件 |
+|---|------|----------|
+| 1 | 任务状态 → `done`，填完成时间与提交号 | [docs/ROADMAP.md](./docs/ROADMAP.md) |
+| 2 | 功能完成度、变更记录（日期 + 提交号 + 一行摘要） | [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md) |
+| 3 | 按下方「文档更新责任矩阵」同步受影响文档 | `docs/*.md` |
+| 4 | 刷新本文件「状态快照」，使其与 ROADMAP 一致 | 本文件 |
+| 5 | 全部「验证命令」跑绿 | — |
+
+### C. 冲突与降级规则
+
+- 状态快照与 ROADMAP 不一致 → **以 ROADMAP 为准**，并修复快照
+- 文档与代码不一致 → **以代码为准**，修复文档（`docs:` 提交）
+- 验收标准无法满足 → 任务改 `blocked` 并写明**具体阻塞条件**（泛泛的"困难"不算），不要留在 `in_progress`
+- 需求本身有歧义 → 停下来向人类确认，不要自行扩大范围
+
+## 状态快照
+
+> 这是 [ROADMAP](./docs/ROADMAP.md) 的缓存，回写协议第 4 步负责刷新它。
+
+| 字段 | 值 |
+|------|-----|
+| last_updated | 2026-10-06 |
+| in_progress | 无（按认领规则从 todo 取 1 条） |
+| todo（P1） | `T-002` host_service 拆分 → `T-003` csv controller 下沉 → `T-004` composables 抽取 → `T-005` IpStatistics 拆分 → `T-006` 测试骨架 → `T-007` CI 落地 |
+| todo（P2） | `T-008` 报表导出、`T-009` bcrypt 升级、`T-010` 路由拆分、`T-011` ping 解耦、`T-012` 文档巡检、`T-013` 零信任台账、`T-014` 域名台账、`T-015` 公网IP字段改映射布尔+关联、`T-016` Goose 执行器实装（暂不执行） |
+| blocked | 无 |
+| 功能完成度 | 主机管理 / 资源统计 / IP 统计 / 业务统计 / 人员管理 / 认证 / 云资源 / 部署 均完成；报表、测试、CI、零信任台账、域名台账、公网IP关联待开发 |
+| 已知风险 | 无 CI、无测试、`host_service.go` 22KB 待拆分、`csv.go` 违反红线 1、密码为 SHA-256（详见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
 
 ## 项目速览
 
-MCloud 是一个云平台主机资产信息管理系统，采用 **Go (Gin) 后端 + Vue 3 SPA 前端** 架构，数据存储于 PostgreSQL。
-
-系统围绕主机资产提供：主机资产管理、资源统计、IP 统计、业务统计等能力。功能特性与使用说明见 [README.md](./README.md)。
+MCloud 是云平台主机资产信息管理系统：**Go (Gin) 后端 + Vue 3 SPA 前端 + PostgreSQL 16**。
 
 ```
 浏览器 (Vue 3)  ──Axios──▶  /api        ┐
@@ -14,95 +55,121 @@ MCloud 是一个云平台主机资产信息管理系统，采用 **Go (Gin) 后�
                                         ┘
 ```
 
-## 技术栈
+**分层（红线 1，不可破坏）**：`routes`（注册+JWT）→ `controllers`（仅绑定参数、调 service、`Success/Error` 响应）→ `services`（全部业务逻辑）→ `models`（GORM）。
 
-| 层次 | 技术 | 说明 |
-|------|------|------|
-| 后端 | Go 1.22+ / Gin | Web 框架 + 路由 + 中间件 |
-| ORM | GORM v2 | 建模 + 查询 + AutoMigrate |
-| 数据库 | PostgreSQL 16 | 主数据存储 |
-| 前端 | Vue 3 + Vite | SPA |
-| UI | Element Plus | 组件库 |
-| 状态/路由 | Pinia + Vue Router 4 | |
-| HTTP | Axios | API 封装 |
-| 图表 | ECharts + vue-echarts | 饼图 / 柱状图 |
-| 实时通信 | gorilla/websocket | IP 连通性探测 |
-| 认证 | JWT (golang-jwt/v5) | 无状态 Token |
-| 密码 | SHA-256 + 盐 | `salt$hash` |
+**前端结构**：`api/`（Axios 封装）→ `stores/`（Pinia）→ `views/`（4 个页面 Tab）→ `components/`。
 
-## 文档导航
-
-按需查阅，避免一次性读取全部：
-
-| 文档 | 内容 | 何时查阅 |
-|------|------|----------|
-| [README.md](./README.md) | 功能特性、快速开始、部署 | 了解系统能做什么 / 启动项目 |
-| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 目录结构、分层、数据模型（5 张表） | 定位模块 / 改模型 |
-| [docs/API.md](./docs/API.md) | 响应格式、错误码、全部路由、参数 | 增改接口 / 调用接口 |
-| [docs/BUSINESS_LOGIC.md](./docs/BUSINESS_LOGIC.md) | 认证、搜索、CSV、IP 探测、各类统计逻辑 | 改业务逻辑 |
-| [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) | 编码规范、提交规范、测试、安全准则 | 写代码 / 提交前自检 |
-| [docs/CODE_INDEX.md](./docs/CODE_INDEX.md) | 文件职责、功能→代码映射、请求链路 | 快速找到实现位置 |
-| [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md) | 完成度、变更记录、技术债、注意事项 | 了解进度 / 避坑 |
+| 关键事实 | 值 |
+|----------|-----|
+| 开发端口 | 前端 5173（Vite，`/api` 代理到 `backend:5677`）、后端 5677、Postgres 5432、生产 5678 |
+| 默认账号 | `admin` / `Pass4MCloud`（种子见 `backend/database/postgres.go` 的 `seedAdmin()`） |
+| 数据库表 | 6 张：`users` / `hosts` / `host_applications` / `persons` / `cloud_resources` / `ip_subnets` |
+| 开发环境 | `cd docker && cp .env.example .env && docker-compose -f docker-compose.dev.yml up -d` |
 
 ## 核心约定（红线）
 
-以下为必须遵守的硬性约定，细节见 [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md)：
+细节见 [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md)，以下为硬性约束：
 
-1. **分层**：`controllers` 只做参数绑定 + 调用 service + 格式化响应，**不含业务逻辑**；业务逻辑全部在 `services`
-2. **统一响应**：所有 API 通过 `controllers.Success` / `controllers.Error` 返回，**禁止** `c.JSON`
-3. **配置外置**：数据库连接、密钥等一律走环境变量，**禁止硬编码**
-4. **GORM 列名**：缩写字段（如 `CIDR`）必须显式写 `gorm:"column:xxx"`，否则会生成 `c_id_r` 之类的错误列名
-5. **提交规范**：Conventional Commits（`feat:` / `fix:` / `docs:` …）；**未经明确要求不主动 commit / push**
+1. **分层**：`controllers` 不含业务逻辑，业务全部在 `services`
+2. **统一响应**：只用 `controllers.Success` / `controllers.Error`，**禁止** `c.JSON`
+3. **配置外置**：数据库连接、密钥一律走环境变量，**禁止硬编码**
+4. **GORM 列名**：缩写字段（如 `CIDR`）必须显式 `gorm:"column:xxx"`，否则生成 `c_id_r` 错误列名
+5. **提交**：Conventional Commits（`feat:` / `fix:` / `docs:` …）；**未经明确要求不主动 commit / push**
 6. **敏感信息**：`.env`、密钥、密码、Token **不入库**
-7. **改动聚焦**：只改与当前需求相关的代码，不顺手重构；未经明确要求，**不得修改**约束文件（`AGENTS.md`、`docs/*.md`）、构建文件（`Dockerfile`、`docker-compose*.yml`、`.golangci.yml`、`.eslintrc.cjs`、`nginx.conf`）
-8. **分支策略**：从 `develop` 拉 feature 分支，完成后合并回 `develop`；**禁止直接 push `main` / `develop`**
-9. **数据库迁移**：模型变更必须写迁移 SQL（见 `backend/migrations/`），**禁止仅依赖 AutoMigrate**
-10. **CI 门禁**：提交前本地运行 linter + 编译检查（`golangci-lint run` / `npm run lint`），确保通过
-11. **环境一致**：本地开发使用 `docker-compose -f docker-compose.dev.yml up -d` 启动，禁止手动安装数据库实例
+7. **改动聚焦 + 修改权限**：只改当前任务验收标准内的代码，**不顺手重构**。可改范围按文件类别判定：
+   - **状态与同步类**（`docs/ROADMAP.md`、`docs/PROJECT_STATUS.md`、责任矩阵指定的同步文档）→ **必须**随任务回写，这是义务，不算违规
+   - **普通代码与业务文档**（`backend/`、`frontend/`、`docs/API.md` 等）→ 仅限任务验收标准覆盖的范围
+   - **协议条文**（本文件的「会话协议 / 红线 / 状态快照规则」、`docs/DEVELOPMENT.md` 的规范条文）→ **默认禁止**；只有任务验收标准**明确写明**要改它（即人类发起的 `docs:` 任务）才可改，否则在输出中提出建议、不动手
+   - **构建文件**（`Dockerfile`、`docker-compose*.yml`、`.golangci.yml`、`.eslintrc.cjs`、`nginx.conf`）→ **未经人类明确要求禁止修改**
+8. **分支**：从 `main` 拉 `feat/fix/docs/refactor` 短生命周期分支，PR 合并回 `main`；**禁止直接 push `main`**
+9. **迁移**：模型变更必须随附迁移 SQL（`backend/migrations/`，**归档/评审要求**）；运行时结构由启动时 `AutoMigrate` 兜底执行，**SQL 文件不会被自动执行**，故 SQL 必须与模型定义一致（统一口径见 [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) 数据库迁移规范）
+10. **门禁**：提交前「验证命令」必须全绿
+11. **环境一致**：数据库只用 docker-compose 启动，禁止手动安装
+12. **文档同步**：代码改完必须按下表回写文档；**未回写 = 任务未完成**
 
-## 分支与协作
+## 分支与提交协议
 
 ```
-main          ← 生产分支，受保护，只接受 PR 合并
-  └── develop ← 集成分支，日常开发的目标分支
-       ├── feat/xxx   ← 功能分支，从 develop 拉出
-       ├── fix/xxx    ← 修复分支
-       └── docs/xxx   ← 文档分支
+main ← 唯一主干，只接受 PR，禁止直接 push
+  ├── feat/<描述>       功能
+  ├── fix/<描述>        修复
+  ├── docs/<描述>       文档
+  └── refactor/<描述>   重构（T-002~T-005 类任务必须走此分支，不混入业务）
 ```
 
-**分支规则**：
+- 分支从 `main` 拉出，合并回 `main` 后立即删除，**生命周期 ≤ 1 周**
+- 一个分支只对应 ROADMAP 中的 **1 条任务**；PR 标题 = Conventional Commits 格式，描述含：改了什么 / 为什么 / 影响范围（接口、表、页面）/ 关联任务 ID / 文档回写清单
+- 合并方式优先 squash；合并完成即触发「回写协议」第 1、2 步
+- 当前仓库**无 CI**（`T-007`），门禁完全依赖本地验证命令
 
-1. 功能分支命名：`feat/<简短描述>`（如 `feat/business-stats`）、`fix/<简短描述>`、`docs/<简短描述>`
-2. 功能分支从 `develop` 拉出，完成后合并回 `develop`
-3. `develop` 稳定后合并到 `main` 并打 version tag
-4. 禁止直接 push `main` / `develop`
-5. 功能分支生命周期不超过 1 周，超时需拆分或重新评估
+## 文档更新责任矩阵
 
-**变更可见性**：
+> 谁改代码，谁回写文档；PR/任务结束时未同步视为未完成。
 
-1. 修改数据模型（`models/`）或 API 路由（`routes/`）时，必须在 PR 描述中说明影响范围
-2. 新增/修改 API 接口必须同步更新 `docs/API.md`
-3. 新增/修改数据库字段必须同步更新 `docs/ARCHITECTURE.md` 的数据模型章节
+| 变更内容 | 必须同步 |
+|----------|----------|
+| 新增/修改 API 接口、路由 | [docs/API.md](./docs/API.md) + [docs/CODE_INDEX.md](./docs/CODE_INDEX.md) |
+| 新增/修改数据库字段、表 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) 数据模型 + `backend/migrations/` 迁移 SQL |
+| 新增/删除前端页面、路由 | [docs/CODE_INDEX.md](./docs/CODE_INDEX.md) + [README.md](./README.md) 页面与导航 |
+| 修改关键业务逻辑（探测、统计口径、认证） | [docs/BUSINESS_LOGIC.md](./docs/BUSINESS_LOGIC.md) |
+| 修改规范、流程、红线 | [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) + 本文件 |
+| 目录/文件结构变化 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) 目录结构 + [docs/CODE_INDEX.md](./docs/CODE_INDEX.md) |
+| 任务状态变化 | [docs/ROADMAP.md](./docs/ROADMAP.md)（唯一事实来源） |
+| 功能合并、技术债增减 | [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md) 完成度 + 变更记录 |
 
-## 快速开始
+## 验证命令（门禁）
+
+按改动范围执行，**全部通过才能结束任务**：
 
 ```bash
-cd docker && cp .env.example .env && docker-compose -f docker-compose.dev.yml up -d
+# 后端改动
+cd backend && go build ./... && golangci-lint run ./...
+
+# 前端改动
+cd frontend && npm run lint && npm run build
+
+# 文档改动（相对链接与锚点可解析；无 md lint 工具，人工/脚本核对）
+# 数据库改动
+cd backend && go build ./...   # 确认模型可编译 + 迁移 SQL 文件已按 YYYYMMDDHHMMSS_xxx.sql 命名
 ```
 
-默认账号：`admin` / `Pass4MCloud`。完整说明见 [README.md](./README.md#快速开始)。
+## 文档地图
+
+> 按需跳转，不要一次性读全部。**默认只需本文件**。
+
+| 文档 | 内容 | 何时读 |
+|------|------|--------|
+| [README.md](./README.md) | 功能特性、快速开始（面向人类） | 需要产品视角 / 部署说明 |
+| [docs/ROADMAP.md](./docs/ROADMAP.md) | **任务队列（唯一事实来源）** | 领任务、回写状态 |
+| [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md) | 完成度、变更记录、技术债、注意事项 | 判断某功能是否已存在、避坑 |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 目录结构、分层、6 张表模型 | 定位模块、改模型 |
+| [docs/API.md](./docs/API.md) | 响应格式、错误码、全部路由与参数 | 增改/调用接口 |
+| [docs/BUSINESS_LOGIC.md](./docs/BUSINESS_LOGIC.md) | 认证、搜索、CSV、IP 探测状态机、统计口径 | 改业务逻辑 |
+| [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) | 编码规范、提交规范、测试、安全 | 写代码时的细则 |
+| [docs/CODE_INDEX.md](./docs/CODE_INDEX.md) | 文件职责、功能→代码映射、请求链路 | 找实现位置（最省 token 的入口） |
+
+## 术语表
+
+| 术语 | 含义 |
+|------|------|
+| 主机 host | 云主机/物理机资产，核心表 `hosts` |
+| 申请信息 | `host_applications`，与 `hosts` 一对一，删主机必须级联删除 |
+| 人员 person | `persons` 表，经 `hosts.person_id` 关联主机 |
+| `is_db_server` | BOOLEAN，API 统一返回 `true/false` |
+| 云资源总览 | `cloud_resources`，按区域手工录入的总量资源 |
+| 裸金属 | 物理服务器，**资源统计一律排除**（避免重复计算） |
+| IP 网段 | `ip_subnets`，用户自建，仅接受 /24，不预置数据 |
+| 探测颜色 | 🟢 空闲 / 🔴 已用有非空记录 / 🟡 已用但无记录 |
+| 「已停止」 | 统计口径 = `已停止` + `已关机` 合并 |
+| 位图 | IP 统计页 10 列 × 26 行共 256 格可视化 |
 
 ## 常用命令
 
 | 目的 | 命令 |
 |------|------|
-| 后端编译检查 | `cd backend && go build ./...` |
-| 后端 Lint | `cd backend && golangci-lint run ./...` |
-| 重置 admin 密码 | `cd backend && go run ./cmd/resetpw/main.go` |
-| 指定密码重置 | `cd backend && go run ./cmd/resetpw/main.go <新密码>` |
-| 前端开发 | `cd frontend && npm run dev` |
-| 前端构建 | `cd frontend && npm run build` |
-| 前端 Lint | `cd frontend && npm run lint` |
-| 启动数据库（仅 DB） | `cd docker && docker-compose -f docker-compose.dev.yml up -d postgres` |
 | 开发环境启动 | `cd docker && cp .env.example .env && docker-compose -f docker-compose.dev.yml up -d` |
-| 生产环境部署 | `cd docker && cp .env.example .env && docker-compose -f docker-compose.prod.yml up -d --build` |
+| 仅数据库 | `cd docker && docker-compose -f docker-compose.dev.yml up -d postgres` |
+| 后端编译 / Lint | `cd backend && go build ./...` / `golangci-lint run ./...` |
+| 前端开发 / 构建 / Lint | `cd frontend && npm run dev` / `npm run build` / `npm run lint` |
+| 重置 admin 密码 | `cd backend && go run ./cmd/resetpw/main.go [新密码]` |
+| 生产部署 | `cd docker && cp .env.example .env && docker-compose -f docker-compose.prod.yml up -d --build` |
