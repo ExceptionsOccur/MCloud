@@ -12,7 +12,7 @@
 | 负责 | 进入 `in_progress` 时必须填执行者标识（AI 会话名或人名）+ 认领日期 |
 | 优先级 | `P0` 阻塞他人 > `P1` 当前迭代 > `P2` 可延后；同级按 ID 顺序 |
 | 验收标准 | 客观可判定（命令通过 / 文件存在 / 行为可复现），禁止主观描述 |
-| 定位 | 涉及文件清单，来源 `docs/CODE_INDEX.md`「功能→代码映射」；**领任务后必须核对/补齐**，行号仅为快照（以 grep 复核为准），补不出先声明、不盲写 |
+| 定位 | 涉及文件清单，来源 `docs/CODE_INDEX.md`「功能→代码映射」；**领任务后必须核对/补齐**。优先写**函数名/路由路径**等稳定锚点；行号仅为快照（以 grep 复核为准，可省略），补不出先声明、不盲写 |
 | 回写 | 完成后必须更新的文档（通常由 AGENTS.md 责任矩阵推导，此处列出例外） |
 
 **认领规则**：一次只领 **1 条** `P0/P1` 任务；领用 = 把该条移到 `in_progress` 并填写负责字段（在写任何代码之前先改本文件）。
@@ -21,20 +21,20 @@
 
 ## in_progress
 
-（认领规则：从 `todo` 取 1 条 P0/P1 移入此处）
+（无。认领规则：从 `todo` 取 1 条 P0/P1 移入此处）
 
 ## todo（按优先级）
 
 - [ ] **T-002** 后端 `services/host_service.go` 拆分 ｜ P1 ｜ 负责: —
-  - 依赖：T-018（先清零 lint 再拆分，避免格式/errcheck 修改与拆分 diff 冲突）
+  - 依赖：已解除（T-018 lint 清零已完成）
   - 内容：拆为 `host_service.go`（CRUD/筛选）+ `host_batch_service.go`（文本/结构化批量）+ `host_csv_service.go`（行映射、导入导出）
   - 定位：`backend/services/host_service.go`（18 个函数，22KB）；回写 `docs/CODE_INDEX.md` 服务索引
   - 验收标准：`cd backend && go build ./...` 与 `golangci-lint run ./...` 通过；**对外 API 行为零变化**；`docs/CODE_INDEX.md` 服务索引同步
   - 分支：`refactor/split-host-service`
 - [ ] **T-003** `controllers/csv.go` 业务逻辑下沉 ｜ P1 ｜ 负责: —
-  - 依赖：T-018（已完成 lint 清零，避免格式修改与下沉 diff 冲突）
+  - 依赖：已解除（T-018 lint 清零已完成）
   - 内容：行数校验、表头判断、去重等逻辑移入 service，controller 只剩绑定+调用+响应（红线 1）
-  - 定位：`backend/controllers/csv.go`（L34 文件后缀、L61 行循环、L65 行数校验、L78 重复判断）→ 下沉至 `services/host_service.go` 的 CSV 部分
+  - 定位：`backend/controllers/csv.go`（文件后缀判断、行循环、行数校验、重复判断）→ 下沉至 `services/host_service.go` 的 CSV 部分
   - 验收标准：controller 中无业务校验代码；导入导出行为不变；`go build` + lint 通过
   - 注意：与 T-002 共享 `host_service.go`，建议排在 T-002 之后或同分支执行
   - 分支：`refactor/csv-controller-thin`
@@ -45,18 +45,12 @@
 - [ ] **T-005** `IpStatistics.vue`（746 行）拆分 ｜ P1 ｜ 负责: —
   - 依赖：T-004
   - 内容：拆出 `components/ip/`（网格局部、探测面板、网段管理），单文件 ≤ 400 行
-  - 定位：`frontend/src/views/IpStatistics.vue`（template 1-96 / script 98-432 / 全文 746 行）→ 新建 `frontend/src/components/ip/`
+  - 定位：`frontend/src/views/IpStatistics.vue`（全文 746 行）→ 新建 `frontend/src/components/ip/`
   - 验收标准：无单个 `.vue` 超过 500 行；`npm run lint:check && npm run build` 通过；功能无回归
 - [ ] **T-006** 测试骨架 ｜ P1 ｜ 负责: —
   - 内容：后端 `services` 表驱动单测（先覆盖主机 CRUD、登录）+ 前端 Vitest 冒烟
   - 定位：新建 `backend/services/*_test.go`；前端 `frontend/package.json`（加 vitest 依赖与 script）+ `src/**/__tests__/`
   - 验收标准：`cd backend && go test ./...` 有用例非零且通过；`npm run test` 可运行
-- [ ] **T-007** CI 流水线落地 ｜ P1 ｜ 负责: —
-  - 依赖：无（可与 T-006 并行）
-  - 内容：`.github/workflows/ci.yml` 执行 `go build` / `golangci-lint` / `npm run lint:check`（CI 禁用带 `--fix` 的 `lint`）/ `npm run build` / `bash scripts/check_docs.sh`
-  - 定位：新建 `.github/workflows/ci.yml`（`.github/` 目前不存在）；回写 `docs/DEVELOPMENT.md` CI 章节
-  - 验收标准：workflow 文件存在且语法有效；DEVELOPMENT.md 删除「CI 尚未落地」警告
-  - 回写：`docs/DEVELOPMENT.md` CI 章节、PROJECT_STATUS 技术债表
 - [ ] **T-008** 数据导出报表（Excel/CSV） ｜ P2 ｜ 负责: —
   - 内容：报表导出接口与前端入口
   - 定位：新建 `backend/services/report_service.go` + `controllers/report.go`，注册于 `routes/routes.go`；前端入口 `components/SearchToolbar.vue` / `views/HostManagement.vue`；CSV 工具复用 `utils/csv.go`（BOM 红线）
@@ -124,10 +118,17 @@
 
 （无。填写格式：`- [ ] **T-xxx** … ｜ blocked 原因：具体条件` —— 泛泛的"困难"不算 blocked）
 
+## 已取消
+
+| ID | 任务 | 取消时间 | 原因 |
+|----|------|----------|------|
+| T-007 | CI 流水线落地 | 2026-10-06 | 项目暂不引入 CI/CD；所有集成与检验由 agent 完成任务后本地执行「验证命令」（见 [AGENTS.md](../AGENTS.md#验证命令门禁)） |
+
 ## done
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-023 | 文档卫生清理 + 移除 CI/CD 规划内容（修 T-002/T-003 过期依赖、T-007 入已取消、AGENTS/DEVELOPMENT/PROJECT_STATUS 同步、CODE_INDEX 行号口径、完成度计数） | 2026-10-06 | `42d4c10` | 验收：`bash scripts/check_docs.sh` 0 errors/0 warnings；规划语境无 T-007/CI 流水线残留；协议条文改动（AGENTS 分支协议、DEVELOPMENT 门禁章节）经人类授权 |
 | T-017 | 文档事实修正与协议补强（A 事实修正 7 项、B 门禁前置 3 项、C 快照协议 4 项、E 业务文档补缺 2 项、F 入队 T-019/T-020） | 2026-10-06 | `6187228` | 验收：`bash scripts/check_docs.sh` 0 errors/0 warnings；E1/E2 章节与代码一致；协议条文改动仅限 B/C 列明项 |
 | T-021 | 文档一致性自动校验脚本 `scripts/check_docs.sh`（5 项检查 links/tree/snapshot/counts/shas + AGENTS/ROADMAP 4 处接线） | 2026-10-06 | `81f442a` | 验收：基线输出 5 errors/6 warnings 与已知漂移完全一致不误报；注入坏锚点/坏快照 → exit 1，恢复后 exit 0；`bash -n` 通过；T-012/T-007 验收已接线 |
 | T-018 | 后端 lint 清零 + golangci-lint v2 配置迁移（`.golangci.yml` v1→v2、修 20 个问题、DEVELOPMENT Linter 章节同步） | 2026-10-06 | `ec2bed6` | 验收：`go build` + `golangci-lint run ./...` exit 0；CSV 解析容错语义经临时冒烟测试确认不变 |

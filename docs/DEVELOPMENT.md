@@ -257,11 +257,11 @@ docs: AGENTS.md 补充IP网段管理API
 
 ---
 
-## Linter 与 CI 门禁
+## Linter 与验证门禁
+
+本项目**暂不引入 CI/CD**；所有集成与检验由 agent 在完成任务后**本地执行验证命令**（清单见 [AGENTS.md](../AGENTS.md#验证命令门禁)），全部通过才算任务完成。
 
 提交代码前，必须在本地通过 linter 检查。
-
-> ⚠️ **现状（2026-10-06）**：CI 流水线尚未落地（`.github/workflows` 不存在，任务 `T-007`），下述 PR 门禁为**规划目标**；在此之前以本地自检为准。
 
 ### 后端（Go）
 
@@ -281,18 +281,8 @@ cd frontend && npm run lint:check
 ```
 
 - 配置文件：`frontend/.eslintrc.cjs`
-- 两个脚本的区别：`lint:check` = 纯检查（`eslint . --ext .js,.vue`，**门禁与 CI 用这个**）；`lint` = 同参数 + `--fix` **会改写文件**，仅用于本地批量修复
+- 两个脚本的区别：`lint:check` = 纯检查（`eslint . --ext .js,.vue`，**门禁用这个**）；`lint` = 同参数 + `--fix` **会改写文件**，仅用于本地批量修复
 - 提交前执行：`npm run lint:check` + `npm run build`
-
-### CI 流水线（PR 触发）
-
-```
-PR 提交
-  → Lint（Go + JS 并行）
-  → Build（后端编译 + 前端构建）
-  → 测试（待补充）
-  → 全部通过才可合并
-```
 
 ---
 

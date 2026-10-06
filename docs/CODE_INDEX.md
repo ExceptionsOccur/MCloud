@@ -2,6 +2,8 @@
 
 本文件用于快速定位功能对应的代码位置。目录约定与分层规范见 [AGENTS.md](../AGENTS.md)，开发规范见 [DEVELOPMENT.md](./DEVELOPMENT.md)。
 
+> 定位以**文件/函数名**为准；行号快照见 [ROADMAP.md](./ROADMAP.md) 各任务「定位」字段，以 grep 复核为准。
+
 ## 目录
 
 - [后端代码索引](#后端代码索引)
