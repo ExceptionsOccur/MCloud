@@ -21,14 +21,6 @@
 
 ## in_progress
 
-- [ ] **T-021** 文档自动校验脚本（工作流闭环） ｜ P1 ｜ 负责: AI/opencode ｜ 认领: 2026-10-06
-  - 背景：文档校验此前全靠人工（AGENTS 验证命令原文：「无 md lint 工具，人工/脚本核对」），漂移只能靠会话临场发现，无法闭环
-  - 内容：新增 `scripts/check_docs.sh`（bash + coreutils/sed/awk，零第三方依赖），5 类检查：① 全部 md 相对链接+锚点 ② ARCHITECTURE 目录树 ↔ 真实文件（双向）③ AGENTS 状态快照 ↔ ROADMAP 一致性（todo/in_progress ID 集合、next_task=首条 todo）④ 计数类事实（`N 个 SQL`↔migrations、`N 张表`↔数据模型章节数、`N 个函数`↔`grep -c '^func '`）⑤ ROADMAP done 提交号在 git 历史中存在
-  - 定位：新建 `scripts/check_docs.sh`；接线 4 处 —— `AGENTS.md` 验证命令「文档改动」与回写协议步骤 5、`docs/ROADMAP.md` T-012 验收标准、T-007 CI 内容
-  - 验收标准：`bash scripts/check_docs.sh` 对当前仓库的输出与已知漂移**完全一致（不误报）**；注入坏锚点与快照不一致后 exit 1 并定位；恢复后 exit 0；`bash -n scripts/check_docs.sh` 通过；4 处接线完成
-  - 回写：AGENTS（协议条文，人类已授权）、ROADMAP（T-012/T-007/T-021 状态）、PROJECT_STATUS 变更记录
-  - 分支：`feat/docs-check`
-
 （认领规则：从 `todo` 取 1 条 P0/P1 移入此处）
 
 ## todo（按优先级）
@@ -120,6 +112,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-021 | 文档一致性自动校验脚本 `scripts/check_docs.sh`（5 项检查 links/tree/snapshot/counts/shas + AGENTS/ROADMAP 4 处接线） | 2026-10-06 | `81f442a` | 验收：基线输出 5 errors/6 warnings 与已知漂移完全一致不误报；注入坏锚点/坏快照 → exit 1，恢复后 exit 0；`bash -n` 通过；T-012/T-007 验收已接线 |
 | T-018 | 后端 lint 清零 + golangci-lint v2 配置迁移（`.golangci.yml` v1→v2、修 20 个问题、DEVELOPMENT Linter 章节同步） | 2026-10-06 | `ec2bed6` | 验收：`go build` + `golangci-lint run ./...` exit 0；CSV 解析容错语义经临时冒烟测试确认不变 |
 | T-001 | 协作文档体系改造（AGENTS 改为 AI 入口、ROADMAP 改为任务队列、删除 ONBOARDING、分支策略对齐 main+feature） | 2026-10-06 | `0237d40` | 验收：无 ONBOARDING 链接残留、AGENTS 含状态快照/会话协议/验证命令、md 链接锚点全通 |
 | — | 2026-09 及之前的交付项 | — | 见 `git log` | 详细记录见 [PROJECT_STATUS.md](./PROJECT_STATUS.md#近期变更记录) |

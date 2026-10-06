@@ -147,6 +147,14 @@
 
 ---
 
+## 仓库工具
+
+| 文件 | 职责 |
+|------|------|
+| `scripts/check_docs.sh` | 文档一致性校验 5 项（links/tree/snapshot/counts/shas），AGENTS「验证命令」文档改动项，支持 `--only`/`--list` |
+
+---
+
 ## 功能 → 代码映射
 
 | 功能 | 后端 | 前端 |
