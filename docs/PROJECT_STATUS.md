@@ -43,7 +43,7 @@
 - `docs:` 会话协议新增第 4 步「定位代码」（读 CODE_INDEX 补齐任务「定位」字段，补不出先声明不盲写）；ROADMAP 字段约定新增「定位」，14 条 todo 任务已回填涉及文件清单
 - `docs:` 补齐 CODE_INDEX 缺失的**人员管理模块**（models/controllers/services/api/views/功能映射/`persons` 表 共 8 处）；修正 README「4 个功能页面」为 5 个并补 `/personnel` 与设置菜单入口
 - `docs:` **统一迁移口径**（消除红线 9 与运行时的矛盾）：迁移 SQL = 归档/评审要求（不被执行），运行时由启动时 `AutoMigrate` 兜底——DEVELOPMENT.md 迁移规范加口径表、AGENTS 红线 9 改写、PROJECT_STATUS 注意事项 8 与 ARCHITECTURE 目录树同步（代码事实：`go.mod` 无 goose，`Migrate()` 仅 AutoMigrate+seedAdmin）
-- `docs:` 排查确认 **goose 从未实装**（8 个 `-- +goose` SQL 从未执行、`go.mod`/`go.sum` 无依赖、全仓库无调用）；按人类决定暂不实装，新增 `T-016` 入队并标注"口径反转回写"要求
+- `docs:` 排查确认 **goose 从未实装**（7 个 `-- +goose` SQL 从未执行、`go.mod`/`go.sum` 无依赖、全仓库无调用）；按人类决定暂不实装，新增 `T-016` 入队并标注"口径反转回写"要求
 
 ### 2026-09-30
 
@@ -88,6 +88,7 @@
 | GORM 列名 | 缩写字段（如 `CIDR`）默认命名异常（`c_id_r`），须显式 `gorm:"column:xxx"` |
 | 探测依赖 ping | 依赖宿主机 `ping` 命令；Linux `-W` 单位为秒，已改用 context 控制 100ms 超时 |
 | 密码哈希强度 | SHA-256 + 盐，非慢哈希，生产环境建议升级 bcrypt |
+| ServerPort 硬编码 | `config.go:43` 默认值 `"5677"` 违反红线 3（配置外置），待改环境变量，`T-020` 已入队 |
 
 ## 注意事项
 

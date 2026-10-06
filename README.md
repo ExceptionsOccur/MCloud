@@ -57,7 +57,7 @@ MCloud 是一个面向运维人员的资产信息管理系统，提供 Web 网�
 | 层次 | 技术 |
 |------|------|
 | 后端框架 | Go 1.22+ / Gin |
-| ORM / 迁移 | GORM v2 + SQL 迁移文件 |
+| ORM / 迁移 | GORM v2（启动时 `AutoMigrate` 兜底建表）+ SQL 迁移文件（归档/评审，不自动执行） |
 | 数据库 | PostgreSQL 16 |
 | 前端框架 | Vue 3 + Vite |
 | UI 组件库 | Element Plus |

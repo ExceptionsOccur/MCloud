@@ -12,6 +12,7 @@
 - [资源统计（区分运行状态）](#资源统计区分运行状态)
 - [业务统计聚合](#业务统计聚合)
 - [云资源总览录入](#云资源总览录入)
+- [人员管理](#人员管理)
 - [前端表格与表单](#前端表格与表单)
 
 ---
@@ -163,6 +164,18 @@ ICMP（`ping -c 1`，context 超时 100ms）+ TCP 22/3389（超时 100ms），�
 - 后端 `PUT /api/cloud-resources` 按 `region` upsert（存在则更新，否则创建）
 - 前端入口在右上角设置菜单 →「云资源录入」，按区域 Tab 分别录入
 - 资源统计页监听 `saved` 事件，保存后自动刷新
+
+## 人员管理
+
+- 字段：`name` / `contact` / `unit`，`normalizePerson` 统一 `TrimSpace`，`name` 必填
+- **重复判定**（`services/person_service.go` → `Create`）：`name + contact + unit` 三字段**全等**才判重，命中返回「该人员已存在」；`Update` 不判重
+- **错误码**：`person.Create/Update` 业务错误（含重复）→ `40001`；`person.Delete` 被主机引用 → `40901`（`ErrPersonReferenced`，文案含「N 台主机正在使用」）；人员不存在 → `40401`
+- **主机侧关联校验**：`host` 创建/更新/批量编辑传 `person_id` 时经 `validatePersonID` 校验人员存在，不存在 → `40001`；`person_id: null` 解除关联；host 其余冲突类错误 → `40901`
+- **手输自动建人员**（前端 `HostFormDialog.vue` → `resolvePersonId()`，提交主机时执行）：
+  1. 表单已选人员且姓名一致 → 直接用其 `person_id`
+  2. 否则按姓名在已加载人员列表中命中 → 复用既有 id
+  3. 均未命中 → 调 `POST /api/persons`，用表单的申请人/联系方式/申请单位**新建人员**，取新 id 关联；接口失败返回 `false`，主机提交随即中止（错误提示由 axios 拦截器统一弹出）
+- 列表 `keyword` 对姓名/联系方式/单位 `ILIKE` 模糊搜索，每条附 `host_count`（关联主机数）
 
 ## 前端表格与表单
 
