@@ -32,9 +32,11 @@
 
 ### 2026-10-06
 
+- `81f442a` `feat:` **T-021 文档一致性自动校验脚本**：新增 `scripts/check_docs.sh`（bash+coreutils，零依赖），5 项检查——links（全量 md 相对链接与 GitHub slug 锚点，含 CJK 标题）、tree（ARCHITECTURE 目录树双向比对真实文件）、snapshot（AGENTS 快照 ↔ ROADMAP 的 todo/in_progress/next_task）、counts（`N 个 SQL`/`N 张表`/`N 个函数` 等计数与仓库实际）、shas（done 表提交号在 git 历史中存在）；支持 `--only`/`--list`；接线 AGENTS 验证命令与回写协议步骤 5、ROADMAP T-012 验收与 T-007 CI 内容；当前基线 5 errors/6 warnings 全部为已知文档漂移（由 T-017 修复），注入坏锚点与快照不一致可正确报错退出
+- `ec2bed6` `chore:` **T-018 后端 lint 清零 + golangci-lint v2 配置迁移**：`backend/.golangci.yml` 由 v1 升级为 v2 格式（此前 v2.14.0 读不了 v1 配置，`golangci-lint run` 直接 `exit 3`）；修复全部 20 个问题——errcheck 10（`godotenv.Load`×2、WebSocket `Marshal`/`WriteMessage`、CSV `strconv.Atoi`×4 与 `writer.Write`×2）、gofmt 5、goimports 1、ineffassign 1、staticcheck QF 3；CSV 行解析抽出 `atoiOrZero` 保持容错语义，`BuildCSVOutput` 改为返回 error 并在 controller 处理；DEVELOPMENT Linter 章节同步 v2 规则集
+
 > 本日文档改造整体提交于 `0237d40`（下述各条为该提交内的细分变更）。
 
-- `ec2bed6` `chore:` **T-018 后端 lint 清零 + golangci-lint v2 配置迁移**：`backend/.golangci.yml` 由 v1 升级为 v2 格式（此前 v2.14.0 读不了 v1 配置，`golangci-lint run` 直接 `exit 3`）；修复全部 20 个问题——errcheck 10（`godotenv.Load`×2、WebSocket `Marshal`/`WriteMessage`、CSV `strconv.Atoi`×4 与 `writer.Write`×2）、gofmt 5、goimports 1、ineffassign 1、staticcheck QF 3；CSV 行解析抽出 `atoiOrZero` 保持容错语义，`BuildCSVOutput` 改为返回 error 并在 controller 处理；DEVELOPMENT Linter 章节同步 v2 规则集
 - `docs:` **T-001 协作文档体系改造**：AGENTS.md 重写为 AI 协作入口（状态快照 + 会话/回写协议 + 术语表 + 验证命令）；`ROADMAP.md` 改造为任务队列（T-xxx、验收标准、状态流转，唯一事实来源）；删除 `docs/ONBOARDING.md` 内容并入 AGENTS.md；分支策略对齐为 `main + feature`；修正 README 端口、ARCHITECTURE 目录树、DEVELOPMENT 中的 `develop` 残留
 - `docs:` 红线 7 改为**按文件类别的修改权限**（状态同步类必须回写 / 协议条文默认禁止、仅人类发起的 `docs:` 任务可改 / 构建文件始终禁止），消除与回写协议的冲突；DEVELOPMENT.md 核心原则第 5 条同步
 - `docs:` 新增待开发任务 `T-013` 零信任台账（字段已确认）、`T-014` 域名台账（字段待细化）、`T-015` `hosts.public_ip` 改布尔「是否做了映射」+ 双台账关联；均为 P2 暂缓，依赖与待确认项见 ROADMAP

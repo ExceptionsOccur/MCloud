@@ -21,7 +21,7 @@
 
 ## in_progress
 
-（无。按「认领规则」从 `todo` 中取 1 条 P0/P1 移入此处）
+（认领规则：从 `todo` 取 1 条 P0/P1 移入此处）
 
 ## todo（按优先级）
 
@@ -52,7 +52,7 @@
   - 验收标准：`cd backend && go test ./...` 有用例非零且通过；`npm run test` 可运行
 - [ ] **T-007** CI 流水线落地 ｜ P1 ｜ 负责: —
   - 依赖：无（可与 T-006 并行）
-  - 内容：`.github/workflows/ci.yml` 执行 `go build` / `golangci-lint` / `npm run lint` / `npm run build`
+  - 内容：`.github/workflows/ci.yml` 执行 `go build` / `golangci-lint` / `npm run lint` / `npm run build` / `bash scripts/check_docs.sh`
   - 定位：新建 `.github/workflows/ci.yml`（`.github/` 目前不存在）；回写 `docs/DEVELOPMENT.md` CI 章节
   - 验收标准：workflow 文件存在且语法有效；DEVELOPMENT.md 删除「CI 尚未落地」警告
   - 回写：`docs/DEVELOPMENT.md` CI 章节、PROJECT_STATUS 技术债表
@@ -74,8 +74,8 @@
   - 验收标准：探测颜色状态机行为与 `docs/BUSINESS_LOGIC.md` 描述一致
   - 回写：BUSINESS_LOGIC「探测方式」
 - [ ] **T-012** 文档一致性巡检 ｜ P2 ｜ 负责: — ｜ 备注: 适合小型会话
-  - 定位：`docs/*.md`、`README.md`、`AGENTS.md`（协议条文部分需人类授权，见红线 7）
-  - 验收标准：全部 md 相对链接/锚点可解析；目录树与实际文件一致；发现的错误全部修复
+  - 定位：`docs/*.md`、`README.md`、`AGENTS.md`（协议条文部分需人类授权，见红线 7）；校验器 `scripts/check_docs.sh`（T-021 已交付）
+  - 验收标准：`bash scripts/check_docs.sh` 退出码 0（links/tree/snapshot/counts/shas 全绿）；warn 一并处理；发现的错误全部修复
 - [ ] **T-013** 零信任台账 ｜ P2 ｜ 负责: — ｜ 备注: 字段清单已由人类确认
   - 内容：新增零信任接入申请台账，字段：**申请单位、账户名、申请人联系方式、申请主机、申请端口、申请时间、密码（可选）、备注**；后端 models + 迁移 SQL + CRUD API + 前端管理页
   - 定位：后端新建 `models/zero_trust.go`、`services/zero_trust_service.go`、`controllers/zero_trust.go`，注册 `routes/routes.go`，迁移 SQL 入 `migrations/`；前端新建 `views/ZeroTrustLedger.vue`、`api/zero_trust.js`、`router/index.js` 加路由（入口模式参照 `CloudResourceDialog` 或顶部 Tab 二选一，实现时定）
@@ -112,6 +112,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-021 | 文档一致性自动校验脚本 `scripts/check_docs.sh`（5 项检查 links/tree/snapshot/counts/shas + AGENTS/ROADMAP 4 处接线） | 2026-10-06 | `81f442a` | 验收：基线输出 5 errors/6 warnings 与已知漂移完全一致不误报；注入坏锚点/坏快照 → exit 1，恢复后 exit 0；`bash -n` 通过；T-012/T-007 验收已接线 |
 | T-018 | 后端 lint 清零 + golangci-lint v2 配置迁移（`.golangci.yml` v1→v2、修 20 个问题、DEVELOPMENT Linter 章节同步） | 2026-10-06 | `ec2bed6` | 验收：`go build` + `golangci-lint run ./...` exit 0；CSV 解析容错语义经临时冒烟测试确认不变 |
 | T-001 | 协作文档体系改造（AGENTS 改为 AI 入口、ROADMAP 改为任务队列、删除 ONBOARDING、分支策略对齐 main+feature） | 2026-10-06 | `0237d40` | 验收：无 ONBOARDING 链接残留、AGENTS 含状态快照/会话协议/验证命令、md 链接锚点全通 |
 | — | 2026-09 及之前的交付项 | — | 见 `git log` | 详细记录见 [PROJECT_STATUS.md](./PROJECT_STATUS.md#近期变更记录) |

@@ -50,6 +50,9 @@
 go/
 ├── README.md                      # 功能特性与使用说明
 ├── AGENTS.md                      # 项目总纲（统一入口）
+├── scripts/                       # 仓库自动化脚本
+│   └── check_docs.sh              # 文档一致性校验（链接/目录树/状态快照/计数/提交号）
+│
 ├── docs/                          # 工程文档
 │   ├── ROADMAP.md                 # 任务队列（任务状态唯一事实来源）
 │   ├── DEVELOPMENT.md             # 开发规范与准则
