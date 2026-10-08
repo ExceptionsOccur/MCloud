@@ -22,13 +22,7 @@
 
 ## in_progress
 
-- [ ] **T-014** 域名台账 ｜ P2 ｜ 负责: AI 2026-10-08 ｜ 备注: 2026-10-08 人类确认采用参考项 5 字段
-  - 内容：新增域名台账，字段：**域名、解析公网 IP、服务商、到期时间、备注**
-  - 定位：与 T-013 同构 —— 后端 `models/domain.go`、`services/domain_service.go`、`controllers/domain.go` + `routes/routes.go`、`database/postgres.go` AutoMigrate，迁移 SQL 入 `migrations/`；前端 `views/DomainLedger.vue`、`api/domain.js`、`router/index.js` 加路由 `/domain-ledger`
-  - 验收标准：5 个字段齐全可增删改查；`go build` + `golangci-lint` + 前端 `npm run lint:check` 通过；表结构记入 `docs/ARCHITECTURE.md`、接口记入 `docs/API.md`
-  - 进入条件（2026-10-08 人类确认）：字段清单 = 参考项 5 字段
-  - 回写：ARCHITECTURE.md、API.md、CODE_INDEX.md、README.md、PROJECT_STATUS 完成度
-  - 分支：`feat/domain-ledger`
+（无。认领规则：从 `todo` 取 1 条 P0/P1 移入此处）
 
 ## todo（按优先级）
 
@@ -122,6 +116,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-014 | 域名台账 | 2026-10-08 | `4e0190c` | 验收：5 字段 CRUD + 域名唯一；前后端验证通过 |
 | T-013 | 零信任台账 | 2026-10-08 | `6a6e760` | 验收：7 字段 CRUD + 主机 FK 校验；前后端验证通过 |
 | T-025 | 协议补强：临时任务入队 + 提交权限时序 + 分支/接管规则 | 2026-10-06 | `1837874` | 验收：A.0/A.4/D 与红线 5 例外落地；提交号时序兼容 shas；check_docs.sh 0 errors |
 | T-024 | 文档回写文风上限（防膨胀） | 2026-10-06 | `bcfb410` | 验收：`check_docs.sh` 0 errors；三处口径一致；超长条目已压缩 |
