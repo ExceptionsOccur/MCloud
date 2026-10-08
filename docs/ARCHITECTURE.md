@@ -278,8 +278,8 @@ go/
 | 申请单位 | `apply_unit` | VARCHAR(128) | NOT NULL |
 | 账户名 | `account_name` | VARCHAR(64) | NOT NULL |
 | 申请人联系方式 | `contact` | VARCHAR(64) | |
-| 申请主机 | `host_id` | INTEGER | NOT NULL, FK → hosts(id)，应用层禁止删除被引用主机 |
-| 申请端口 | `port` | INTEGER | NOT NULL, 1-65535 |
+| 公网IP入口 | `public_ip` | VARCHAR(45) | 选填，须在 `public_ips` 资源池；接入地区读时带出 |
+| 接入目标 | `targets` | TEXT | NOT NULL，`host_id:port` 逗号分隔多组配对；应用层禁止删除被引用主机 |
 | 系统名称 | `system_name` | VARCHAR(128) | 选填 |
 | 申请时间 | `apply_time` | TIMESTAMPTZ | NOT NULL |
 | 备注 | `remark` | TEXT | |
@@ -322,7 +322,7 @@ go/
 - `persons.name` 必填，姓名 + 联系方式 + 单位完全重复视为同一人员
 - `ip_subnets.cidr` 仅允许 `/24` IPv4 网段，写入时自动规范化为网络地址（末位归 0）
 - 系统**不预置默认网段**，由用户在「IP统计 → 管理网段」中维护
-- `zero_trusts.host_id` 外键关联 `hosts.id`；主机被零信任台账引用时禁止删除（应用层校验，返回 `40901`）
+- `zero_trusts.targets` 为 `host_id:port` 多组配对（无数据库外键）；主机被零信任台账引用时禁止删除（应用层包含式匹配校验，返回 `40901`）；`public_ip` 须在公网IP资源池，接入地区（`exit_location`）读时带出不落库
 - `port_mappings.host_id` 外键关联 `hosts.id`；外网/内网端口列表长度必须一致；主机被映射引用时禁止删除
 - `hosts.ip_mapped` 由映射台账自动重算（有映射=true，无=false），主机表单不可手改
 - `public_ips.ip` 唯一约束，公网 IP 资源池录入；允许直接删除（无外键引用校验）

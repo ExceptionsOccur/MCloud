@@ -52,6 +52,12 @@
   - 内容：后端 `services` 表驱动单测（先覆盖主机 CRUD、登录）+ 前端 Vitest 冒烟
   - 定位：新建 `backend/services/*_test.go`；前端 `frontend/package.json`（加 vitest 依赖与 script）+ `src/**/__tests__/`
   - 验收标准：`cd backend && go test ./...` 有用例非零且通过；`npm run test` 可运行
+- [ ] **T-037** 零信任 `apply_time` 无时区格式解析失败 ｜ P1 ｜ 负责: — ｜ 备注: T-036 冒烟发现的既有缺陷（改动前即存在，非 T-036 引入）
+  - 内容：`apply_time` 传 `2026-10-08T12:00:00`（无时区）被 RFC3339 解析拒绝返回 `40001`；前端 date-picker `value-format="YYYY-MM-DDTHH:mm:ss"` 正是该格式 → 带时间的新增/编辑实际失败
+  - 定位：`backend/services/zero_trust_service.go`（`ZeroTrustRequest.ApplyTime *time.Time`）、`backend/controllers/zero_trust.go`（Create/Update `ShouldBindJSON`）、`frontend/src/views/ZeroTrustLedger.vue`（date-picker `value-format`、payload `apply_time`）
+  - 验收标准：前端带时间的新增与编辑提交返回 `code 0`，无时区时间按服务器本地时区解释；`go build`+`golangci-lint`+`lint:check`+`build` 全绿
+  - 分支：`fix/zero-trust-apply-time`
+  - 回写：API.md `apply_time` 格式口径
 - [ ] **T-008** 数据导出报表（Excel/CSV） ｜ P2 ｜ 负责: —
   - 内容：报表导出接口与前端入口
   - 定位：新建 `backend/services/report_service.go` + `controllers/report.go`，注册于 `routes/routes.go`；前端入口 `components/SearchToolbar.vue` / `views/HostManagement.vue`；CSV 工具复用 `utils/csv.go`（BOM 红线）
@@ -102,6 +108,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-036 | 零信任台账多组主机:端口配对 + 公网IP带出地区 | 2026-10-08 | `ab7e3d0` | 验收：targets 配对 CRUD+迁移；公网IP池校验带出地区；批量等长配对；引用40901；门禁+冒烟全绿 |
 | T-035 | 映射台账公网IP改为资源池选择 | 2026-10-08 | `627ee8f` | 验收：公网IP下拉选资源池；表单无运营商/出口位置；列表从资源池带出 |
 | T-034 | 域名台账改造为端口映射台账 | 2026-10-08 | `d26d6ad` | 验收：port_mappings 多端口等长；ip_mapped 自动；/mapping-ledger；迁 domains 数据 |
 | T-033 | 域名/公网IP出口位置字段 | 2026-10-08 | `aac7fea` | 验收：exit_location；运营商之后；域名+公网IP+批量列；迁移+验证全绿 |

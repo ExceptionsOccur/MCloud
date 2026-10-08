@@ -392,11 +392,14 @@
                 </template>
               </el-table-column>
               <el-table-column
-                prop="port"
                 label="申请端口"
-                width="90"
+                min-width="110"
                 align="center"
-              />
+              >
+                <template #default="{ row }">
+                  {{ ztPortsForHost(row) || '-' }}
+                </template>
+              </el-table-column>
             </el-table>
             <el-empty
               v-else
@@ -622,6 +625,21 @@ function fillFormFromHost(h) {
 
   relations.zeroTrusts = h.zero_trusts || []
   relations.portMappings = h.port_mappings || []
+}
+
+function ztPortsForHost(record) {
+  if (!record?.targets) return ''
+  const ports = String(record.targets)
+    .split(',')
+    .map(seg => seg.trim())
+    .filter(Boolean)
+    .map(seg => {
+      const [hid, port] = seg.split(':')
+      return { hostId: Number(hid), port }
+    })
+    .filter(p => p.hostId === editId.value && p.port)
+    .map(p => p.port)
+  return ports.join(', ')
 }
 
 async function open(data) {

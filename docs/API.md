@@ -129,9 +129,9 @@
 
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
-| GET | `/api/zero-trusts` | `zeroTrust.List` | 零信任申请列表，`keyword` 模糊匹配申请单位/账户名/联系方式/系统名称/备注/主机名/IP |
-| POST | `/api/zero-trusts` | `zeroTrust.Create` | 新增申请（申请单位、账户名、申请主机、申请端口、申请时间必填；`system_name` 选填） |
-| POST | `/api/zero-trusts/batch` | `zeroTrust.BatchCreateText` | 批量添加（文本粘贴，主机按内网IP定位；合法行全部插入） |
+| GET | `/api/zero-trusts` | `zeroTrust.List` | 零信任申请列表，`keyword` 模糊匹配申请单位/账户名/联系方式/系统名称/备注/公网IP/出口位置/主机名/IP |
+| POST | `/api/zero-trusts` | `zeroTrust.Create` | 新增申请（申请单位、账户名、`targets` 配对接入目标、申请时间必填；`system_name`/`public_ip` 选填） |
+| POST | `/api/zero-trusts/batch` | `zeroTrust.BatchCreateText` | 批量添加（文本粘贴，内网IP与申请端口两列等长位置配对；合法行全部插入） |
 | PUT | `/api/zero-trusts/:id` | `zeroTrust.Update` | 修改申请记录 |
 | DELETE | `/api/zero-trusts/:id` | `zeroTrust.Delete` | 删除申请记录 |
 
@@ -319,25 +319,29 @@ POST /api/zero-trusts
   "apply_unit": "某某研究院",
   "account_name": "zhangsan",
   "contact": "13800000000",
-  "host_id": 1,
-  "port": 22,
+  "targets": [
+    { "host_id": 1, "port": 22 },
+    { "host_id": 2, "port": 3389 }
+  ],
+  "public_ip": "203.0.113.50",
   "system_name": "统一门户",
   "apply_time": "2026-10-08T10:00:00",
   "remark": "临时开通"
 }
 ```
 
-- `apply_unit` / `account_name` / `host_id` / `port` 必填；`port` 范围 1-65535
+- `apply_unit` / `account_name` / `targets` 必填；`targets` 为「主机:端口」**配对**数组（一次申请聚合多组，可表达 A:22、B:3389 等任意组合，存储为 `host_id:port` 逗号串），各端口范围 1-65535，重复配对自动去重
+- `targets[].host_id` 对应 `hosts.id`，任一主机不存在返回 `40001`
+- `public_ip` 选填，须在公网IP资源池中（否则 `40001`）；**接入地区**（`exit_location`）由资源池读时带出，不单独存列
 - `system_name` 选填（VARCHAR 128），列表列与表单位于「申请端口」之后
-- `host_id` 为 `hosts.id` 外键；主机不存在返回 `40001`
 - `apply_time` 可选，缺省为服务端当前时间
-- 列表返回嵌套 `host` 对象（名称/IP）；删除主机时若被台账引用返回 `40901`
+- 列表 `targets` 返回配对数组并解析 `host_name`/`private_ip`，附 `exit_location`；删除主机时若被台账引用返回 `40901`
 
 ### 台账批量添加请求体
 
 ```json
 POST /api/zero-trusts/batch
-{ "text": "申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注\n某某研究院,zhangsan,138,192.168.1.10,22,统一门户" }
+{ "text": "申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注,公网IP\n某某研究院,zhangsan,138,192.168.1.10,22,统一门户,,,203.0.113.50" }
 ```
 
 ```json
@@ -345,9 +349,9 @@ POST /api/port-mappings/batch
 { "text": "公网IP,内网IP,外网端口,内网端口,域名,备注\n203.0.113.10,192.168.1.10,80,8080,www.example.com,业务" }
 ```
 
-- 零信任列顺序：`申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注`（至少前 4 列）；主机按内网IP定位，不存在则该行失败；合法行全部插入
+- 零信任列顺序：`申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注,公网IP`（至少前 4 列，公网IP 第 9 列选填）；内网IP与申请端口两列**数量必须一致、按位置配对**，主机按内网IP定位，不存在则该行失败；公网IP须在资源池；合法行全部插入
 - 映射列顺序：`公网IP,内网IP,外网端口,内网端口,域名,备注`（至少前 4 列）；公网IP须在资源池；端口数量不一致该行失败
-- 映射的运营商/出口位置由公网IP资源池带出，不在批量行填写
+- 映射的运营商/出口位置由公网IP资源池带出，不在批量行填写；零信任的接入地区同理由公网IP带出
 - 返回 `{success, skipped, errors, line_errors[]}`，与主机批量接口同结构
 
 ### 主机的人员关联

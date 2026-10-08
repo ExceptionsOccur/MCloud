@@ -91,7 +91,7 @@
       <div class="toolbar">
         <el-input
           v-model="keyword"
-          placeholder="搜索申请单位 / 账户名 / 联系方式 / 系统名称 / 主机 / 备注"
+          placeholder="搜索申请单位 / 账户名 / 联系方式 / 系统名称 / 主机 / 公网IP / 出口位置 / 备注"
           clearable
           style="width: 320px"
           @keyup.enter="loadList"
@@ -159,19 +159,38 @@
           show-overflow-tooltip
         >
           <template #default="{ row }">
-            <span v-if="row.host">
-              {{ row.host.name }}
-              <span class="host-ip">({{ row.host.private_ip }})</span>
-            </span>
-            <span v-else>#{{ row.host_id }}</span>
+            <div v-if="row.targets?.length">
+              <div
+                v-for="(t, ti) in row.targets"
+                :key="ti"
+              >
+                {{ t.host_name || `#${t.host_id}` }}
+                <span
+                  v-if="t.private_ip"
+                  class="host-ip"
+                >({{ t.private_ip }})</span>
+              </div>
+            </div>
+            <span v-else>-</span>
           </template>
         </el-table-column>
         <el-table-column
-          prop="port"
           label="申请端口"
-          width="100"
+          min-width="110"
           align="center"
-        />
+        >
+          <template #default="{ row }">
+            <el-tag
+              v-for="(t, ti) in row.targets || []"
+              :key="'p' + ti"
+              size="small"
+              class="port-tag"
+            >
+              {{ t.port }}
+            </el-tag>
+            <span v-if="!row.targets?.length">-</span>
+          </template>
+        </el-table-column>
         <el-table-column
           label="系统名称"
           min-width="140"
@@ -179,6 +198,24 @@
         >
           <template #default="{ row }">
             {{ row.system_name || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="公网IP"
+          min-width="130"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            {{ row.public_ip || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="接入地区"
+          min-width="100"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            {{ row.exit_location || '-' }}
           </template>
         </el-table-column>
         <el-table-column
@@ -275,36 +312,54 @@
           />
         </el-form-item>
         <el-form-item
-          label="申请主机"
-          prop="host_id"
+          label="接入主机与端口"
+          required
         >
-          <el-select
-            v-model="form.host_id"
-            placeholder="请选择申请主机"
-            filterable
-            clearable
-            style="width: 100%"
-            :loading="hostsLoading"
+          <div class="target-rows">
+            <div
+              v-for="(t, idx) in form.targets"
+              :key="idx"
+              class="target-row"
+            >
+              <el-select
+                v-model="t.host_id"
+                placeholder="选择主机"
+                filterable
+                clearable
+                class="target-host"
+                :loading="hostsLoading"
+              >
+                <el-option
+                  v-for="h in hosts"
+                  :key="h.id"
+                  :label="`${h.name} (${h.private_ip})`"
+                  :value="h.id"
+                />
+              </el-select>
+              <el-input-number
+                v-model="t.port"
+                :min="1"
+                :max="65535"
+                controls-position="right"
+                class="target-port"
+              />
+              <el-button
+                link
+                type="danger"
+                :disabled="form.targets.length <= 1"
+                @click="form.targets.splice(idx, 1)"
+              >
+                删除
+              </el-button>
+            </div>
+          </div>
+          <el-button
+            link
+            type="primary"
+            @click="addTargetRow"
           >
-            <el-option
-              v-for="h in hosts"
-              :key="h.id"
-              :label="`${h.name} (${h.private_ip})`"
-              :value="h.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item
-          label="申请端口"
-          prop="port"
-        >
-          <el-input-number
-            v-model="form.port"
-            :min="1"
-            :max="65535"
-            controls-position="right"
-            style="width: 100%"
-          />
+            + 添加一组
+          </el-button>
         </el-form-item>
         <el-form-item
           label="系统名称"
@@ -315,6 +370,32 @@
             placeholder="请输入系统名称（选填）"
             maxlength="128"
           />
+        </el-form-item>
+        <el-form-item
+          label="公网IP"
+          prop="public_ip"
+        >
+          <el-select
+            v-model="form.public_ip"
+            placeholder="从公网IP资源池选择（选填）"
+            filterable
+            clearable
+            style="width: 100%"
+            :loading="publicIPsLoading"
+          >
+            <el-option
+              v-for="ip in publicIPs"
+              :key="ip.ip"
+              :label="ip.isp ? `${ip.ip}（${ip.isp}）` : ip.ip"
+              :value="ip.ip"
+            />
+          </el-select>
+          <div
+            v-if="selectedExitLocation"
+            class="exit-hint"
+          >
+            接入地区：{{ selectedExitLocation }}
+          </div>
         </el-form-item>
         <el-form-item
           label="申请时间"
@@ -368,6 +449,7 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { getZeroTrusts, createZeroTrust, updateZeroTrust, deleteZeroTrust } from '../api/zero_trust'
 import { getHosts } from '../api/host'
+import { getPublicIPs } from '../api/public_ip'
 import { formatTime } from '../utils'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
@@ -389,14 +471,16 @@ const editId = ref(null)
 const formRef = ref(null)
 const hosts = ref([])
 const hostsLoading = ref(false)
+const publicIPs = ref([])
+const publicIPsLoading = ref(false)
 
 const form = reactive({
   apply_unit: '',
   account_name: '',
   contact: '',
-  host_id: null,
-  port: 22,
+  targets: [{ host_id: null, port: 22 }],
   system_name: '',
+  public_ip: '',
   apply_time: '',
   remark: ''
 })
@@ -404,10 +488,13 @@ const form = reactive({
 const rules = {
   apply_unit: [{ required: true, message: '请输入申请单位', trigger: 'blur' }],
   account_name: [{ required: true, message: '请输入账户名', trigger: 'blur' }],
-  host_id: [{ required: true, message: '请选择申请主机', trigger: 'change' }],
-  port: [{ required: true, message: '请输入申请端口', trigger: 'blur' }],
   apply_time: [{ required: true, message: '请选择申请时间', trigger: 'change' }]
 }
+
+const selectedExitLocation = computed(() => {
+  if (!form.public_ip) return ''
+  return publicIPs.value.find(ip => ip.ip === form.public_ip)?.exit_location || ''
+})
 
 const dialogTitle = computed(() => (editId.value ? '编辑申请' : '新增申请'))
 
@@ -415,6 +502,7 @@ onMounted(() => {
   authStore.fetchUserInfo()
   loadList()
   loadHosts()
+  loadPublicIPs()
   window.addEventListener('ledger-batch-done', loadList)
 })
 
@@ -451,14 +539,33 @@ async function loadHosts() {
   }
 }
 
+async function loadPublicIPs() {
+  publicIPsLoading.value = true
+  try {
+    const res = await getPublicIPs('')
+    if (res.code === 0) {
+      publicIPs.value = res.data || []
+    }
+  } catch {
+    // 错误提示由 axios 拦截器统一弹出
+  } finally {
+    publicIPsLoading.value = false
+  }
+}
+
+function addTargetRow() {
+  form.targets.push({ host_id: null, port: 22 })
+}
+
 function openDialog(row) {
   editId.value = row?.id || null
   form.apply_unit = row?.apply_unit || ''
   form.account_name = row?.account_name || ''
   form.contact = row?.contact || ''
-  form.host_id = row?.host_id || null
-  form.port = row?.port || 22
+  form.targets = (row?.targets || []).map(t => ({ host_id: t.host_id, port: t.port }))
+  if (!form.targets.length) form.targets = [{ host_id: null, port: 22 }]
   form.system_name = row?.system_name || ''
+  form.public_ip = row?.public_ip || ''
   form.apply_time = row?.apply_time ? row.apply_time.slice(0, 19) : ''
   form.remark = row?.remark || ''
   dialogVisible.value = true
@@ -469,15 +576,27 @@ async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
 
+  for (let i = 0; i < form.targets.length; i++) {
+    const t = form.targets[i]
+    if (!t.host_id) {
+      ElMessage.warning(`第 ${i + 1} 组请选择主机`)
+      return
+    }
+    if (!t.port || t.port < 1 || t.port > 65535) {
+      ElMessage.warning(`第 ${i + 1} 组端口必须在 1-65535 之间`)
+      return
+    }
+  }
+
   submitting.value = true
   try {
     const payload = {
       apply_unit: form.apply_unit.trim(),
       account_name: form.account_name.trim(),
       contact: form.contact.trim(),
-      host_id: form.host_id,
-      port: form.port,
+      targets: form.targets.map(t => ({ host_id: t.host_id, port: t.port })),
       system_name: form.system_name.trim(),
+      public_ip: form.public_ip || '',
       apply_time: form.apply_time || undefined,
       remark: form.remark.trim()
     }
@@ -608,5 +727,37 @@ function handleCommand(command) {
 .host-ip {
   color: #909399;
   font-size: 12px;
+}
+
+.port-tag {
+  margin-right: 4px;
+}
+
+.target-rows {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.target-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.target-host {
+  flex: 1;
+}
+
+.target-port {
+  width: 130px;
+}
+
+.exit-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.4;
 }
 </style>
