@@ -94,7 +94,7 @@
       <div class="toolbar">
         <el-input
           v-model="keyword"
-          placeholder="搜索 IP / 运营商 / 备注"
+          placeholder="搜索 IP / 运营商 / 出口位置 / 备注"
           clearable
           style="width: 260px"
           @keyup.enter="loadList"
@@ -137,11 +137,21 @@
         <el-table-column
           prop="isp"
           label="运营商"
-          min-width="140"
+          min-width="120"
           show-overflow-tooltip
         >
           <template #default="{ row }">
             {{ row.isp || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="exit_location"
+          label="出口位置"
+          min-width="120"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            {{ row.exit_location || '-' }}
           </template>
         </el-table-column>
         <el-table-column
@@ -229,6 +239,16 @@
           />
         </el-form-item>
         <el-form-item
+          label="出口位置"
+          prop="exit_location"
+        >
+          <el-input
+            v-model="form.exit_location"
+            placeholder="请输入出口位置（IP所在地，选填）"
+            maxlength="128"
+          />
+        </el-form-item>
+        <el-form-item
           label="备注"
           prop="remark"
         >
@@ -284,7 +304,7 @@ const submitting = ref(false)
 const editId = ref(null)
 const formRef = ref(null)
 
-const form = reactive({ ip: '', isp: '', remark: '' })
+const form = reactive({ ip: '', isp: '', exit_location: '', remark: '' })
 
 const rules = {
   ip: [{ required: true, message: '请输入公网IP', trigger: 'blur' }]
@@ -315,6 +335,7 @@ function openDialog(row) {
   editId.value = row?.id || null
   form.ip = row?.ip || ''
   form.isp = row?.isp || ''
+  form.exit_location = row?.exit_location || ''
   form.remark = row?.remark || ''
   dialogVisible.value = true
   formRef.value?.clearValidate()
@@ -329,6 +350,7 @@ async function handleSubmit() {
     const payload = {
       ip: form.ip.trim(),
       isp: form.isp.trim(),
+      exit_location: form.exit_location.trim(),
       remark: form.remark.trim()
     }
     const res = editId.value

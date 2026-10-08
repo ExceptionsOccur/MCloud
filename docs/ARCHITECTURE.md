@@ -293,6 +293,7 @@ go/
 | 域名 | `domain` | VARCHAR(255) | NOT NULL, UNIQUE |
 | 解析公网IP | `public_ip` | VARCHAR(45) | |
 | 运营商 | `isp` | VARCHAR(128) | |
+| 出口位置 | `exit_location` | VARCHAR(128) | IP 所在地，选填 |
 | 内网主机 | `host_id` | BIGINT | FK → hosts(id)，可空 |
 | 主机端口 | `host_port` | INTEGER | |
 | 备注 | `remark` | TEXT | |
@@ -306,6 +307,7 @@ go/
 | ID | `id` | SERIAL | PRIMARY KEY |
 | 公网IP | `ip` | VARCHAR(45) | NOT NULL, UNIQUE |
 | 运营商 | `isp` | VARCHAR(128) | |
+| 出口位置 | `exit_location` | VARCHAR(128) | IP 所在地，选填 |
 | 备注 | `remark` | TEXT | |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 

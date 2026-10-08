@@ -94,7 +94,7 @@
       <div class="toolbar">
         <el-input
           v-model="keyword"
-          placeholder="搜索域名 / 公网IP / 运营商 / 主机 / 备注"
+          placeholder="搜索域名 / 公网IP / 运营商 / 出口位置 / 主机 / 备注"
           clearable
           style="width: 280px"
           @keyup.enter="loadDomains"
@@ -154,11 +154,21 @@
         <el-table-column
           prop="isp"
           label="运营商"
-          min-width="140"
+          min-width="120"
           show-overflow-tooltip
         >
           <template #default="{ row }">
             {{ row.isp || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="exit_location"
+          label="出口位置"
+          min-width="120"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            {{ row.exit_location || '-' }}
           </template>
         </el-table-column>
         <el-table-column
@@ -269,6 +279,16 @@
           />
         </el-form-item>
         <el-form-item
+          label="出口位置"
+          prop="exit_location"
+        >
+          <el-input
+            v-model="form.exit_location"
+            placeholder="请输入出口位置（IP所在地，选填）"
+            maxlength="128"
+          />
+        </el-form-item>
+        <el-form-item
           label="内网主机"
           prop="host_id"
         >
@@ -365,6 +385,7 @@ const form = reactive({
   domain: '',
   public_ip: '',
   isp: '',
+  exit_location: '',
   host_id: null,
   host_port: 0,
   remark: ''
@@ -421,6 +442,7 @@ function openDialog(row) {
   form.domain = row?.domain || ''
   form.public_ip = row?.public_ip || ''
   form.isp = row?.isp || ''
+  form.exit_location = row?.exit_location || ''
   form.host_id = row?.host_id || null
   form.host_port = row?.host_port || 0
   form.remark = row?.remark || ''
@@ -438,6 +460,7 @@ async function handleSubmit() {
       domain: form.domain.trim(),
       public_ip: form.public_ip.trim(),
       isp: form.isp.trim(),
+      exit_location: form.exit_location.trim(),
       host_id: form.host_id || 0,
       host_port: form.host_port || 0,
       remark: form.remark.trim()

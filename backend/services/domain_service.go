@@ -18,12 +18,13 @@ func NewDomainService() *DomainService {
 }
 
 type DomainRequest struct {
-	Domain   string `json:"domain" binding:"required"`
-	PublicIP string `json:"public_ip"`
-	ISP      string `json:"isp"`
-	HostID   uint   `json:"host_id"`
-	HostPort int    `json:"host_port"`
-	Remark   string `json:"remark"`
+	Domain       string `json:"domain" binding:"required"`
+	PublicIP     string `json:"public_ip"`
+	ISP          string `json:"isp"`
+	ExitLocation string `json:"exit_location"`
+	HostID       uint   `json:"host_id"`
+	HostPort     int    `json:"host_port"`
+	Remark       string `json:"remark"`
 }
 
 var ErrDomainNotFound = errors.New("域名记录不存在")
@@ -38,6 +39,7 @@ func normalizeDomain(req DomainRequest) (DomainRequest, error) {
 	req.Domain = strings.TrimSpace(req.Domain)
 	req.PublicIP = strings.TrimSpace(req.PublicIP)
 	req.ISP = strings.TrimSpace(req.ISP)
+	req.ExitLocation = strings.TrimSpace(req.ExitLocation)
 	req.Remark = strings.TrimSpace(req.Remark)
 	if req.Domain == "" {
 		return req, errors.New("域名不能为空")
@@ -53,8 +55,8 @@ func (s *DomainService) List(keyword string) ([]models.Domain, error) {
 	if keyword = strings.TrimSpace(keyword); keyword != "" {
 		like := "%" + keyword + "%"
 		db = db.Where(
-			"domains.domain ILIKE ? OR domains.public_ip ILIKE ? OR domains.isp ILIKE ? OR domains.remark ILIKE ? OR EXISTS (SELECT 1 FROM hosts WHERE hosts.id = domains.host_id AND (hosts.name ILIKE ? OR hosts.private_ip ILIKE ?))",
-			like, like, like, like, like, like,
+			"domains.domain ILIKE ? OR domains.public_ip ILIKE ? OR domains.isp ILIKE ? OR domains.exit_location ILIKE ? OR domains.remark ILIKE ? OR EXISTS (SELECT 1 FROM hosts WHERE hosts.id = domains.host_id AND (hosts.name ILIKE ? OR hosts.private_ip ILIKE ?))",
+			like, like, like, like, like, like, like,
 		)
 	}
 	var domains []models.Domain
@@ -82,14 +84,15 @@ func (s *DomainService) Create(req DomainRequest) (uint, error) {
 		return 0, errors.New("该域名已存在")
 	}
 	d := models.Domain{
-		Domain:   req.Domain,
-		PublicIP: req.PublicIP,
-		ISP:      req.ISP,
-		HostID:   req.HostID,
-		HostPort: req.HostPort,
-		Remark:   req.Remark,
+		Domain:       req.Domain,
+		PublicIP:     req.PublicIP,
+		ISP:          req.ISP,
+		ExitLocation: req.ExitLocation,
+		HostID:       req.HostID,
+		HostPort:     req.HostPort,
+		Remark:       req.Remark,
 	}
-	cols := []string{"domain", "public_ip", "isp", "host_port", "remark"}
+	cols := []string{"domain", "public_ip", "isp", "exit_location", "host_port", "remark"}
 	if req.HostID > 0 {
 		cols = append(cols, "host_id")
 	}
@@ -123,6 +126,7 @@ func (s *DomainService) Update(id uint, req DomainRequest) error {
 	d.Domain = req.Domain
 	d.PublicIP = req.PublicIP
 	d.ISP = req.ISP
+	d.ExitLocation = req.ExitLocation
 	d.HostPort = req.HostPort
 	d.Remark = req.Remark
 	if req.HostID > 0 {
@@ -131,12 +135,13 @@ func (s *DomainService) Update(id uint, req DomainRequest) error {
 	}
 	// 清除关联：显式置空 host_id，避免写入 0 违反外键
 	return database.DB.Model(&d).Updates(map[string]interface{}{
-		"domain":    d.Domain,
-		"public_ip": d.PublicIP,
-		"isp":       d.ISP,
-		"host_id":   nil,
-		"host_port": d.HostPort,
-		"remark":    d.Remark,
+		"domain":        d.Domain,
+		"public_ip":     d.PublicIP,
+		"isp":           d.ISP,
+		"exit_location": d.ExitLocation,
+		"host_id":       nil,
+		"host_port":     d.HostPort,
+		"remark":        d.Remark,
 	}).Error
 }
 
@@ -158,7 +163,7 @@ func HostReferencedByDomain(hostID uint) (int64, error) {
 	return count, nil
 }
 
-// BatchCreateText 域名批量添加：列顺序 域名,解析公网IP,运营商,内网IP,主机端口,备注
+// BatchCreateText 域名批量添加：列顺序 域名,解析公网IP,运营商,出口位置,内网IP,主机端口,备注
 // 域名已存在则跳过；内网IP为空表示不关联主机；填了内网IP但主机不存在则该行失败
 func (s *DomainService) BatchCreateText(text string) (*BatchCreateResponse, error) {
 	resp := &BatchCreateResponse{}
@@ -183,9 +188,9 @@ func (s *DomainService) BatchCreateText(text string) (*BatchCreateResponse, erro
 			continue
 		}
 
-		if len(row) > 6 {
+		if len(row) > 7 {
 			resp.Errors++
-			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 列数超出 6 列", lineNo))
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 列数超出 7 列", lineNo))
 			continue
 		}
 		if len(row) < 1 {
@@ -193,7 +198,7 @@ func (s *DomainService) BatchCreateText(text string) (*BatchCreateResponse, erro
 			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 至少需要1列(域名)", lineNo))
 			continue
 		}
-		for len(row) < 6 {
+		for len(row) < 7 {
 			row = append(row, "")
 		}
 
@@ -212,12 +217,13 @@ func (s *DomainService) BatchCreateText(text string) (*BatchCreateResponse, erro
 		}
 
 		req := DomainRequest{
-			Domain:   domainName,
-			PublicIP: strings.TrimSpace(row[1]),
-			ISP:      strings.TrimSpace(row[2]),
-			Remark:   strings.TrimSpace(row[5]),
+			Domain:       domainName,
+			PublicIP:     strings.TrimSpace(row[1]),
+			ISP:          strings.TrimSpace(row[2]),
+			ExitLocation: strings.TrimSpace(row[3]),
+			Remark:       strings.TrimSpace(row[6]),
 		}
-		if privateIP := strings.TrimSpace(row[3]); privateIP != "" {
+		if privateIP := strings.TrimSpace(row[4]); privateIP != "" {
 			var host models.Host
 			if err := database.DB.Where("private_ip = ?", privateIP).First(&host).Error; err != nil {
 				resp.Errors++
@@ -225,7 +231,7 @@ func (s *DomainService) BatchCreateText(text string) (*BatchCreateResponse, erro
 				continue
 			}
 			req.HostID = host.ID
-			if p := strings.TrimSpace(row[4]); p != "" {
+			if p := strings.TrimSpace(row[5]); p != "" {
 				port, err := strconv.Atoi(p)
 				if err != nil || port < 0 || port > 65535 {
 					resp.Errors++
