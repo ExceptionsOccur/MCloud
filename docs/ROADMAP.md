@@ -52,11 +52,6 @@
   - 内容：后端 `services` 表驱动单测（先覆盖主机 CRUD、登录）+ 前端 Vitest 冒烟
   - 定位：新建 `backend/services/*_test.go`；前端 `frontend/package.json`（加 vitest 依赖与 script）+ `src/**/__tests__/`
   - 验收标准：`cd backend && go test ./...` 有用例非零且通过；`npm run test` 可运行
-- [ ] **T-030** 域名台账字段改造 ｜ P1 ｜ 负责: — ｜ 备注: 2026-10-08 人类需求；顺序在 T-029 之后
-  - 内容：新增「内网主机」`host_id` FK→`hosts`（下拉选择，删除主机前校验）与「主机端口」`host_port`；`provider` **列重命名** `isp`（显示「运营商」，JSON 字段同步改 `isp`）；删除 `expires_at`（DROP COLUMN，存量丢弃已确认）
-  - 定位：`backend/models/domain.go`、`services/domain_service.go`（`DomainRequest`/`List` 搜索/CRUD）、`controllers/domain.go`、迁移 SQL；前端 `views/DomainLedger.vue`（列/表单/搜索占位）、`api/domain.js`
-  - 验收标准：API 响应含 `isp`/`host_id`/`host_port`，无 `provider`/`expires_at`；内网主机 FK 校验（不存在主机拒绝）；迁移 SQL（ADD/RENAME/DROP）写入 `backend/migrations/`；前后端验证全绿；ARCHITECTURE/API 同步
-  - 分支：`feat/domain-ledger-fields`
 - [ ] **T-008** 数据导出报表（Excel/CSV） ｜ P2 ｜ 负责: —
   - 内容：报表导出接口与前端入口
   - 定位：新建 `backend/services/report_service.go` + `controllers/report.go`，注册于 `routes/routes.go`；前端入口 `components/SearchToolbar.vue` / `views/HostManagement.vue`；CSV 工具复用 `utils/csv.go`（BOM 红线）
@@ -114,6 +109,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-030 | 域名台账字段改造 | 2026-10-08 | `-` | 验收：isp/host_id/host_port；无 provider/expires_at；FK 校验+主机删除 40901；迁移+验证全绿 |
 | T-029 | 零信任台账增加系统名称字段 | 2026-10-08 | `1f70851` | 验收：API 含 system_name；列/表单位于申请端口后；迁移+前后端验证全绿 |
 | T-016 | Goose 迁移执行器实装 | 2026-10-08 | `82e0e07` | 验收：存量 dev 库首跑 9 迁移+幂等；build/lint/check_docs 过；口径反转已回写 |
 | T-028 | 前端导航修正：台账入口与 Tab 一致性 | 2026-10-08 | `2e32a5b` | 验收：设置菜单无台账入口；各页 Tab 含零信任+域名；lint/build 通过 |

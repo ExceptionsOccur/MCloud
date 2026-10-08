@@ -104,7 +104,7 @@ func (ctrl *HostController) Delete(c *gin.Context) {
 	}
 
 	if err := ctrl.service.Delete(uint(id)); err != nil {
-		if errors.Is(err, services.ErrHostReferenced) {
+		if errors.Is(err, services.ErrHostReferenced) || errors.Is(err, services.ErrHostReferencedByDomain) {
 			Error(c, 40901, err.Error())
 			return
 		}

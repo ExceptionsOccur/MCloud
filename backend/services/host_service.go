@@ -466,6 +466,14 @@ func (s *HostService) Delete(id uint) error {
 		return fmt.Errorf("%w，%d 条零信任台账记录正在使用", ErrHostReferenced, refCount)
 	}
 
+	domainRef, err := HostReferencedByDomain(id)
+	if err != nil {
+		return err
+	}
+	if domainRef > 0 {
+		return fmt.Errorf("%w，%d 条域名台账记录正在使用", ErrHostReferencedByDomain, domainRef)
+	}
+
 	tx := database.DB.Begin()
 	tx.Where("host_id = ?", id).Delete(&models.HostApplication{})
 	tx.Delete(&host)

@@ -129,8 +129,8 @@
 
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
-| GET | `/api/domains` | `domain.List` | 域名台账列表，`keyword` 模糊匹配域名/公网IP/服务商/备注 |
-| POST | `/api/domains` | `domain.Create` | 新增域名记录（`domain` 必填，唯一） |
+| GET | `/api/domains` | `domain.List` | 域名台账列表，`keyword` 模糊匹配域名/公网IP/运营商/备注/主机名/IP |
+| POST | `/api/domains` | `domain.Create` | 新增域名记录（`domain` 必填，唯一；`host_id`/`host_port`/`isp` 选填） |
 | PUT | `/api/domains/:id` | `domain.Update` | 修改域名记录 |
 | DELETE | `/api/domains/:id` | `domain.Delete` | 删除域名记录 |
 
@@ -313,15 +313,18 @@ POST /api/domains
 {
   "domain": "www.example.com",
   "public_ip": "1.2.3.4",
-  "provider": "阿里云",
-  "expires_at": "2027-01-01T00:00:00",
+  "isp": "电信",
+  "host_id": 3,
+  "host_port": 8080,
   "remark": "业务主站"
 }
 ```
 
 - `domain` 必填且全局唯一，重复返回 `40001`
-- `public_ip` / `provider` / `expires_at` / `remark` 可选
-- 到期时间为 TIMESTAMPTZ，可空
+- `isp`（运营商）/ `host_id` / `host_port` / `public_ip` / `remark` 可选
+- `host_id` 为 `hosts.id` 外键；填了不存在的主机返回 `40001`
+- 列表返回嵌套 `host` 对象（名称/IP）；删除主机时若被域名台账引用返回 `40901`
+- **无** `provider` / `expires_at` 字段（`T-030` 已重命名/删除）
 
 ### 主机的人员关联
 
