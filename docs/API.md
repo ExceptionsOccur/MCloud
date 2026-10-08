@@ -135,15 +135,15 @@
 | PUT | `/api/zero-trusts/:id` | `zeroTrust.Update` | 修改申请记录 |
 | DELETE | `/api/zero-trusts/:id` | `zeroTrust.Delete` | 删除申请记录 |
 
-### 域名台账（需 JWT）
+### 端口映射台账（需 JWT）
 
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
-| GET | `/api/domains` | `domain.List` | 域名台账列表，`keyword` 模糊匹配域名/公网IP/运营商/出口位置/备注/主机名/IP |
-| POST | `/api/domains` | `domain.Create` | 新增域名记录（`domain` 必填，唯一；`host_id`/`host_port`/`isp`/`exit_location` 选填） |
-| POST | `/api/domains/batch` | `domain.BatchCreateText` | 批量添加（文本粘贴；域名已存在跳过；内网IP可选关联主机） |
-| PUT | `/api/domains/:id` | `domain.Update` | 修改域名记录 |
-| DELETE | `/api/domains/:id` | `domain.Delete` | 删除域名记录 |
+| GET | `/api/port-mappings` | `portMapping.List` | 映射列表，`keyword` 模糊匹配公网IP/域名/运营商/出口位置/端口/主机名/IP |
+| POST | `/api/port-mappings` | `portMapping.Create` | 新增映射（公网IP、内网主机、外网/内网端口必填；端口列表等长；域名可选） |
+| POST | `/api/port-mappings/batch` | `portMapping.BatchCreateText` | 批量添加（文本粘贴；内网IP定位主机） |
+| PUT | `/api/port-mappings/:id` | `portMapping.Update` | 修改映射记录 |
+| DELETE | `/api/port-mappings/:id` | `portMapping.Delete` | 删除映射记录；删除后重算主机 `ip_mapped` |
 
 ---
 
@@ -341,34 +341,13 @@ POST /api/zero-trusts/batch
 ```
 
 ```json
-POST /api/domains/batch
-{ "text": "域名,解析公网IP,运营商,出口位置,内网IP,主机端口,备注\nwww.example.com,203.0.113.10,电信,上海,,," }
+POST /api/port-mappings/batch
+{ "text": "公网IP,内网IP,外网端口,内网端口,域名,运营商,出口位置,备注\n203.0.113.10,192.168.1.10,80,8080,www.example.com,电信,上海,业务" }
 ```
 
 - 零信任列顺序：`申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注`（至少前 4 列）；主机按内网IP定位，不存在则该行失败；合法行全部插入
-- 域名列顺序：`域名,解析公网IP,运营商,出口位置,内网IP,主机端口,备注`（至少域名）；域名已存在跳过；内网IP为空不关联主机
+- 映射列顺序：`公网IP,内网IP,外网端口,内网端口,域名,运营商,出口位置,备注`（至少前 4 列）；端口数量不一致该行失败
 - 返回 `{success, skipped, errors, line_errors[]}`，与主机批量接口同结构
-
-### 域名台账请求体
-
-```json
-POST /api/domains
-{
-  "domain": "www.example.com",
-  "public_ip": "1.2.3.4",
-  "isp": "电信",
-  "exit_location": "上海",
-  "host_id": 3,
-  "host_port": 8080,
-  "remark": "业务主站"
-}
-```
-
-- `domain` 必填且全局唯一，重复返回 `40001`
-- `isp`（运营商）/ `exit_location`（出口位置）/ `host_id` / `host_port` / `public_ip` / `remark` 可选
-- `host_id` 为 `hosts.id` 外键；填了不存在的主机返回 `40001`
-- 列表返回嵌套 `host` 对象（名称/IP）；删除主机时若被域名台账引用返回 `40901`
-- **无** `provider` / `expires_at` 字段（`T-030` 已重命名/删除）
 
 ### 主机的人员关联
 

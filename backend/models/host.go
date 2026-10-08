@@ -25,8 +25,8 @@ type Host struct {
 	PersonID   *uint     `json:"person_id" gorm:"index"`
 	CreatedAt  time.Time `json:"created_at" gorm:"autoCreateTime"`
 
-	Application *HostApplication `json:"application,omitempty" gorm:"foreignKey:HostID"`
-	Person      *Person          `json:"person,omitempty" gorm:"foreignKey:PersonID"`
-	ZeroTrusts  []ZeroTrust      `json:"zero_trusts,omitempty" gorm:"foreignKey:HostID"`
-	Domains     []Domain         `json:"domains,omitempty" gorm:"foreignKey:HostID"`
+	Application  *HostApplication `json:"application,omitempty" gorm:"foreignKey:HostID"`
+	Person       *Person          `json:"person,omitempty" gorm:"foreignKey:PersonID"`
+	ZeroTrusts   []ZeroTrust      `json:"zero_trusts,omitempty" gorm:"foreignKey:HostID"`
+	PortMappings []PortMapping    `json:"port_mappings,omitempty" gorm:"foreignKey:HostID"`
 }

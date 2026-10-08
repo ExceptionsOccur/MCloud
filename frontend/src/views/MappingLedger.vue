@@ -1,5 +1,5 @@
 <template>
-  <div class="domain-ledger">
+  <div class="mapping-ledger">
     <el-header class="app-header">
       <div class="header-left">
         <h1>MCloud</h1>
@@ -42,11 +42,11 @@
           零信任
         </router-link>
         <router-link
-          to="/domain-ledger"
+          to="/mapping-ledger"
           class="nav-tab"
-          :class="{ active: $route.path === '/domain-ledger' }"
+          :class="{ active: $route.path === '/mapping-ledger' }"
         >
-          域名
+          映射
         </router-link>
       </div>
       <div class="header-right">
@@ -94,15 +94,15 @@
       <div class="toolbar">
         <el-input
           v-model="keyword"
-          placeholder="搜索域名 / 公网IP / 运营商 / 出口位置 / 主机 / 备注"
+          placeholder="搜索公网IP / 内网主机 / 端口 / 域名 / 运营商 / 出口位置"
           clearable
-          style="width: 280px"
-          @keyup.enter="loadDomains"
-          @clear="loadDomains"
+          style="width: 320px"
+          @keyup.enter="loadList"
+          @clear="loadList"
         />
         <el-button
           type="primary"
-          @click="loadDomains"
+          @click="loadList"
         >
           查询
         </el-button>
@@ -110,12 +110,12 @@
           type="primary"
           @click="openDialog()"
         >
-          新增域名
+          新增映射
         </el-button>
         <el-button
           type="primary"
           plain
-          @click="domainBatchDialog?.open()"
+          @click="batchDialog?.open()"
         >
           批量添加
         </el-button>
@@ -123,7 +123,7 @@
 
       <el-table
         v-loading="loading"
-        :data="domains"
+        :data="records"
         border
         stripe
       >
@@ -136,25 +136,71 @@
           </template>
         </el-table-column>
         <el-table-column
-          prop="domain"
-          label="域名"
-          min-width="200"
+          prop="public_ip"
+          label="公网IP"
+          min-width="130"
           show-overflow-tooltip
         />
         <el-table-column
-          prop="public_ip"
-          label="解析公网IP"
+          label="内网主机"
+          min-width="170"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            <span v-if="row.host">
+              {{ row.host.name }}
+              <span class="host-ip">({{ row.host.private_ip }})</span>
+            </span>
+            <span v-else>#{{ row.host_id }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="外网端口"
+          min-width="140"
+        >
+          <template #default="{ row }">
+            <el-tag
+              v-for="p in splitPorts(row.external_ports)"
+              :key="'e' + p"
+              size="small"
+              class="port-tag"
+            >
+              {{ p }}
+            </el-tag>
+            <span v-if="!splitPorts(row.external_ports).length">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="内网端口"
+          min-width="140"
+        >
+          <template #default="{ row }">
+            <el-tag
+              v-for="p in splitPorts(row.internal_ports)"
+              :key="'i' + p"
+              size="small"
+              type="success"
+              class="port-tag"
+            >
+              {{ p }}
+            </el-tag>
+            <span v-if="!splitPorts(row.internal_ports).length">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="domain"
+          label="域名"
           min-width="140"
           show-overflow-tooltip
         >
           <template #default="{ row }">
-            {{ row.public_ip || '-' }}
+            {{ row.domain || '-' }}
           </template>
         </el-table-column>
         <el-table-column
           prop="isp"
           label="运营商"
-          min-width="120"
+          min-width="100"
           show-overflow-tooltip
         >
           <template #default="{ row }">
@@ -164,7 +210,7 @@
         <el-table-column
           prop="exit_location"
           label="出口位置"
-          min-width="120"
+          min-width="100"
           show-overflow-tooltip
         >
           <template #default="{ row }">
@@ -172,30 +218,9 @@
           </template>
         </el-table-column>
         <el-table-column
-          label="内网主机"
-          min-width="180"
-          show-overflow-tooltip
-        >
-          <template #default="{ row }">
-            <span v-if="row.host">
-              {{ row.host.name }}
-              <span class="host-ip">({{ row.host.private_ip }})</span>
-            </span>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="主机端口"
-          width="100"
-          align="center"
-        >
-          <template #default="{ row }">
-            {{ row.host_port || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column
+          prop="remark"
           label="备注"
-          min-width="140"
+          min-width="120"
           show-overflow-tooltip
         >
           <template #default="{ row }">
@@ -218,7 +243,7 @@
               编辑
             </el-button>
             <el-popconfirm
-              :title="`确定删除域名 ${row.domain}？`"
+              title="确定删除该映射记录？"
               @confirm="handleDelete(row.id)"
             >
               <template #reference>
@@ -239,7 +264,7 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="480px"
+      width="640px"
       :close-on-click-modal="false"
     >
       <el-form
@@ -249,43 +274,13 @@
         label-width="100px"
       >
         <el-form-item
-          label="域名"
-          prop="domain"
-        >
-          <el-input
-            v-model="form.domain"
-            placeholder="请输入域名"
-            maxlength="255"
-          />
-        </el-form-item>
-        <el-form-item
-          label="解析公网IP"
+          label="公网IP"
           prop="public_ip"
         >
           <el-input
             v-model="form.public_ip"
-            placeholder="请输入解析公网IP"
+            placeholder="请输入公网IP"
             maxlength="45"
-          />
-        </el-form-item>
-        <el-form-item
-          label="运营商"
-          prop="isp"
-        >
-          <el-input
-            v-model="form.isp"
-            placeholder="请输入运营商"
-            maxlength="128"
-          />
-        </el-form-item>
-        <el-form-item
-          label="出口位置"
-          prop="exit_location"
-        >
-          <el-input
-            v-model="form.exit_location"
-            placeholder="请输入出口位置（IP所在地，选填）"
-            maxlength="128"
           />
         </el-form-item>
         <el-form-item
@@ -294,7 +289,7 @@
         >
           <el-select
             v-model="form.host_id"
-            placeholder="请选择内网主机（选填）"
+            placeholder="请选择内网主机"
             filterable
             clearable
             style="width: 100%"
@@ -309,15 +304,68 @@
           </el-select>
         </el-form-item>
         <el-form-item
-          label="主机端口"
-          prop="host_port"
+          label="外网端口"
+          prop="external_ports"
         >
-          <el-input-number
-            v-model="form.host_port"
-            :min="0"
-            :max="65535"
-            controls-position="right"
-            style="width: 100%"
+          <el-input
+            v-model="form.external_ports"
+            placeholder="多个端口用逗号分隔，如 80,443"
+          />
+        </el-form-item>
+        <el-form-item
+          label="内网端口"
+          prop="internal_ports"
+        >
+          <el-input
+            v-model="form.internal_ports"
+            placeholder="与外网端口数量一致、顺序对应，如 8080,8443"
+          />
+        </el-form-item>
+        <el-form-item label="端口对应">
+          <div class="port-preview">
+            <template v-if="portPairs.length">
+              <el-tag
+                v-for="(pair, idx) in portPairs"
+                :key="idx"
+                size="small"
+              >
+                外网 {{ pair[0] }} → 内网 {{ pair[1] }}
+              </el-tag>
+            </template>
+            <span
+              v-else
+              class="muted"
+            >填写两端端口后预览对应关系</span>
+          </div>
+        </el-form-item>
+        <el-form-item
+          label="域名"
+          prop="domain"
+        >
+          <el-input
+            v-model="form.domain"
+            placeholder="可选"
+            maxlength="255"
+          />
+        </el-form-item>
+        <el-form-item
+          label="运营商"
+          prop="isp"
+        >
+          <el-input
+            v-model="form.isp"
+            placeholder="可选"
+            maxlength="128"
+          />
+        </el-form-item>
+        <el-form-item
+          label="出口位置"
+          prop="exit_location"
+        >
+          <el-input
+            v-model="form.exit_location"
+            placeholder="可选，IP所在地"
+            maxlength="128"
           />
         </el-form-item>
         <el-form-item
@@ -327,8 +375,8 @@
           <el-input
             v-model="form.remark"
             type="textarea"
-            :rows="3"
-            placeholder="请输入备注"
+            :rows="2"
+            placeholder="可选"
             maxlength="500"
           />
         </el-form-item>
@@ -347,31 +395,36 @@
       </template>
     </el-dialog>
 
+    <MappingBatchAddDialog ref="batchDialog" />
     <ChangePasswordDialog ref="changePasswordDialog" />
     <CloudResourceDialog ref="cloudResourceDialog" />
-    <DomainBatchAddDialog ref="domainBatchDialog" />
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
-import { getDomains, createDomain, updateDomain, deleteDomain } from '../api/domain'
+import {
+  getPortMappings,
+  createPortMapping,
+  updatePortMapping,
+  deletePortMapping
+} from '../api/port_mapping'
 import { getHosts } from '../api/host'
+import MappingBatchAddDialog from '../components/MappingBatchAddDialog.vue'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
-import DomainBatchAddDialog from '../components/DomainBatchAddDialog.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const changePasswordDialog = ref(null)
 const cloudResourceDialog = ref(null)
-const domainBatchDialog = ref(null)
+const batchDialog = ref(null)
 
-const domains = ref([])
+const records = ref([])
 const loading = ref(false)
 const keyword = ref('')
 const dialogVisible = ref(false)
@@ -382,39 +435,56 @@ const hosts = ref([])
 const hostsLoading = ref(false)
 
 const form = reactive({
-  domain: '',
   public_ip: '',
+  host_id: null,
+  external_ports: '',
+  internal_ports: '',
+  domain: '',
   isp: '',
   exit_location: '',
-  host_id: null,
-  host_port: 0,
   remark: ''
 })
 
 const rules = {
-  domain: [{ required: true, message: '请输入域名', trigger: 'blur' }]
+  public_ip: [{ required: true, message: '请输入公网IP', trigger: 'blur' }],
+  host_id: [{ required: true, message: '请选择内网主机', trigger: 'change' }],
+  external_ports: [{ required: true, message: '请输入外网端口', trigger: 'blur' }],
+  internal_ports: [{ required: true, message: '请输入内网端口', trigger: 'blur' }]
 }
 
-const dialogTitle = computed(() => (editId.value ? '编辑域名' : '新增域名'))
+const dialogTitle = computed(() => (editId.value ? '编辑映射' : '新增映射'))
+
+function splitPorts(val) {
+  if (!val) return []
+  return String(val).split(',').map(s => s.trim()).filter(Boolean)
+}
+
+const portPairs = computed(() => {
+  const ext = splitPorts(form.external_ports)
+  const intl = splitPorts(form.internal_ports)
+  const n = Math.min(ext.length, intl.length)
+  const pairs = []
+  for (let i = 0; i < n; i++) pairs.push([ext[i], intl[i]])
+  return pairs
+})
 
 onMounted(() => {
   authStore.fetchUserInfo()
-  loadDomains()
+  loadList()
   loadHosts()
-  window.addEventListener('ledger-batch-done', loadDomains)
+  window.addEventListener('ledger-batch-done', loadList)
 })
 
-import { onUnmounted } from 'vue'
 onUnmounted(() => {
-  window.removeEventListener('ledger-batch-done', loadDomains)
+  window.removeEventListener('ledger-batch-done', loadList)
 })
 
-async function loadDomains() {
+async function loadList() {
   loading.value = true
   try {
-    const res = await getDomains(keyword.value)
+    const res = await getPortMappings(keyword.value)
     if (res.code === 0) {
-      domains.value = res.data || []
+      records.value = res.data || []
     }
   } catch {
     // 错误提示由 axios 拦截器统一弹出
@@ -439,12 +509,13 @@ async function loadHosts() {
 
 function openDialog(row) {
   editId.value = row?.id || null
-  form.domain = row?.domain || ''
   form.public_ip = row?.public_ip || ''
+  form.host_id = row?.host_id || null
+  form.external_ports = row?.external_ports || ''
+  form.internal_ports = row?.internal_ports || ''
+  form.domain = row?.domain || ''
   form.isp = row?.isp || ''
   form.exit_location = row?.exit_location || ''
-  form.host_id = row?.host_id || null
-  form.host_port = row?.host_port || 0
   form.remark = row?.remark || ''
   dialogVisible.value = true
   formRef.value?.clearValidate()
@@ -454,24 +525,32 @@ async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
 
+  const ext = splitPorts(form.external_ports)
+  const intl = splitPorts(form.internal_ports)
+  if (ext.length !== intl.length) {
+    ElMessage.warning(`外网端口与内网端口数量必须一致（外网 ${ext.length} 个，内网 ${intl.length} 个）`)
+    return
+  }
+
   submitting.value = true
   try {
     const payload = {
-      domain: form.domain.trim(),
       public_ip: form.public_ip.trim(),
+      host_id: form.host_id,
+      external_ports: ext.join(','),
+      internal_ports: intl.join(','),
+      domain: form.domain.trim(),
       isp: form.isp.trim(),
       exit_location: form.exit_location.trim(),
-      host_id: form.host_id || 0,
-      host_port: form.host_port || 0,
       remark: form.remark.trim()
     }
     const res = editId.value
-      ? await updateDomain(editId.value, payload)
-      : await createDomain(payload)
+      ? await updatePortMapping(editId.value, payload)
+      : await createPortMapping(payload)
     if (res.code === 0) {
       ElMessage.success(editId.value ? '修改成功' : '新增成功')
       dialogVisible.value = false
-      await loadDomains()
+      await loadList()
     }
   } finally {
     submitting.value = false
@@ -480,10 +559,10 @@ async function handleSubmit() {
 
 async function handleDelete(id) {
   try {
-    const res = await deleteDomain(id)
+    const res = await deletePortMapping(id)
     if (res.code === 0) {
       ElMessage.success('删除成功')
-      await loadDomains()
+      await loadList()
     }
   } catch {
     // 错误提示由 axios 拦截器统一弹出
@@ -507,7 +586,7 @@ function handleCommand(command) {
 </script>
 
 <style scoped>
-.domain-ledger {
+.mapping-ledger {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -590,6 +669,21 @@ function handleCommand(command) {
 }
 
 .host-ip {
+  color: #909399;
+  font-size: 12px;
+}
+
+.port-tag {
+  margin: 2px 4px 2px 0;
+}
+
+.port-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.muted {
   color: #909399;
   font-size: 12px;
 }

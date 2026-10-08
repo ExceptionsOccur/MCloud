@@ -171,7 +171,7 @@ func (s *HostService) GetByID(id uint) (*models.Host, error) {
 		Preload("Application").
 		Preload("Person").
 		Preload("ZeroTrusts").
-		Preload("Domains").
+		Preload("PortMappings").
 		First(&host, id)
 	if result.Error != nil {
 		return nil, result.Error
@@ -204,7 +204,6 @@ type CreateHostRequest struct {
 	InstanceID string       `json:"instance_id"`
 	Name       string       `json:"name" binding:"required"`
 	PrivateIP  string       `json:"private_ip" binding:"required"`
-	IPMapped   bool         `json:"ip_mapped"`
 	AssetType  string       `json:"asset_type"`
 	OS         string       `json:"os"`
 	CPU        int          `json:"cpu"`
@@ -246,7 +245,6 @@ func (s *HostService) Create(req CreateHostRequest) (uint, error) {
 		InstanceID: req.InstanceID,
 		Name:       req.Name,
 		PrivateIP:  req.PrivateIP,
-		IPMapped:   req.IPMapped,
 		AssetType:  req.AssetType,
 		OS:         req.OS,
 		CPU:        req.CPU,
@@ -304,7 +302,6 @@ type UpdateHostRequest struct {
 	InstanceID string       `json:"instance_id"`
 	Name       string       `json:"name"`
 	PrivateIP  string       `json:"private_ip"`
-	IPMapped   *bool        `json:"ip_mapped"`
 	AssetType  string       `json:"asset_type"`
 	OS         string       `json:"os"`
 	CPU        int          `json:"cpu"`
@@ -360,9 +357,6 @@ func (s *HostService) Update(id uint, req UpdateHostRequest) error {
 	}
 	if req.PrivateIP != "" {
 		updates["private_ip"] = req.PrivateIP
-	}
-	if req.IPMapped != nil {
-		updates["ip_mapped"] = *req.IPMapped
 	}
 	if req.AssetType != "" {
 		updates["asset_type"] = req.AssetType
@@ -471,12 +465,12 @@ func (s *HostService) Delete(id uint) error {
 		return fmt.Errorf("%w，%d 条零信任台账记录正在使用", ErrHostReferenced, refCount)
 	}
 
-	domainRef, err := HostReferencedByDomain(id)
+	mappingRef, err := HostReferencedByMapping(id)
 	if err != nil {
 		return err
 	}
-	if domainRef > 0 {
-		return fmt.Errorf("%w，%d 条域名台账记录正在使用", ErrHostReferencedByDomain, domainRef)
+	if mappingRef > 0 {
+		return fmt.Errorf("%w，%d 条映射台账记录正在使用", ErrHostReferencedByMapping, mappingRef)
 	}
 
 	tx := database.DB.Begin()
@@ -491,7 +485,6 @@ type BatchCreateItem struct {
 	InstanceID        string `json:"instance_id"`
 	Name              string `json:"name" binding:"required"`
 	PrivateIP         string `json:"private_ip" binding:"required"`
-	IPMapped          bool   `json:"ip_mapped"`
 	AssetType         string `json:"asset_type"`
 	OS                string `json:"os"`
 	CPU               int    `json:"cpu"`
@@ -626,7 +619,6 @@ func (s *HostService) BatchCreate(req BatchCreateRequest) (*BatchCreateResponse,
 			InstanceID:        item.InstanceID,
 			Name:              item.Name,
 			PrivateIP:         item.PrivateIP,
-			IPMapped:          item.IPMapped,
 			AssetType:         item.AssetType,
 			OS:                item.OS,
 			CPU:               item.CPU,
@@ -739,14 +731,12 @@ func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, 
 	dataDisk := atoiOrZero(row[11])
 
 	isDB := strings.TrimSpace(row[13]) == "是" || strings.TrimSpace(row[13]) == "true" || strings.TrimSpace(row[13]) == "1"
-	ipMapped := strings.TrimSpace(row[4]) == "是" || strings.TrimSpace(row[4]) == "true" || strings.TrimSpace(row[4]) == "1"
 
 	return CreateHostRequest{
 		Region:            strings.TrimSpace(row[0]),
 		InstanceID:        strings.TrimSpace(row[1]),
 		Name:              strings.TrimSpace(row[2]),
 		PrivateIP:         strings.TrimSpace(row[3]),
-		IPMapped:          ipMapped,
 		AssetType:         strings.TrimSpace(row[5]),
 		OS:                strings.TrimSpace(row[6]),
 		CPU:               cpu,

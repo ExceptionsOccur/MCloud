@@ -9,17 +9,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type DomainController struct {
-	service *services.DomainService
+type PortMappingController struct {
+	service *services.PortMappingService
 }
 
-func NewDomainController() *DomainController {
-	return &DomainController{
-		service: services.NewDomainService(),
+func NewPortMappingController() *PortMappingController {
+	return &PortMappingController{
+		service: services.NewPortMappingService(),
 	}
 }
 
-func (ctrl *DomainController) List(c *gin.Context) {
+func (ctrl *PortMappingController) List(c *gin.Context) {
 	data, err := ctrl.service.List(c.Query("keyword"))
 	if err != nil {
 		Error(c, 50001, "查询失败: "+err.Error())
@@ -28,8 +28,64 @@ func (ctrl *DomainController) List(c *gin.Context) {
 	Success(c, data)
 }
 
-// BatchCreateText 域名批量添加（文本粘贴）
-func (ctrl *DomainController) BatchCreateText(c *gin.Context) {
+func (ctrl *PortMappingController) Create(c *gin.Context) {
+	var req services.PortMappingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		Error(c, 40001, "参数校验失败: "+err.Error())
+		return
+	}
+	id, err := ctrl.service.Create(req)
+	if err != nil {
+		if errors.Is(err, services.ErrMappingHostNotFound) {
+			Error(c, 40001, err.Error())
+			return
+		}
+		Error(c, 40001, err.Error())
+		return
+	}
+	Success(c, gin.H{"id": id})
+}
+
+func (ctrl *PortMappingController) Update(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		Error(c, 40001, "无效的ID")
+		return
+	}
+	var req services.PortMappingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		Error(c, 40001, "参数校验失败: "+err.Error())
+		return
+	}
+	if err := ctrl.service.Update(uint(id), req); err != nil {
+		if errors.Is(err, services.ErrPortMappingNotFound) {
+			Error(c, 40401, err.Error())
+			return
+		}
+		Error(c, 40001, err.Error())
+		return
+	}
+	Success(c, nil)
+}
+
+func (ctrl *PortMappingController) Delete(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		Error(c, 40001, "无效的ID")
+		return
+	}
+	if err := ctrl.service.Delete(uint(id)); err != nil {
+		if errors.Is(err, services.ErrPortMappingNotFound) {
+			Error(c, 40401, err.Error())
+			return
+		}
+		Error(c, 40001, err.Error())
+		return
+	}
+	Success(c, nil)
+}
+
+func (ctrl *PortMappingController) BatchCreateText(c *gin.Context) {
 	var req struct {
 		Text string `json:"text" binding:"required"`
 	}
@@ -43,57 +99,4 @@ func (ctrl *DomainController) BatchCreateText(c *gin.Context) {
 		return
 	}
 	Success(c, resp)
-}
-
-func (ctrl *DomainController) Create(c *gin.Context) {
-	var req services.DomainRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		Error(c, 40001, "参数校验失败: "+err.Error())
-		return
-	}
-	id, err := ctrl.service.Create(req)
-	if err != nil {
-		Error(c, 40001, err.Error())
-		return
-	}
-	Success(c, gin.H{"id": id})
-}
-
-func (ctrl *DomainController) Update(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		Error(c, 40001, "无效的ID")
-		return
-	}
-	var req services.DomainRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		Error(c, 40001, "参数校验失败: "+err.Error())
-		return
-	}
-	if err := ctrl.service.Update(uint(id), req); err != nil {
-		if errors.Is(err, services.ErrDomainNotFound) {
-			Error(c, 40401, err.Error())
-			return
-		}
-		Error(c, 40001, err.Error())
-		return
-	}
-	Success(c, nil)
-}
-
-func (ctrl *DomainController) Delete(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		Error(c, 40001, "无效的ID")
-		return
-	}
-	if err := ctrl.service.Delete(uint(id)); err != nil {
-		if errors.Is(err, services.ErrDomainNotFound) {
-			Error(c, 40401, err.Error())
-			return
-		}
-		Error(c, 40001, err.Error())
-		return
-	}
-	Success(c, nil)
 }

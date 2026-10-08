@@ -174,11 +174,12 @@
           <el-row :gutter="16">
             <el-col :span="12">
               <el-form-item label="是否映射公网">
-                <el-switch
-                  v-model="form.ip_mapped"
-                  active-text="是"
-                  inactive-text="否"
-                />
+                <el-tag :type="form.ip_mapped ? 'success' : 'info'">
+                  {{ form.ip_mapped ? '是（由映射台账自动）' : '否（由映射台账自动）' }}
+                </el-tag>
+                <div class="muted-tip">
+                  由映射台账记录自动计算，不可手改
+                </div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -319,6 +320,51 @@
           name="relations"
         >
           <div class="relations-block">
+            <h4>映射台账（{{ relations.portMappings.length }}）</h4>
+            <el-table
+              v-if="relations.portMappings.length"
+              :data="relations.portMappings"
+              size="small"
+              border
+            >
+              <el-table-column
+                prop="public_ip"
+                label="公网IP"
+                min-width="120"
+              />
+              <el-table-column
+                label="外网端口"
+                min-width="120"
+              >
+                <template #default="{ row }">
+                  {{ row.external_ports || '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="内网端口"
+                min-width="120"
+              >
+                <template #default="{ row }">
+                  {{ row.internal_ports || '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column
+                prop="domain"
+                label="域名"
+                min-width="140"
+              >
+                <template #default="{ row }">
+                  {{ row.domain || '-' }}
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-empty
+              v-else
+              description="无映射台账记录"
+              :image-size="48"
+            />
+          </div>
+          <div class="relations-block">
             <h4>零信任台账（{{ relations.zeroTrusts.length }}）</h4>
             <el-table
               v-if="relations.zeroTrusts.length"
@@ -355,54 +401,6 @@
             <el-empty
               v-else
               description="无零信任台账记录"
-              :image-size="48"
-            />
-          </div>
-          <div class="relations-block">
-            <h4>域名台账（{{ relations.domains.length }}）</h4>
-            <el-table
-              v-if="relations.domains.length"
-              :data="relations.domains"
-              size="small"
-              border
-            >
-              <el-table-column
-                prop="domain"
-                label="域名"
-                min-width="180"
-              />
-              <el-table-column
-                prop="isp"
-                label="运营商"
-                min-width="100"
-              >
-                <template #default="{ row }">
-                  {{ row.isp || '-' }}
-                </template>
-              </el-table-column>
-              <el-table-column
-                prop="host_port"
-                label="主机端口"
-                width="90"
-                align="center"
-              >
-                <template #default="{ row }">
-                  {{ row.host_port || '-' }}
-                </template>
-              </el-table-column>
-              <el-table-column
-                prop="public_ip"
-                label="解析公网IP"
-                min-width="120"
-              >
-                <template #default="{ row }">
-                  {{ row.public_ip || '-' }}
-                </template>
-              </el-table-column>
-            </el-table>
-            <el-empty
-              v-else
-              description="无域名台账记录"
               :image-size="48"
             />
           </div>
@@ -459,7 +457,7 @@ const form = reactive({
 
 const relations = reactive({
   zeroTrusts: [],
-  domains: []
+  portMappings: []
 })
 
 const personOptions = ref([])
@@ -585,7 +583,7 @@ function resetForm() {
     else form[key] = ''
   })
   relations.zeroTrusts = []
-  relations.domains = []
+  relations.portMappings = []
 }
 
 function fillFormFromHost(h) {
@@ -623,7 +621,7 @@ function fillFormFromHost(h) {
   }
 
   relations.zeroTrusts = h.zero_trusts || []
-  relations.domains = h.domains || []
+  relations.portMappings = h.port_mappings || []
 }
 
 async function open(data) {
@@ -675,7 +673,7 @@ async function handleSubmit() {
 
     const payload = { ...form }
     payload.person_id = personId || null
-    payload.ip_mapped = !!form.ip_mapped
+    delete payload.ip_mapped
     ;['cpu', 'memory', 'disk', 'system_disk', 'data_disk'].forEach(key => {
       payload[key] = Number(payload[key]) || 0
     })
@@ -713,5 +711,13 @@ onUnmounted(() => window.removeEventListener('open-host-form', handleOpenHostFor
   margin: 0 0 8px;
   font-size: 14px;
   color: #303133;
+}
+
+.muted-tip {
+  width: 100%;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.4;
 }
 </style>

@@ -93,7 +93,7 @@ go/
 │   │   ├── cloud_resource.go      # CloudResource 模型
 │   │   ├── ip_subnet.go           # IPSubnet 模型（IP 网段管理）
 │   │   ├── zero_trust.go          # ZeroTrust 模型（零信任台账）
-│   │   ├── domain.go              # Domain 模型（域名台账）
+│   │   ├── port_mapping.go        # PortMapping 模型（端口映射台账）
 │   │   └── public_ip.go           # PublicIP 模型（公网IP资源台账）
 │   │
 │   ├── controllers/
@@ -105,7 +105,7 @@ go/
 │   │   ├── cloud_resource.go      # 云资源总览
 │   │   ├── person.go              # 人员 CRUD
 │   │   ├── zero_trust.go          # 零信任台账 CRUD
-│   │   ├── domain.go              # 域名台账 CRUD
+│   │   ├── port_mapping.go        # 端口映射台账 CRUD
 │   │   ├── public_ip.go           # 公网IP资源台账 CRUD
 │   │   ├── stats.go               # 统计（IP 使用、探测、业务统计）
 │   │   ├── subnet.go              # IP 网段 CRUD
@@ -120,7 +120,7 @@ go/
 │   │   ├── cloud_resource_service.go # 云资源总览业务逻辑
 │   │   ├── person_service.go      # 人员业务逻辑
 │   │   ├── zero_trust_service.go  # 零信任台账业务逻辑
-│   │   ├── domain_service.go      # 域名台账业务逻辑
+│   │   ├── port_mapping_service.go # 端口映射台账业务逻辑（多端口校验 + ip_mapped 重算）
 │   │   ├── public_ip_service.go   # 公网IP资源台账业务逻辑
 │   │   ├── stats_service.go       # IP 使用统计 + 连通性探测
 │   │   ├── business_stats.go      # 业务统计聚合（项目/公司/人员）
@@ -155,7 +155,7 @@ go/
         │
         ├── stores/                # Pinia 状态：auth / host / cloudResource / stats / business
         ├── api/                   # API 封装：index / auth / host / csv / cloud_resource / person / zero_trust / domain / stats / subnet
-        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / PublicIPManagement / ZeroTrustLedger / DomainLedger
+        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / PublicIPManagement / ZeroTrustLedger / MappingLedger
         ├── components/            # 组件：工具栏/表格/各类弹窗
         │
         ├── utils/
@@ -180,8 +180,8 @@ go/
 | `cloud_resources` | `models/cloud_resource.go` | 云资源总览（按区域） |
 | `ip_subnets` | `models/ip_subnet.go` | IP 网段管理 |
 | `zero_trusts` | `models/zero_trust.go` | 零信任接入申请台账 |
-| `domains` | `models/domain.go` | 域名台账（域名/公网IP/运营商/内网主机FK/主机端口） |
-| `public_ips` | `models/public_ip.go` | 公网IP资源台账（IP/运营商/备注） |
+| `port_mappings` | `models/port_mapping.go` | 端口映射台账（公网IP↔内网主机多端口；域名可选） |
+| `public_ips` | `models/public_ip.go` | 公网IP资源台账（IP/运营商/出口位置/备注） |
 
 ### users 表
 
@@ -285,17 +285,18 @@ go/
 | 备注 | `remark` | TEXT | |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 
-### domains 表（域名台账）
+### port_mappings 表（端口映射台账）
 
 | 字段 | 列名 | 类型 | 约束 |
 |------|------|------|------|
 | ID | `id` | SERIAL | PRIMARY KEY |
-| 域名 | `domain` | VARCHAR(255) | NOT NULL, UNIQUE |
-| 解析公网IP | `public_ip` | VARCHAR(45) | |
+| 公网IP | `public_ip` | VARCHAR(45) | NOT NULL |
+| 内网主机 | `host_id` | BIGINT | NOT NULL, FK → hosts(id) |
+| 外网端口 | `external_ports` | TEXT | 逗号分隔多端口 |
+| 内网端口 | `internal_ports` | TEXT | 与外网端口数量/顺序一一对应 |
+| 域名 | `domain` | VARCHAR(255) | 可选；非空时唯一 |
 | 运营商 | `isp` | VARCHAR(128) | |
 | 出口位置 | `exit_location` | VARCHAR(128) | IP 所在地，选填 |
-| 内网主机 | `host_id` | BIGINT | FK → hosts(id)，可空 |
-| 主机端口 | `host_port` | INTEGER | |
 | 备注 | `remark` | TEXT | |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 | 更新时间 | `updated_at` | TIMESTAMPTZ | DEFAULT NOW() |
@@ -322,8 +323,7 @@ go/
 - `ip_subnets.cidr` 仅允许 `/24` IPv4 网段，写入时自动规范化为网络地址（末位归 0）
 - 系统**不预置默认网段**，由用户在「IP统计 → 管理网段」中维护
 - `zero_trusts.host_id` 外键关联 `hosts.id`；主机被零信任台账引用时禁止删除（应用层校验，返回 `40901`）
-- `domains.domain` 唯一约束，同域名不允许重复登记
-- `domains.host_id` 外键关联 `hosts.id`，可空；主机被域名台账引用时禁止删除（应用层校验）
-- `hosts.ip_mapped` 为「是否做了公网映射」布尔标记，不存 IP 地址；映射详情由零信任/域名台账的 `host_id` 关联体现
+- `port_mappings.host_id` 外键关联 `hosts.id`；外网/内网端口列表长度必须一致；主机被映射引用时禁止删除
+- `hosts.ip_mapped` 由映射台账自动重算（有映射=true，无=false），主机表单不可手改
 - `public_ips.ip` 唯一约束，公网 IP 资源池录入；允许直接删除（无外键引用校验）
 - **GORM 列名陷阱**：`CIDR` 字段默认会被命名为 `c_id_r`，模型已显式指定 `gorm:"column:cidr"`
