@@ -41,6 +41,13 @@
         >
           零信任
         </router-link>
+        <router-link
+          to="/domain-ledger"
+          class="nav-tab"
+          :class="{ active: $route.path === '/domain-ledger' }"
+        >
+          域名
+        </router-link>
       </div>
       <div class="header-right">
         <span
@@ -58,12 +65,6 @@
               </el-dropdown-item>
               <el-dropdown-item command="personnel">
                 人员录入
-              </el-dropdown-item>
-              <el-dropdown-item
-                command="zeroTrust"
-                :disabled="$route.path === '/zero-trust'"
-              >
-                零信任台账
               </el-dropdown-item>
               <el-dropdown-item command="changePassword">
                 修改密码
@@ -471,8 +472,6 @@ function handleCommand(command) {
     cloudResourceDialog.value?.open()
   } else if (command === 'personnel') {
     router.push('/personnel')
-  } else if (command === 'zeroTrust') {
-    router.push('/zero-trust')
   }
 }
 </script>

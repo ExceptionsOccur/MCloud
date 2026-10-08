@@ -69,15 +69,6 @@
               >
                 人员录入
               </el-dropdown-item>
-              <el-dropdown-item command="zeroTrust">
-                零信任台账
-              </el-dropdown-item>
-              <el-dropdown-item
-                command="domain"
-                :disabled="$route.path === '/domain-ledger'"
-              >
-                域名台账
-              </el-dropdown-item>
               <el-dropdown-item command="changePassword">
                 修改密码
               </el-dropdown-item>
@@ -376,10 +367,6 @@ function handleCommand(command) {
     cloudResourceDialog.value?.open()
   } else if (command === 'personnel') {
     router.push('/personnel')
-  } else if (command === 'zeroTrust') {
-    router.push('/zero-trust')
-  } else if (command === 'domain') {
-    router.push('/domain-ledger')
   }
 }
 </script>
