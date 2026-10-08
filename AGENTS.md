@@ -64,9 +64,9 @@
 | 字段 | 值 |
 |------|-----|
 | last_updated | 2026-10-08 |
-| in_progress | 无 |
+| in_progress | `T-036` 零信任多主机/多端口（口径定案：`targets` 配对 + 公网IP带出地区；待提交） |
 | next_task | `T-002` 后端 `host_service.go` 拆分（= ROADMAP todo 首条，P1 最高优先级） |
-| todo（P1） | `T-002` host_service 拆分 → `T-003` csv controller 下沉 → `T-004` composables 抽取 → `T-005` IpStatistics 拆分 → `T-006` 测试骨架 |
+| todo（P1） | `T-002` host_service 拆分 → `T-003` csv controller 下沉 → `T-004` composables 抽取 → `T-005` IpStatistics 拆分 → `T-006` 测试骨架 → `T-037` 零信任 apply_time 解析 |
 | todo（P2） | `T-008` 报表导出、`T-009` bcrypt 升级、`T-010` 路由拆分、`T-011` ping 解耦、`T-012` 文档巡检、`T-019` 抽 Layout/AppNav、`T-020` config ServerPort 硬编码（暂不执行）、`T-022` WS probe token 校验 |
 | blocked | 无 |
 | 功能完成度 | 核心功能 12/12 完成；待开发 2 项 + 技术债 10 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
@@ -197,7 +197,7 @@ cd backend && go build ./...   # 确认模型可编译 + 迁移 SQL 文件已按
 | 主机 host | 云主机/物理机资产，核心表 `hosts` |
 | 申请信息 | `host_applications`，与 `hosts` 一对一，删主机必须级联删除 |
 | 人员 person | `persons` 表，经 `hosts.person_id` 关联主机 |
-| 零信任台账 | `zero_trusts` 表，申请单位/账户名/申请主机(FK)/端口/时间/备注；主机被引用禁止删除 |
+| 零信任台账 | `zero_trusts` 表，申请单位/账户名/接入目标(`targets`，host_id:port 多组配对)/公网IP入口(接入地区由资源池带出)/时间/备注；主机被引用禁止删除 |
 | 域名台账 | 已升级为端口映射台账 `port_mappings`（T-034）：公网IP↔内网主机多端口映射，域名可选 |
 | `is_db_server` | BOOLEAN，API 统一返回 `true/false` |
 | 云资源总览 | `cloud_resources`，按区域手工录入的总量资源 |

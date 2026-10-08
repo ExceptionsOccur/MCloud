@@ -27,6 +27,6 @@ type Host struct {
 
 	Application  *HostApplication `json:"application,omitempty" gorm:"foreignKey:HostID"`
 	Person       *Person          `json:"person,omitempty" gorm:"foreignKey:PersonID"`
-	ZeroTrusts   []ZeroTrust      `json:"zero_trusts,omitempty" gorm:"foreignKey:HostID"`
+	ZeroTrusts   []ZeroTrust      `json:"zero_trusts,omitempty" gorm:"-"`
 	PortMappings []PortMapping    `json:"port_mappings,omitempty" gorm:"foreignKey:HostID"`
 }

@@ -71,7 +71,7 @@
 | `services/business_stats.go` | 业务统计聚合 | `GetBusinessStats`（项目/公司/人员三维聚合） |
 | `services/subnet_service.go` | IP 网段管理 | `List`/`Create`/`Update`/`Delete`、`normalizeCIDR`（/24 校验） |
 | `services/person_service.go` | 人员管理 | `List`/`Create`/`Update`/`Delete`、`normalizePerson`；删除时校验关联主机数 |
-| `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`HostReferencedByZeroTrust` |
+| `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`normalizeTargetPairs`（配对校验）；`HostReferencedByZeroTrust`/`ZeroTrustsByHost` |
 | `services/port_mapping_service.go` | 端口映射台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`refreshHostIPMapped` |
 | `services/public_ip_service.go` | 公网IP资源台账 | `List`/`Create`/`Update`/`Delete`、`normalizePublicIP`（IP 唯一/格式校验） |
 
@@ -139,7 +139,7 @@
 | `views/BusinessStatistics.vue` | `/business-statistics` | 业务统计（概览 + 柱状图 + 表格 + 下钻弹窗） |
 | `views/PersonnelManagement.vue` | `/personnel` | 人员管理（搜索 + 新增/编辑/删除，含关联主机数校验） |
 | `views/PublicIPManagement.vue` | `/public-ip` | 公网IP资源台账（搜索 + 新增/编辑/删除，设置菜单入口） |
-| `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 新增/编辑/删除 + 批量添加，申请主机外键） |
+| `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 配对行表单 + 公网IP资源池带出接入地区 + 批量添加） |
 | `views/MappingLedger.vue` | `/mapping-ledger` | 端口映射台账（多端口标签 + 批量添加） |
 
 ### 组件（components/）
@@ -251,6 +251,6 @@ PUT /api/cloud-resources
 | `cloud_resources` | `models/cloud_resource.go` | `services/cloud_resource_service.go` |
 | `ip_subnets` | `models/ip_subnet.go` | `services/subnet_service.go`、`services/stats_service.go`（读取网段） |
 | `persons` | `models/person.go` | `services/person_service.go`；`hosts.person_id` 由 `services/host_service.go` 写入 |
-| `zero_trusts` | `models/zero_trust.go` | `services/zero_trust_service.go`；删除主机前经 `HostReferencedByZeroTrust` 校验 |
+| `zero_trusts` | `models/zero_trust.go` | `services/zero_trust_service.go`；删除主机前经 `HostReferencedByZeroTrust` 校验；主机详情经 `ZeroTrustsByHost` 回填 |
 | `port_mappings` | `models/port_mapping.go` | `services/port_mapping_service.go`；删除主机前经 `HostReferencedByMapping` 校验 |
 | `public_ips` | `models/public_ip.go` | `services/public_ip_service.go` |

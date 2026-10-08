@@ -170,12 +170,16 @@ func (s *HostService) GetByID(id uint) (*models.Host, error) {
 	result := database.DB.
 		Preload("Application").
 		Preload("Person").
-		Preload("ZeroTrusts").
 		Preload("PortMappings").
 		First(&host, id)
 	if result.Error != nil {
 		return nil, result.Error
 	}
+	zeroTrusts, err := ZeroTrustsByHost(id)
+	if err != nil {
+		return nil, err
+	}
+	host.ZeroTrusts = zeroTrusts
 	return &host, nil
 }
 
