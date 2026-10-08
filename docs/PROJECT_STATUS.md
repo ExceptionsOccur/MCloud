@@ -25,7 +25,7 @@
 | 域名台账 | ⏳ 待开发 | `T-014` 字段已确认（域名/解析公网IP/服务商/到期时间/备注），待实现 |
 | 公网 IP 关联 | ⏳ 待开发 | `T-015` `hosts.public_ip` 改布尔「是否做了映射」，关联上述两台账 |
 | 自动化测试 | ⏳ 待开发 | 后端 Service/Controller、前端组件测试均未编写 |
-| Goose 迁移执行器 | ⏳ 待开发 | `T-016` **从未实装**（`go.mod` 无依赖、无调用）；现状 SQL 仅归档，运行时靠 AutoMigrate |
+| Goose 迁移执行器 | ✅ 完成 | `T-016` 启动时 goose 执行 `migrations/*.sql`（embed），AutoMigrate 兜底；存量 dev 库首跑+幂等已实测 |
 
 ## 近期变更记录
 
@@ -33,6 +33,7 @@
 
 ### 2026-10-08
 
+- `—` `feat:` **T-016** Goose 迁移执行器实装（`goose/v3` + embed 执行 `migrations/*.sql`，AutoMigrate 兜底；修复 cloud_resources 幂等；口径反转回写）
 - `2e32a5b` `fix:` **T-028** 前端导航修正（设置菜单去掉台账入口；ZeroTrustLedger 补域名 Tab）
 - `ebb52de` `fix:` **T-027** 前端 ESLint 警告清零（~724→0；`defineExpose` 修复改密弹窗；移除 IpStatistics console）
 - `c5208c6` `docs:` **T-026** 协议补强：多任务会话串行合并（AGENTS A.2/A.4 + 分支协议 + DEVELOPMENT 协作流程）
@@ -108,6 +109,6 @@
 5. **事务操作**：创建主机（hosts + host_applications）必须在同一事务完成
 6. **ID 返回**：创建成功后返回新记录 ID（`data.id`）
 7. **GORM 列名**：缩写字段必须显式指定 `gorm:"column:xxx"`
-8. **数据库迁移（双轨口径）**：迁移 SQL 是红线 9 的**归档要求**（必须随模型变更提交，不被执行）；运行时结构由启动时 `AutoMigrate` 兜底应用，`migrations/*.sql` 不参与执行；统一口径见 [DEVELOPMENT.md](./DEVELOPMENT.md)「数据库迁移规范」
+8. **数据库迁移（goose 主路径）**：启动时 `Migrate()` 先执行 goose（embed 的 `migrations/*.sql`），`AutoMigrate` 仅兜底；SQL 必须与模型定义一致；统一口径见 [DEVELOPMENT.md](./DEVELOPMENT.md)「数据库迁移规范」
 9. **IP 网段**：不预置默认网段，由用户自行维护；`cidr` 仅接受 /24
 10. **开发端口**：前端 5173（Vite）、后端 5677（容器）、生产 5678（Nginx+Go 单容器）

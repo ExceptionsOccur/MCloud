@@ -39,7 +39,7 @@
 ```
 
 - **前端**：单页应用，`/api` 请求经 Axios，IP 探测走 WebSocket 长连接
-- **后端**：分层架构，启动时 GORM AutoMigrate 自动建表 + 种子数据
+- **后端**：分层架构，启动时 goose 执行 `migrations/*.sql`（embed）+ AutoMigrate 兜底 + 种子数据
 - **数据库**：PostgreSQL，8 张表
 
 ---
@@ -133,7 +133,7 @@ go/
 │   │   ├── password.go            # 密码哈希工具（SHA-256 + 盐）
 │   │   └── csv.go                 # CSV 解析/生成
 │   │
-│   └── migrations/                # 迁移 SQL（归档要求，运行时不执行；结构由启动时 AutoMigrate 兜底）
+│   └── migrations/                # 迁移 SQL（启动时 goose 执行，embed 进二进制；AutoMigrate 兜底）
 │
 └── frontend/                      # Vue 3 前端
     ├── index.html
