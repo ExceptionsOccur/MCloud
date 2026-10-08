@@ -42,11 +42,11 @@
           零信任
         </router-link>
         <router-link
-          to="/domain-ledger"
+          to="/mapping-ledger"
           class="nav-tab"
-          :class="{ active: $route.path === '/domain-ledger' }"
+          :class="{ active: $route.path === '/mapping-ledger' }"
         >
-          域名
+          映射
         </router-link>
       </div>
       <div class="header-right">

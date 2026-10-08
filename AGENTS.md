@@ -72,7 +72,7 @@
 | 功能完成度 | 核心功能 12/12 完成；待开发 2 项 + 技术债 10 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
 | 已知风险 | 无测试、`host_service.go` 待拆分、`csv.go` 违反红线 1、密码为 SHA-256（详见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
 
-> T-033 出口位置字段已合并 main（提交号见 ROADMAP）；T-032/T-031/T-015/T-030/T-029/T-016 已合并 main。多任务串行合并协议已生效。
+> T-034 端口映射台账改造已合并 main（提交号见 ROADMAP）；T-033/T-032/T-031 已合并 main。多任务串行合并协议已生效。
 
 ## 项目速览
 
@@ -92,7 +92,7 @@ MCloud 是云平台主机资产信息管理系统：**Go (Gin) 后端 + Vue 3 SP
 |----------|-----|
 | 开发端口 | 前端 5173（Vite，`/api` 代理到 `backend:5677`）、后端 5677、Postgres 5432、生产 5678 |
 | 默认账号 | `admin` / `Pass4MCloud`（种子见 `backend/database/postgres.go` 的 `seedAdmin()`） |
-| 数据库表 | 9 张：`users` / `hosts` / `host_applications` / `persons` / `cloud_resources` / `ip_subnets` / `zero_trusts` / `domains` / `public_ips` |
+| 数据库表 | 9 张：`users` / `hosts` / `host_applications` / `persons` / `cloud_resources` / `ip_subnets` / `zero_trusts` / `port_mappings` / `public_ips` |
 | 开发环境 | `cd docker && cp .env.example .env && docker-compose -f docker-compose.dev.yml up -d` |
 
 ## 核心约定（红线）
@@ -198,7 +198,7 @@ cd backend && go build ./...   # 确认模型可编译 + 迁移 SQL 文件已按
 | 申请信息 | `host_applications`，与 `hosts` 一对一，删主机必须级联删除 |
 | 人员 person | `persons` 表，经 `hosts.person_id` 关联主机 |
 | 零信任台账 | `zero_trusts` 表，申请单位/账户名/申请主机(FK)/端口/时间/备注；主机被引用禁止删除 |
-| 域名台账 | `domains` 表，域名/解析公网IP/服务商/到期时间/备注；域名唯一 |
+| 域名台账 | 已升级为端口映射台账 `port_mappings`（T-034）：公网IP↔内网主机多端口映射，域名可选 |
 | `is_db_server` | BOOLEAN，API 统一返回 `true/false` |
 | 云资源总览 | `cloud_resources`，按区域手工录入的总量资源 |
 | 裸金属 | 物理服务器，**资源统计一律排除**（避免重复计算） |

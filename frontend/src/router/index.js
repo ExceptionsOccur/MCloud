@@ -9,7 +9,7 @@ import BusinessStatistics from '../views/BusinessStatistics.vue'
 import PersonnelManagement from '../views/PersonnelManagement.vue'
 import PublicIPManagement from '../views/PublicIPManagement.vue'
 import ZeroTrustLedger from '../views/ZeroTrustLedger.vue'
-import DomainLedger from '../views/DomainLedger.vue'
+import MappingLedger from '../views/MappingLedger.vue'
 
 const routes = [
   {
@@ -61,9 +61,9 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/domain-ledger',
-    name: 'DomainLedger',
-    component: DomainLedger,
+    path: '/mapping-ledger',
+    name: 'MappingLedger',
+    component: MappingLedger,
     meta: { requiresAuth: true }
   }
 ]

@@ -59,7 +59,7 @@ func Migrate() {
 		&models.CloudResource{},
 		&models.IPSubnet{},
 		&models.ZeroTrust{},
-		&models.Domain{},
+		&models.PortMapping{},
 		&models.PublicIP{},
 	)
 	if err != nil {

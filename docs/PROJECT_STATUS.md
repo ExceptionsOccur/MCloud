@@ -22,8 +22,8 @@
 | 容器化部署 | ✅ 完成 | Dockerfile（多阶段）+ docker-compose（dev/prod）+ Nginx 反代 |
 | 协作文档体系 | ✅ 完成 | `T-001` AGENTS/ROADMAP 改造为 AI 协作协议（状态快照、任务队列、回写协议） |
 | 数据导出报表 | ⏳ 待开发 | 预留 Excel/CSV 报表导出 |
-| 域名台账 | ✅ 完成 | `T-014`/`T-030` 域名/解析公网IP/运营商/内网主机(FK)/主机端口/备注；域名唯一；主机被引用禁止删除 |
-| 公网 IP 关联 | ✅ 完成 | `T-015` `hosts.ip_mapped` 布尔「是否做了映射」；详情弹窗展示零信任/域名台账关联 |
+| 域名台账 | ✅ 完成 | `T-034` 已升级为**端口映射台账** `/mapping-ledger`（公网IP↔内网多端口，域名可选）；`hosts.ip_mapped` 自动重算 |
+| 公网 IP 关联 | ✅ 完成 | `T-015`/`T-034` `hosts.ip_mapped` 由映射台账自动重算；主机详情展示映射/零信任关联 |
 | 自动化测试 | ⏳ 待开发 | 后端 Service/Controller、前端组件测试均未编写 |
 | Goose 迁移执行器 | ✅ 完成 | `T-016` 启动时 goose 执行 `migrations/*.sql`（embed），AutoMigrate 兜底；存量 dev 库首跑+幂等已实测 |
 | 公网 IP 资源录入 | ✅ 完成 | `T-031` `public_ips` 资源池（IP/运营商/备注），设置菜单 + `/public-ip` 独立页 |
@@ -34,6 +34,7 @@
 
 ### 2026-10-08
 
+- `d26d6ad` `feat:` **T-034** 域名台账改造为端口映射台账（`port_mappings` 多端口等长校验；`ip_mapped` 自动重算；`/mapping-ledger`）
 - `aac7fea` `feat:` **T-033** 域名/公网IP增加出口位置字段（`exit_location`；运营商之后；域名+公网IP+批量列同步）
 - `4e96c09` `feat:` **T-032** 零信任/域名台账批量添加（文本CSV弹窗；主机按内网IP；域名重复跳过；`/batch` 接口）
 - `e0d84ac` `feat:` **T-031** 公网 IP 资源录入（`public_ips` 表 + `/public-ip` 页 + 设置菜单；IP 唯一/格式校验；表数 8→9）

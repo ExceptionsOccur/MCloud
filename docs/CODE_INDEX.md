@@ -37,7 +37,7 @@
 | `backend/models/ip_subnet.go` | `IPSubnet` | `ip_subnets` |
 | `backend/models/person.go` | `Person` | `persons` |
 | `backend/models/zero_trust.go` | `ZeroTrust` | `zero_trusts` |
-| `backend/models/domain.go` | `Domain` | `domains` |
+| `backend/models/port_mapping.go` | `PortMapping` | `port_mappings` |
 | `backend/models/public_ip.go` | `PublicIP` | `public_ips` |
 
 ### 控制器（controllers/）
@@ -56,7 +56,7 @@
 | `controllers/subnet.go` | IP 网段 CRUD |
 | `controllers/person.go` | 人员 CRUD（`List`/`Create`/`Update`/`Delete`） |
 | `controllers/zero_trust.go` | 零信任台账 CRUD |
-| `controllers/domain.go` | 域名台账 CRUD |
+| `controllers/port_mapping.go` | 端口映射台账 CRUD |
 | `controllers/public_ip.go` | 公网IP资源台账 CRUD |
 | `controllers/websocket.go` | WebSocket 探测通道（并发处理探测请求） |
 
@@ -72,7 +72,7 @@
 | `services/subnet_service.go` | IP 网段管理 | `List`/`Create`/`Update`/`Delete`、`normalizeCIDR`（/24 校验） |
 | `services/person_service.go` | 人员管理 | `List`/`Create`/`Update`/`Delete`、`normalizePerson`；删除时校验关联主机数 |
 | `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`HostReferencedByZeroTrust` |
-| `services/domain_service.go` | 域名台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText` |
+| `services/port_mapping_service.go` | 端口映射台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`refreshHostIPMapped` |
 | `services/public_ip_service.go` | 公网IP资源台账 | `List`/`Create`/`Update`/`Delete`、`normalizePublicIP`（IP 唯一/格式校验） |
 
 ### 中间件与工具
@@ -115,7 +115,7 @@
 | `api/subnet.js` | `/ip-subnets` |
 | `api/person.js` | `/persons` |
 | `api/zero_trust.js` | `/zero-trusts` |
-| `api/domain.js` | `/domains` |
+| `api/port_mapping.js` | `/port-mappings` |
 | `api/public_ip.js` | `/public-ips` |
 
 ### 状态管理（stores/）
@@ -140,7 +140,7 @@
 | `views/PersonnelManagement.vue` | `/personnel` | 人员管理（搜索 + 新增/编辑/删除，含关联主机数校验） |
 | `views/PublicIPManagement.vue` | `/public-ip` | 公网IP资源台账（搜索 + 新增/编辑/删除，设置菜单入口） |
 | `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 新增/编辑/删除 + 批量添加，申请主机外键） |
-| `views/DomainLedger.vue` | `/domain-ledger` | 域名台账（搜索 + 新增/编辑/删除 + 批量添加） |
+| `views/MappingLedger.vue` | `/mapping-ledger` | 端口映射台账（多端口标签 + 批量添加） |
 
 ### 组件（components/）
 
@@ -190,7 +190,7 @@
 | **人员管理** | `controllers/person.go` `services/person_service.go` `models/person.go` | `views/PersonnelManagement.vue` `api/person.js` |
 | **公网IP资源录入** | `controllers/public_ip.go` `services/public_ip_service.go` `models/public_ip.go` | `views/PublicIPManagement.vue` `api/public_ip.js` |
 | **零信任台账** | `controllers/zero_trust.go` `services/zero_trust_service.go` `models/zero_trust.go` | `views/ZeroTrustLedger.vue` `api/zero_trust.js` `components/ZeroTrustBatchAddDialog.vue` |
-| **域名台账** | `controllers/domain.go` `services/domain_service.go` `models/domain.go` | `views/DomainLedger.vue` `api/domain.js` `components/DomainBatchAddDialog.vue` |
+| **端口映射台账** | `controllers/port_mapping.go` `services/port_mapping_service.go` `models/port_mapping.go` | `views/MappingLedger.vue` `api/port_mapping.js` `components/MappingBatchAddDialog.vue` |
 | **主机关联人员** | `services/host_service.go`（`person_id` 事务写入） | `components/HostFormDialog.vue` `components/BatchEditDialog.vue`（选择/手输自动新增） |
 | **业务统计** | `controllers/stats.go` → `BusinessStats` `services/business_stats.go` | `views/BusinessStatistics.vue` `stores/business.js` |
 | **密码重置工具** | `cmd/resetpw/main.go` `utils/password.go` | — |
@@ -252,5 +252,5 @@ PUT /api/cloud-resources
 | `ip_subnets` | `models/ip_subnet.go` | `services/subnet_service.go`、`services/stats_service.go`（读取网段） |
 | `persons` | `models/person.go` | `services/person_service.go`；`hosts.person_id` 由 `services/host_service.go` 写入 |
 | `zero_trusts` | `models/zero_trust.go` | `services/zero_trust_service.go`；删除主机前经 `HostReferencedByZeroTrust` 校验 |
-| `domains` | `models/domain.go` | `services/domain_service.go` |
+| `port_mappings` | `models/port_mapping.go` | `services/port_mapping_service.go`；删除主机前经 `HostReferencedByMapping` 校验 |
 | `public_ips` | `models/public_ip.go` | `services/public_ip_service.go` |

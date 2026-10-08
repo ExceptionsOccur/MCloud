@@ -40,10 +40,10 @@
           零信任
         </router-link>
         <router-link
-          to="/domain-ledger"
+          to="/mapping-ledger"
           class="nav-tab"
         >
-          域名
+          映射
         </router-link>
       </div>
       <div class="header-right">
