@@ -277,11 +277,21 @@
           label="公网IP"
           prop="public_ip"
         >
-          <el-input
+          <el-select
             v-model="form.public_ip"
-            placeholder="请输入公网IP"
-            maxlength="45"
-          />
+            placeholder="请从公网IP资源池选择"
+            filterable
+            clearable
+            style="width: 100%"
+            :loading="publicIPsLoading"
+          >
+            <el-option
+              v-for="ip in publicIPs"
+              :key="ip.ip"
+              :label="ip.isp ? `${ip.ip}（${ip.isp}）` : ip.ip"
+              :value="ip.ip"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item
           label="内网主机"
@@ -349,26 +359,6 @@
           />
         </el-form-item>
         <el-form-item
-          label="运营商"
-          prop="isp"
-        >
-          <el-input
-            v-model="form.isp"
-            placeholder="可选"
-            maxlength="128"
-          />
-        </el-form-item>
-        <el-form-item
-          label="出口位置"
-          prop="exit_location"
-        >
-          <el-input
-            v-model="form.exit_location"
-            placeholder="可选，IP所在地"
-            maxlength="128"
-          />
-        </el-form-item>
-        <el-form-item
           label="备注"
           prop="remark"
         >
@@ -413,6 +403,7 @@ import {
   deletePortMapping
 } from '../api/port_mapping'
 import { getHosts } from '../api/host'
+import { getPublicIPs } from '../api/public_ip'
 import MappingBatchAddDialog from '../components/MappingBatchAddDialog.vue'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
@@ -433,6 +424,8 @@ const editId = ref(null)
 const formRef = ref(null)
 const hosts = ref([])
 const hostsLoading = ref(false)
+const publicIPs = ref([])
+const publicIPsLoading = ref(false)
 
 const form = reactive({
   public_ip: '',
@@ -440,8 +433,6 @@ const form = reactive({
   external_ports: '',
   internal_ports: '',
   domain: '',
-  isp: '',
-  exit_location: '',
   remark: ''
 })
 
@@ -472,12 +463,27 @@ onMounted(() => {
   authStore.fetchUserInfo()
   loadList()
   loadHosts()
+  loadPublicIPs()
   window.addEventListener('ledger-batch-done', loadList)
 })
 
 onUnmounted(() => {
   window.removeEventListener('ledger-batch-done', loadList)
 })
+
+async function loadPublicIPs() {
+  publicIPsLoading.value = true
+  try {
+    const res = await getPublicIPs('')
+    if (res.code === 0) {
+      publicIPs.value = res.data || []
+    }
+  } catch {
+    // 错误提示由 axios 拦截器统一弹出
+  } finally {
+    publicIPsLoading.value = false
+  }
+}
 
 async function loadList() {
   loading.value = true
@@ -514,8 +520,6 @@ function openDialog(row) {
   form.external_ports = row?.external_ports || ''
   form.internal_ports = row?.internal_ports || ''
   form.domain = row?.domain || ''
-  form.isp = row?.isp || ''
-  form.exit_location = row?.exit_location || ''
   form.remark = row?.remark || ''
   dialogVisible.value = true
   formRef.value?.clearValidate()
@@ -535,13 +539,11 @@ async function handleSubmit() {
   submitting.value = true
   try {
     const payload = {
-      public_ip: form.public_ip.trim(),
+      public_ip: form.public_ip,
       host_id: form.host_id,
       external_ports: ext.join(','),
       internal_ports: intl.join(','),
       domain: form.domain.trim(),
-      isp: form.isp.trim(),
-      exit_location: form.exit_location.trim(),
       remark: form.remark.trim()
     }
     const res = editId.value

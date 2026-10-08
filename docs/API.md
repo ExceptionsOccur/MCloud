@@ -139,9 +139,9 @@
 
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
-| GET | `/api/port-mappings` | `portMapping.List` | 映射列表，`keyword` 模糊匹配公网IP/域名/运营商/出口位置/端口/主机名/IP |
-| POST | `/api/port-mappings` | `portMapping.Create` | 新增映射（公网IP、内网主机、外网/内网端口必填；端口列表等长；域名可选） |
-| POST | `/api/port-mappings/batch` | `portMapping.BatchCreateText` | 批量添加（文本粘贴；内网IP定位主机） |
+| GET | `/api/port-mappings` | `portMapping.List` | 映射列表，`keyword` 模糊匹配公网IP/域名/端口/主机名/IP，以及资源池运营商/出口位置；ISP/出口位置优先映射表、为空时从 `public_ips` 带出 |
+| POST | `/api/port-mappings` | `portMapping.Create` | 新增映射（公网IP须在资源池、内网主机、外网/内网端口必填；端口列表等长；域名可选） |
+| POST | `/api/port-mappings/batch` | `portMapping.BatchCreateText` | 批量添加（文本粘贴；列：公网IP,内网IP,外网端口,内网端口,域名,备注） |
 | PUT | `/api/port-mappings/:id` | `portMapping.Update` | 修改映射记录 |
 | DELETE | `/api/port-mappings/:id` | `portMapping.Delete` | 删除映射记录；删除后重算主机 `ip_mapped` |
 
@@ -342,11 +342,12 @@ POST /api/zero-trusts/batch
 
 ```json
 POST /api/port-mappings/batch
-{ "text": "公网IP,内网IP,外网端口,内网端口,域名,运营商,出口位置,备注\n203.0.113.10,192.168.1.10,80,8080,www.example.com,电信,上海,业务" }
+{ "text": "公网IP,内网IP,外网端口,内网端口,域名,备注\n203.0.113.10,192.168.1.10,80,8080,www.example.com,业务" }
 ```
 
 - 零信任列顺序：`申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注`（至少前 4 列）；主机按内网IP定位，不存在则该行失败；合法行全部插入
-- 映射列顺序：`公网IP,内网IP,外网端口,内网端口,域名,运营商,出口位置,备注`（至少前 4 列）；端口数量不一致该行失败
+- 映射列顺序：`公网IP,内网IP,外网端口,内网端口,域名,备注`（至少前 4 列）；公网IP须在资源池；端口数量不一致该行失败
+- 映射的运营商/出口位置由公网IP资源池带出，不在批量行填写
 - 返回 `{success, skipped, errors, line_errors[]}`，与主机批量接口同结构
 
 ### 主机的人员关联

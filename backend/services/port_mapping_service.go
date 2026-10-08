@@ -108,13 +108,47 @@ func (s *PortMappingService) List(keyword string) ([]models.PortMapping, error) 
 	if keyword = strings.TrimSpace(keyword); keyword != "" {
 		like := "%" + keyword + "%"
 		db = db.Where(
-			"port_mappings.public_ip ILIKE ? OR port_mappings.domain ILIKE ? OR port_mappings.isp ILIKE ? OR port_mappings.exit_location ILIKE ? OR port_mappings.remark ILIKE ? OR port_mappings.external_ports ILIKE ? OR port_mappings.internal_ports ILIKE ? OR EXISTS (SELECT 1 FROM hosts WHERE hosts.id = port_mappings.host_id AND (hosts.name ILIKE ? OR hosts.private_ip ILIKE ?))",
-			like, like, like, like, like, like, like, like, like,
+			"port_mappings.public_ip ILIKE ? OR port_mappings.domain ILIKE ? OR port_mappings.isp ILIKE ? OR port_mappings.exit_location ILIKE ? OR port_mappings.remark ILIKE ? OR port_mappings.external_ports ILIKE ? OR port_mappings.internal_ports ILIKE ? OR EXISTS (SELECT 1 FROM hosts WHERE hosts.id = port_mappings.host_id AND (hosts.name ILIKE ? OR hosts.private_ip ILIKE ?)) OR EXISTS (SELECT 1 FROM public_ips pi WHERE pi.ip = port_mappings.public_ip AND (pi.isp ILIKE ? OR pi.exit_location ILIKE ?))",
+			like, like, like, like, like, like, like, like, like, like, like,
 		)
 	}
 	var items []models.PortMapping
 	if err := db.Order("id ASC").Find(&items).Error; err != nil {
 		return nil, err
+	}
+
+	// 从公网IP资源池带出运营商/出口位置（映射表字段留空时展示资源池值）
+	if len(items) > 0 {
+		ipSet := make(map[string]struct{}, len(items))
+		ips := make([]string, 0, len(items))
+		for _, it := range items {
+			if it.PublicIP == "" {
+				continue
+			}
+			if _, ok := ipSet[it.PublicIP]; !ok {
+				ipSet[it.PublicIP] = struct{}{}
+				ips = append(ips, it.PublicIP)
+			}
+		}
+		if len(ips) > 0 {
+			var resources []models.PublicIP
+			if err := database.DB.Where("ip IN ?", ips).Find(&resources).Error; err == nil {
+				byIP := make(map[string]models.PublicIP, len(resources))
+				for _, r := range resources {
+					byIP[r.IP] = r
+				}
+				for i := range items {
+					if r, ok := byIP[items[i].PublicIP]; ok {
+						if items[i].ISP == "" {
+							items[i].ISP = r.ISP
+						}
+						if items[i].ExitLocation == "" {
+							items[i].ExitLocation = r.ExitLocation
+						}
+					}
+				}
+			}
+		}
 	}
 	return items, nil
 }
@@ -128,6 +162,11 @@ func (s *PortMappingService) Create(req PortMappingRequest) (uint, error) {
 	database.DB.Model(&models.Host{}).Where("id = ?", req.HostID).Count(&hostCount)
 	if hostCount == 0 {
 		return 0, ErrMappingHostNotFound
+	}
+	var ipCount int64
+	database.DB.Model(&models.PublicIP{}).Where("ip = ?", req.PublicIP).Count(&ipCount)
+	if ipCount == 0 {
+		return 0, errors.New("公网IP不在资源池中，请先在公网IP录入中添加")
 	}
 	if req.Domain != "" {
 		var count int64
@@ -169,6 +208,11 @@ func (s *PortMappingService) Update(id uint, req PortMappingRequest) error {
 	database.DB.Model(&models.Host{}).Where("id = ?", req.HostID).Count(&hostCount)
 	if hostCount == 0 {
 		return ErrMappingHostNotFound
+	}
+	var ipCount int64
+	database.DB.Model(&models.PublicIP{}).Where("ip = ?", req.PublicIP).Count(&ipCount)
+	if ipCount == 0 {
+		return errors.New("公网IP不在资源池中，请先在公网IP录入中添加")
 	}
 	if req.Domain != "" {
 		var count int64
@@ -215,7 +259,8 @@ func (s *PortMappingService) Delete(id uint) error {
 	return refreshHostIPMapped(hostID)
 }
 
-// BatchCreateText 映射批量添加：公网IP,内网IP,外网端口,内网端口,域名,运营商,出口位置,备注
+// BatchCreateText 映射批量添加：公网IP,内网IP,外网端口,内网端口,域名,备注
+// 运营商/出口位置从公网IP资源池展示，不在批量行填写
 func (s *PortMappingService) BatchCreateText(text string) (*BatchCreateResponse, error) {
 	resp := &BatchCreateResponse{}
 	headerSkipped := false
@@ -236,9 +281,9 @@ func (s *PortMappingService) BatchCreateText(text string) (*BatchCreateResponse,
 			headerSkipped = true
 			continue
 		}
-		if len(row) > 8 {
+		if len(row) > 6 {
 			resp.Errors++
-			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 列数超出 8 列", lineNo))
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 列数超出 6 列", lineNo))
 			continue
 		}
 		if len(row) < 4 {
@@ -246,7 +291,7 @@ func (s *PortMappingService) BatchCreateText(text string) (*BatchCreateResponse,
 			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 至少需要4列(公网IP,内网IP,外网端口,内网端口)", lineNo))
 			continue
 		}
-		for len(row) < 8 {
+		for len(row) < 6 {
 			row = append(row, "")
 		}
 		privateIP := strings.TrimSpace(row[1])
@@ -262,9 +307,7 @@ func (s *PortMappingService) BatchCreateText(text string) (*BatchCreateResponse,
 			ExternalPorts: strings.TrimSpace(row[2]),
 			InternalPorts: strings.TrimSpace(row[3]),
 			Domain:        strings.TrimSpace(row[4]),
-			ISP:           strings.TrimSpace(row[5]),
-			ExitLocation:  strings.TrimSpace(row[6]),
-			Remark:        strings.TrimSpace(row[7]),
+			Remark:        strings.TrimSpace(row[5]),
 		}
 		if _, err := s.Create(req); err != nil {
 			if strings.Contains(err.Error(), "已存在") {
