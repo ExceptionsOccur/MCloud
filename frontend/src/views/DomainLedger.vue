@@ -88,7 +88,7 @@
       <div class="toolbar">
         <el-input
           v-model="keyword"
-          placeholder="搜索域名 / 公网IP / 服务商 / 备注"
+          placeholder="搜索域名 / 公网IP / 运营商 / 主机 / 备注"
           clearable
           style="width: 280px"
           @keyup.enter="loadDomains"
@@ -139,21 +139,35 @@
           </template>
         </el-table-column>
         <el-table-column
-          prop="provider"
-          label="服务商"
+          prop="isp"
+          label="运营商"
           min-width="140"
           show-overflow-tooltip
         >
           <template #default="{ row }">
-            {{ row.provider || '-' }}
+            {{ row.isp || '-' }}
           </template>
         </el-table-column>
         <el-table-column
-          label="到期时间"
-          width="170"
+          label="内网主机"
+          min-width="180"
+          show-overflow-tooltip
         >
           <template #default="{ row }">
-            {{ row.expires_at ? formatTime(row.expires_at) : '-' }}
+            <span v-if="row.host">
+              {{ row.host.name }}
+              <span class="host-ip">({{ row.host.private_ip }})</span>
+            </span>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="主机端口"
+          width="100"
+          align="center"
+        >
+          <template #default="{ row }">
+            {{ row.host_port || '-' }}
           </template>
         </el-table-column>
         <el-table-column
@@ -232,25 +246,45 @@
           />
         </el-form-item>
         <el-form-item
-          label="服务商"
-          prop="provider"
+          label="运营商"
+          prop="isp"
         >
           <el-input
-            v-model="form.provider"
-            placeholder="请输入服务商"
+            v-model="form.isp"
+            placeholder="请输入运营商"
             maxlength="128"
           />
         </el-form-item>
         <el-form-item
-          label="到期时间"
-          prop="expires_at"
+          label="内网主机"
+          prop="host_id"
         >
-          <el-date-picker
-            v-model="form.expires_at"
-            type="datetime"
-            placeholder="请选择到期时间"
+          <el-select
+            v-model="form.host_id"
+            placeholder="请选择内网主机（选填）"
+            filterable
+            clearable
             style="width: 100%"
-            value-format="YYYY-MM-DDTHH:mm:ss"
+            :loading="hostsLoading"
+          >
+            <el-option
+              v-for="h in hosts"
+              :key="h.id"
+              :label="`${h.name} (${h.private_ip})`"
+              :value="h.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item
+          label="主机端口"
+          prop="host_port"
+        >
+          <el-input-number
+            v-model="form.host_port"
+            :min="0"
+            :max="65535"
+            controls-position="right"
+            style="width: 100%"
           />
         </el-form-item>
         <el-form-item
@@ -291,7 +325,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { getDomains, createDomain, updateDomain, deleteDomain } from '../api/domain'
-import { formatTime } from '../utils'
+import { getHosts } from '../api/host'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
 
@@ -308,12 +342,15 @@ const dialogVisible = ref(false)
 const submitting = ref(false)
 const editId = ref(null)
 const formRef = ref(null)
+const hosts = ref([])
+const hostsLoading = ref(false)
 
 const form = reactive({
   domain: '',
   public_ip: '',
-  provider: '',
-  expires_at: '',
+  isp: '',
+  host_id: null,
+  host_port: 0,
   remark: ''
 })
 
@@ -326,6 +363,7 @@ const dialogTitle = computed(() => (editId.value ? '编辑域名' : '新增域�
 onMounted(() => {
   authStore.fetchUserInfo()
   loadDomains()
+  loadHosts()
 })
 
 async function loadDomains() {
@@ -342,12 +380,27 @@ async function loadDomains() {
   }
 }
 
+async function loadHosts() {
+  hostsLoading.value = true
+  try {
+    const res = await getHosts({ page: 1, page_size: 100 })
+    if (res.code === 0) {
+      hosts.value = res.data?.hosts || []
+    }
+  } catch {
+    // 错误提示由 axios 拦截器统一弹出
+  } finally {
+    hostsLoading.value = false
+  }
+}
+
 function openDialog(row) {
   editId.value = row?.id || null
   form.domain = row?.domain || ''
   form.public_ip = row?.public_ip || ''
-  form.provider = row?.provider || ''
-  form.expires_at = row?.expires_at ? row.expires_at.slice(0, 19) : ''
+  form.isp = row?.isp || ''
+  form.host_id = row?.host_id || null
+  form.host_port = row?.host_port || 0
   form.remark = row?.remark || ''
   dialogVisible.value = true
   formRef.value?.clearValidate()
@@ -362,8 +415,9 @@ async function handleSubmit() {
     const payload = {
       domain: form.domain.trim(),
       public_ip: form.public_ip.trim(),
-      provider: form.provider.trim(),
-      expires_at: form.expires_at || undefined,
+      isp: form.isp.trim(),
+      host_id: form.host_id || 0,
+      host_port: form.host_port || 0,
       remark: form.remark.trim()
     }
     const res = editId.value
@@ -486,5 +540,10 @@ function handleCommand(command) {
   display: flex;
   gap: 8px;
   margin-bottom: 16px;
+}
+
+.host-ip {
+  color: #909399;
+  font-size: 12px;
 }
 </style>

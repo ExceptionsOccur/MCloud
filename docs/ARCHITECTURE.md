@@ -177,7 +177,7 @@ go/
 | `cloud_resources` | `models/cloud_resource.go` | 云资源总览（按区域） |
 | `ip_subnets` | `models/ip_subnet.go` | IP 网段管理 |
 | `zero_trusts` | `models/zero_trust.go` | 零信任接入申请台账 |
-| `domains` | `models/domain.go` | 域名台账 |
+| `domains` | `models/domain.go` | 域名台账（域名/公网IP/运营商/内网主机FK/主机端口） |
 
 ### users 表
 
@@ -288,8 +288,9 @@ go/
 | ID | `id` | SERIAL | PRIMARY KEY |
 | 域名 | `domain` | VARCHAR(255) | NOT NULL, UNIQUE |
 | 解析公网IP | `public_ip` | VARCHAR(45) | |
-| 服务商 | `provider` | VARCHAR(128) | |
-| 到期时间 | `expires_at` | TIMESTAMPTZ | 可空 |
+| 运营商 | `isp` | VARCHAR(128) | |
+| 内网主机 | `host_id` | BIGINT | FK → hosts(id)，可空 |
+| 主机端口 | `host_port` | INTEGER | |
 | 备注 | `remark` | TEXT | |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 | 更新时间 | `updated_at` | TIMESTAMPTZ | DEFAULT NOW() |
@@ -306,4 +307,5 @@ go/
 - 系统**不预置默认网段**，由用户在「IP统计 → 管理网段」中维护
 - `zero_trusts.host_id` 外键关联 `hosts.id`；主机被零信任台账引用时禁止删除（应用层校验，返回 `40901`）
 - `domains.domain` 唯一约束，同域名不允许重复登记
+- `domains.host_id` 外键关联 `hosts.id`，可空；主机被域名台账引用时禁止删除（应用层校验）
 - **GORM 列名陷阱**：`CIDR` 字段默认会被命名为 `c_id_r`，模型已显式指定 `gorm:"column:cidr"`

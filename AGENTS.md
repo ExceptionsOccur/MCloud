@@ -66,13 +66,13 @@
 | last_updated | 2026-10-08 |
 | in_progress | 无 |
 | next_task | `T-002` 后端 `host_service.go` 拆分（= ROADMAP todo 首条，P1 最高优先级） |
-| todo（P1） | `T-002` host_service 拆分 → `T-003` csv controller 下沉 → `T-004` composables 抽取 → `T-005` IpStatistics 拆分 → `T-006` 测试骨架 → `T-030` 域名台账字段改造 |
+| todo（P1） | `T-002` host_service 拆分 → `T-003` csv controller 下沉 → `T-004` composables 抽取 → `T-005` IpStatistics 拆分 → `T-006` 测试骨架 |
 | todo（P2） | `T-008` 报表导出、`T-009` bcrypt 升级、`T-010` 路由拆分、`T-011` ping 解耦、`T-012` 文档巡检、`T-015` 公网IP字段改映射布尔+关联、`T-019` 抽 Layout/AppNav、`T-020` config ServerPort 硬编码（暂不执行）、`T-022` WS probe token 校验 |
 | blocked | 无 |
-| 功能完成度 | 核心功能 12/12 完成；待开发 4 项 + 技术债 10 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
+| 功能完成度 | 核心功能 12/12 完成；待开发 3 项 + 技术债 10 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
 | 已知风险 | 无测试、`host_service.go` 待拆分、`csv.go` 违反红线 1、密码为 SHA-256（详见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
 
-> T-029 零信任系统名称已合并 main（提交号见 ROADMAP）；T-016/T-013/T-014/T-026/T-027/T-028 已合并 main。多任务串行合并协议已生效。
+> T-030 域名台账字段改造已合并 main（提交号见 ROADMAP）；T-029/T-016/T-013/T-014/T-026/T-027/T-028 已合并 main。多任务串行合并协议已生效。
 
 ## 项目速览
 
