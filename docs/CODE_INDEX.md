@@ -71,8 +71,8 @@
 | `services/business_stats.go` | 业务统计聚合 | `GetBusinessStats`（项目/公司/人员三维聚合） |
 | `services/subnet_service.go` | IP 网段管理 | `List`/`Create`/`Update`/`Delete`、`normalizeCIDR`（/24 校验） |
 | `services/person_service.go` | 人员管理 | `List`/`Create`/`Update`/`Delete`、`normalizePerson`；删除时校验关联主机数 |
-| `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`；`HostReferencedByZeroTrust` |
-| `services/domain_service.go` | 域名台账 | `List`/`Create`/`Update`/`Delete` |
+| `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`HostReferencedByZeroTrust` |
+| `services/domain_service.go` | 域名台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText` |
 | `services/public_ip_service.go` | 公网IP资源台账 | `List`/`Create`/`Update`/`Delete`、`normalizePublicIP`（IP 唯一/格式校验） |
 
 ### 中间件与工具
@@ -139,8 +139,8 @@
 | `views/BusinessStatistics.vue` | `/business-statistics` | 业务统计（概览 + 柱状图 + 表格 + 下钻弹窗） |
 | `views/PersonnelManagement.vue` | `/personnel` | 人员管理（搜索 + 新增/编辑/删除，含关联主机数校验） |
 | `views/PublicIPManagement.vue` | `/public-ip` | 公网IP资源台账（搜索 + 新增/编辑/删除，设置菜单入口） |
-| `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 新增/编辑/删除，申请主机外键） |
-| `views/DomainLedger.vue` | `/domain-ledger` | 域名台账（搜索 + 新增/编辑/删除） |
+| `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 新增/编辑/删除 + 批量添加，申请主机外键） |
+| `views/DomainLedger.vue` | `/domain-ledger` | 域名台账（搜索 + 新增/编辑/删除 + 批量添加） |
 
 ### 组件（components/）
 
@@ -189,8 +189,8 @@
 | **IP 网段管理** | `controllers/subnet.go` `services/subnet_service.go` `models/ip_subnet.go` | `components/SubnetManageDialog.vue` `api/subnet.js` |
 | **人员管理** | `controllers/person.go` `services/person_service.go` `models/person.go` | `views/PersonnelManagement.vue` `api/person.js` |
 | **公网IP资源录入** | `controllers/public_ip.go` `services/public_ip_service.go` `models/public_ip.go` | `views/PublicIPManagement.vue` `api/public_ip.js` |
-| **零信任台账** | `controllers/zero_trust.go` `services/zero_trust_service.go` `models/zero_trust.go` | `views/ZeroTrustLedger.vue` `api/zero_trust.js` |
-| **域名台账** | `controllers/domain.go` `services/domain_service.go` `models/domain.go` | `views/DomainLedger.vue` `api/domain.js` |
+| **零信任台账** | `controllers/zero_trust.go` `services/zero_trust_service.go` `models/zero_trust.go` | `views/ZeroTrustLedger.vue` `api/zero_trust.js` `components/ZeroTrustBatchAddDialog.vue` |
+| **域名台账** | `controllers/domain.go` `services/domain_service.go` `models/domain.go` | `views/DomainLedger.vue` `api/domain.js` `components/DomainBatchAddDialog.vue` |
 | **主机关联人员** | `services/host_service.go`（`person_id` 事务写入） | `components/HostFormDialog.vue` `components/BatchEditDialog.vue`（选择/手输自动新增） |
 | **业务统计** | `controllers/stats.go` → `BusinessStats` `services/business_stats.go` | `views/BusinessStatistics.vue` `stores/business.js` |
 | **密码重置工具** | `cmd/resetpw/main.go` `utils/password.go` | — |

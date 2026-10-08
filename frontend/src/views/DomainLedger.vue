@@ -112,6 +112,13 @@
         >
           新增域名
         </el-button>
+        <el-button
+          type="primary"
+          plain
+          @click="domainBatchDialog?.open()"
+        >
+          批量添加
+        </el-button>
       </div>
 
       <el-table
@@ -322,6 +329,7 @@
 
     <ChangePasswordDialog ref="changePasswordDialog" />
     <CloudResourceDialog ref="cloudResourceDialog" />
+    <DomainBatchAddDialog ref="domainBatchDialog" />
   </div>
 </template>
 
@@ -334,12 +342,14 @@ import { getDomains, createDomain, updateDomain, deleteDomain } from '../api/dom
 import { getHosts } from '../api/host'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
+import DomainBatchAddDialog from '../components/DomainBatchAddDialog.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const changePasswordDialog = ref(null)
 const cloudResourceDialog = ref(null)
+const domainBatchDialog = ref(null)
 
 const domains = ref([])
 const loading = ref(false)
@@ -370,6 +380,12 @@ onMounted(() => {
   authStore.fetchUserInfo()
   loadDomains()
   loadHosts()
+  window.addEventListener('ledger-batch-done', loadDomains)
+})
+
+import { onUnmounted } from 'vue'
+onUnmounted(() => {
+  window.removeEventListener('ledger-batch-done', loadDomains)
 })
 
 async function loadDomains() {

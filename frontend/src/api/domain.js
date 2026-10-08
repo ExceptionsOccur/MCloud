@@ -15,3 +15,7 @@ export function updateDomain(id, data) {
 export function deleteDomain(id) {
   return api.delete(`/domains/${id}`)
 }
+
+export function batchCreateDomainsText(text) {
+  return api.post('/domains/batch', { text })
+}

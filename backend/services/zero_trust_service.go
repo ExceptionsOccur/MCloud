@@ -3,11 +3,13 @@ package services
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"mcloud/database"
 	"mcloud/models"
+	"mcloud/utils"
 )
 
 type ZeroTrustService struct{}
@@ -174,4 +176,88 @@ func HostReferencedByZeroTrust(hostID uint) (int64, error) {
 		return 0, fmt.Errorf("查询零信任台账引用失败: %w", err)
 	}
 	return count, nil
+}
+
+// BatchCreateText 零信任批量添加：列顺序 申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注
+// 主机按内网IP定位；不存在则该行失败；合法行全部插入（无唯一约束，不跳过）
+func (s *ZeroTrustService) BatchCreateText(text string) (*BatchCreateResponse, error) {
+	resp := &BatchCreateResponse{}
+	headerSkipped := false
+
+	for i, raw := range strings.Split(text, "\n") {
+		lineNo := i + 1
+		line := strings.TrimSpace(raw)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		row, err := utils.ParseCSVLine(line)
+		if err != nil {
+			resp.Errors++
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 格式错误(%v)", lineNo, err))
+			continue
+		}
+
+		if !headerSkipped && len(row) > 0 && strings.TrimSpace(row[0]) == "申请单位" {
+			headerSkipped = true
+			continue
+		}
+
+		if len(row) > 8 {
+			resp.Errors++
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 列数超出 8 列", lineNo))
+			continue
+		}
+		if len(row) < 4 {
+			resp.Errors++
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 至少需要4列(申请单位,账户名,内网IP,申请端口)", lineNo))
+			continue
+		}
+		for len(row) < 8 {
+			row = append(row, "")
+		}
+
+		privateIP := strings.TrimSpace(row[3])
+		var host models.Host
+		if hostErr := database.DB.Where("private_ip = ?", privateIP).First(&host).Error; hostErr != nil {
+			resp.Errors++
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 内网主机不存在(%s)", lineNo, privateIP))
+			continue
+		}
+
+		port, err := strconv.Atoi(strings.TrimSpace(row[4]))
+		if err != nil || port < 1 || port > 65535 {
+			resp.Errors++
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 申请端口必须在 1-65535 之间", lineNo))
+			continue
+		}
+
+		req := ZeroTrustRequest{
+			ApplyUnit:   strings.TrimSpace(row[0]),
+			AccountName: strings.TrimSpace(row[1]),
+			Contact:     strings.TrimSpace(row[2]),
+			HostID:      host.ID,
+			Port:        port,
+			SystemName:  strings.TrimSpace(row[5]),
+			Remark:      strings.TrimSpace(row[7]),
+		}
+		if t := strings.TrimSpace(row[6]); t != "" {
+			parsed, err := time.ParseInLocation("2006-01-02T15:04:05", t, time.Local)
+			if err != nil {
+				resp.Errors++
+				resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 申请时间格式应为 YYYY-MM-DDTHH:mm:ss", lineNo))
+				continue
+			}
+			req.ApplyTime = &parsed
+		}
+
+		if _, err := s.Create(req); err != nil {
+			resp.Errors++
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: %v", lineNo, err))
+		} else {
+			resp.Success++
+		}
+	}
+
+	return resp, nil
 }

@@ -28,6 +28,23 @@ func (ctrl *ZeroTrustController) List(c *gin.Context) {
 	Success(c, data)
 }
 
+// BatchCreateText 零信任批量添加（文本粘贴）
+func (ctrl *ZeroTrustController) BatchCreateText(c *gin.Context) {
+	var req struct {
+		Text string `json:"text" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		Error(c, 40001, "参数校验失败: "+err.Error())
+		return
+	}
+	resp, err := ctrl.service.BatchCreateText(req.Text)
+	if err != nil {
+		Error(c, 50001, "批量创建失败: "+err.Error())
+		return
+	}
+	Success(c, resp)
+}
+
 func (ctrl *ZeroTrustController) Create(c *gin.Context) {
 	var req services.ZeroTrustRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

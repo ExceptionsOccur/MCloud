@@ -73,6 +73,14 @@ func ParseCSV(content string) ([][]string, error) {
 	return records, nil
 }
 
+// ParseCSVLine 按 CSV 规则解析单行（支持双引号包裹含逗号的字段）
+func ParseCSVLine(line string) ([]string, error) {
+	reader := csv.NewReader(strings.NewReader(line))
+	reader.LazyQuotes = true
+	reader.FieldsPerRecord = -1
+	return reader.Read()
+}
+
 func BuildCSVOutput(headers []string, rows [][]string) (string, error) {
 	var buf bytes.Buffer
 	// Write BOM for Excel UTF-8 compatibility

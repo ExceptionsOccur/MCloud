@@ -26,6 +26,12 @@
 
 ## todo（按优先级）
 
+- [ ] **T-033** 域名台账增加出口位置字段 ｜ P1 ｜ 负责: — ｜ 备注: 2026-10-08 人类需求；口径已确认（exit_location；运营商之后；域名台账+公网IP资源池都加）；T-032 已合并，可认领
+  - 内容：`domains` 与 `public_ips` 新增「出口位置」`exit_location` VARCHAR(128) 选填，记录 IP 所在地
+  - 定位：`backend/models/domain.go`、`models/public_ip.go`、`services/domain_service.go`、`services/public_ip_service.go`、迁移 SQL；前端 `views/DomainLedger.vue`、`views/PublicIPManagement.vue`、`components/DomainBatchAddDialog.vue`
+  - 验收标准：API 响应含 `exit_location`；列表/表单位于「运营商」之后；域名批量列同步；迁移 SQL；前后端验证全绿；ARCHITECTURE/API 同步
+  - 分支：`feat/domain-exit-location`
+  - 回写：ARCHITECTURE、API.md、CODE_INDEX、PROJECT_STATUS、AGENTS 快照
 - [ ] **T-002** 后端 `services/host_service.go` 拆分 ｜ P1 ｜ 负责: —
   - 依赖：已解除（T-018 lint 清零已完成）
   - 内容：拆为 `host_service.go`（CRUD/筛选）+ `host_batch_service.go`（文本/结构化批量）+ `host_csv_service.go`（行映射、导入导出）
@@ -102,6 +108,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-032 | 零信任/域名台账批量添加 | 2026-10-08 | `-` | 验收：两台账 /batch 文本接口；主机按内网IP；域名跳过零信任全插；前端工具栏可用 |
 | T-031 | 公网 IP 资源录入 | 2026-10-08 | `e0d84ac` | 验收：public_ips CRUD+IP唯一/格式校验；设置菜单+独立页；迁移+验证全绿 |
 | T-015 | 公网 IP 字段改造 + 双台账关联 | 2026-10-08 | `130388a` | 验收：ip_mapped 布尔；详情展示两台账关联；CSV/表单/筛选同步；迁移+验证全绿 |
 | T-030 | 域名台账字段改造 | 2026-10-08 | `e83db90` | 验收：isp/host_id/host_port；无 provider/expires_at；FK 校验+主机删除 40901；迁移+验证全绿 |

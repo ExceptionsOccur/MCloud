@@ -15,3 +15,7 @@ export function updateZeroTrust(id, data) {
 export function deleteZeroTrust(id) {
   return api.delete(`/zero-trusts/${id}`)
 }
+
+export function batchCreateZeroTrustsText(text) {
+  return api.post('/zero-trusts/batch', { text })
+}
