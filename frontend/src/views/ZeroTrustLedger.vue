@@ -85,7 +85,7 @@
       <div class="toolbar">
         <el-input
           v-model="keyword"
-          placeholder="搜索申请单位 / 账户名 / 联系方式 / 主机 / 备注"
+          placeholder="搜索申请单位 / 账户名 / 联系方式 / 系统名称 / 主机 / 备注"
           clearable
           style="width: 320px"
           @keyup.enter="loadList"
@@ -159,6 +159,15 @@
           width="100"
           align="center"
         />
+        <el-table-column
+          label="系统名称"
+          min-width="140"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            {{ row.system_name || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column
           label="申请时间"
           width="170"
@@ -285,6 +294,16 @@
           />
         </el-form-item>
         <el-form-item
+          label="系统名称"
+          prop="system_name"
+        >
+          <el-input
+            v-model="form.system_name"
+            placeholder="请输入系统名称（选填）"
+            maxlength="128"
+          />
+        </el-form-item>
+        <el-form-item
           label="申请时间"
           prop="apply_time"
         >
@@ -361,6 +380,7 @@ const form = reactive({
   contact: '',
   host_id: null,
   port: 22,
+  system_name: '',
   apply_time: '',
   remark: ''
 })
@@ -416,6 +436,7 @@ function openDialog(row) {
   form.contact = row?.contact || ''
   form.host_id = row?.host_id || null
   form.port = row?.port || 22
+  form.system_name = row?.system_name || ''
   form.apply_time = row?.apply_time ? row.apply_time.slice(0, 19) : ''
   form.remark = row?.remark || ''
   dialogVisible.value = true
@@ -434,6 +455,7 @@ async function handleSubmit() {
       contact: form.contact.trim(),
       host_id: form.host_id,
       port: form.port,
+      system_name: form.system_name.trim(),
       apply_time: form.apply_time || undefined,
       remark: form.remark.trim()
     }

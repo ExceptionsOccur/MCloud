@@ -22,6 +22,7 @@ type ZeroTrustRequest struct {
 	Contact     string     `json:"contact"`
 	HostID      uint       `json:"host_id" binding:"required"`
 	Port        int        `json:"port" binding:"required"`
+	SystemName  string     `json:"system_name"`
 	ApplyTime   *time.Time `json:"apply_time"`
 	Remark      string     `json:"remark"`
 }
@@ -46,6 +47,7 @@ func normalizeZeroTrust(req ZeroTrustRequest) (ZeroTrustRequest, error) {
 	req.ApplyUnit = strings.TrimSpace(req.ApplyUnit)
 	req.AccountName = strings.TrimSpace(req.AccountName)
 	req.Contact = strings.TrimSpace(req.Contact)
+	req.SystemName = strings.TrimSpace(req.SystemName)
 	req.Remark = strings.TrimSpace(req.Remark)
 	if req.ApplyUnit == "" {
 		return req, errors.New("申请单位不能为空")
@@ -71,8 +73,8 @@ func (s *ZeroTrustService) List(keyword string) ([]ZeroTrustItem, error) {
 	if keyword = strings.TrimSpace(keyword); keyword != "" {
 		like := "%" + keyword + "%"
 		db = db.Where(
-			"zero_trusts.apply_unit ILIKE ? OR zero_trusts.account_name ILIKE ? OR zero_trusts.contact ILIKE ? OR zero_trusts.remark ILIKE ? OR EXISTS (SELECT 1 FROM hosts WHERE hosts.id = zero_trusts.host_id AND (hosts.name ILIKE ? OR hosts.private_ip ILIKE ? OR hosts.public_ip ILIKE ?))",
-			like, like, like, like, like, like, like,
+			"zero_trusts.apply_unit ILIKE ? OR zero_trusts.account_name ILIKE ? OR zero_trusts.contact ILIKE ? OR zero_trusts.system_name ILIKE ? OR zero_trusts.remark ILIKE ? OR EXISTS (SELECT 1 FROM hosts WHERE hosts.id = zero_trusts.host_id AND (hosts.name ILIKE ? OR hosts.private_ip ILIKE ? OR hosts.public_ip ILIKE ?))",
+			like, like, like, like, like, like, like, like,
 		)
 	}
 
@@ -120,6 +122,7 @@ func (s *ZeroTrustService) Create(req ZeroTrustRequest) (uint, error) {
 		Contact:     req.Contact,
 		HostID:      req.HostID,
 		Port:        req.Port,
+		SystemName:  req.SystemName,
 		ApplyTime:   *req.ApplyTime,
 		Remark:      req.Remark,
 	}
@@ -151,6 +154,7 @@ func (s *ZeroTrustService) Update(id uint, req ZeroTrustRequest) error {
 	record.Contact = req.Contact
 	record.HostID = req.HostID
 	record.Port = req.Port
+	record.SystemName = req.SystemName
 	record.ApplyTime = *req.ApplyTime
 	record.Remark = req.Remark
 	return database.DB.Save(&record).Error

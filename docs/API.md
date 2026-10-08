@@ -120,8 +120,8 @@
 
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
-| GET | `/api/zero-trusts` | `zeroTrust.List` | 零信任申请列表，`keyword` 模糊匹配申请单位/账户名/联系方式/备注/主机名/IP |
-| POST | `/api/zero-trusts` | `zeroTrust.Create` | 新增申请（申请单位、账户名、申请主机、申请端口、申请时间必填） |
+| GET | `/api/zero-trusts` | `zeroTrust.List` | 零信任申请列表，`keyword` 模糊匹配申请单位/账户名/联系方式/系统名称/备注/主机名/IP |
+| POST | `/api/zero-trusts` | `zeroTrust.Create` | 新增申请（申请单位、账户名、申请主机、申请端口、申请时间必填；`system_name` 选填） |
 | PUT | `/api/zero-trusts/:id` | `zeroTrust.Update` | 修改申请记录 |
 | DELETE | `/api/zero-trusts/:id` | `zeroTrust.Delete` | 删除申请记录 |
 
@@ -294,12 +294,14 @@ POST /api/zero-trusts
   "contact": "13800000000",
   "host_id": 1,
   "port": 22,
+  "system_name": "统一门户",
   "apply_time": "2026-10-08T10:00:00",
   "remark": "临时开通"
 }
 ```
 
 - `apply_unit` / `account_name` / `host_id` / `port` 必填；`port` 范围 1-65535
+- `system_name` 选填（VARCHAR 128），列表列与表单位于「申请端口」之后
 - `host_id` 为 `hosts.id` 外键；主机不存在返回 `40001`
 - `apply_time` 可选，缺省为服务端当前时间
 - 列表返回嵌套 `host` 对象（名称/IP）；删除主机时若被台账引用返回 `40901`
