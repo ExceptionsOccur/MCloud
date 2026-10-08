@@ -33,7 +33,7 @@
 
 ### 2026-10-08
 
-- `—` `feat:` **T-029** 零信任台账新增系统名称字段（`system_name` 选填；列表列/表单位于申请端口后；迁移 SQL + API/ARCHITECTURE 同步）
+- `1f70851` `feat:` **T-029** 零信任台账新增系统名称字段（`system_name` 选填；列表列/表单位于申请端口后；迁移 SQL + API/ARCHITECTURE 同步）
 - `82e0e07` `feat:` **T-016** Goose 迁移执行器实装（`goose/v3` + embed 执行 `migrations/*.sql`，AutoMigrate 兜底；修复 cloud_resources 幂等；口径反转回写）
 - `2e32a5b` `fix:` **T-028** 前端导航修正（设置菜单去掉台账入口；ZeroTrustLedger 补域名 Tab）
 - `ebb52de` `fix:` **T-027** 前端 ESLint 警告清零（~724→0；`defineExpose` 修复改密弹窗；移除 IpStatistics console）
