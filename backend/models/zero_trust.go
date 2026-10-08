@@ -9,6 +9,7 @@ type ZeroTrust struct {
 	Contact     string    `json:"contact" gorm:"type:varchar(64)"`
 	HostID      uint      `json:"host_id" gorm:"index;not null"`
 	Port        int       `json:"port" gorm:"not null"`
+	SystemName  string    `json:"system_name" gorm:"type:varchar(128)"`
 	ApplyTime   time.Time `json:"apply_time" gorm:"not null"`
 	Remark      string    `json:"remark" gorm:"type:text"`
 	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`

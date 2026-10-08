@@ -52,11 +52,6 @@
   - 内容：后端 `services` 表驱动单测（先覆盖主机 CRUD、登录）+ 前端 Vitest 冒烟
   - 定位：新建 `backend/services/*_test.go`；前端 `frontend/package.json`（加 vitest 依赖与 script）+ `src/**/__tests__/`
   - 验收标准：`cd backend && go test ./...` 有用例非零且通过；`npm run test` 可运行
-- [ ] **T-029** 零信任台账增加系统名称字段 ｜ P1 ｜ 负责: — ｜ 备注: 2026-10-08 人类需求；顺序在 T-016 之后
-  - 内容：`zero_trusts` 新增 `system_name` VARCHAR(128) **选填**；前端列表列与表单项位于「申请端口」之后
-  - 定位：`backend/models/zero_trust.go`、`services/zero_trust_service.go`（`ZeroTrustRequest`/`normalizeZeroTrust`/`Create`/`Update`/`List` 搜索）、`controllers/zero_trust.go`、迁移 SQL；前端 `views/ZeroTrustLedger.vue`（表格列/表单/payload/搜索占位）
-  - 验收标准：API 响应含 `system_name`；表格「申请端口」后新增「系统名称」列、表单同位置选填输入框；迁移 SQL 写入 `backend/migrations/`；前后端验证命令全绿；ARCHITECTURE/API 同步
-  - 分支：`feat/zero-trust-system-name`
 - [ ] **T-030** 域名台账字段改造 ｜ P1 ｜ 负责: — ｜ 备注: 2026-10-08 人类需求；顺序在 T-029 之后
   - 内容：新增「内网主机」`host_id` FK→`hosts`（下拉选择，删除主机前校验）与「主机端口」`host_port`；`provider` **列重命名** `isp`（显示「运营商」，JSON 字段同步改 `isp`）；删除 `expires_at`（DROP COLUMN，存量丢弃已确认）
   - 定位：`backend/models/domain.go`、`services/domain_service.go`（`DomainRequest`/`List` 搜索/CRUD）、`controllers/domain.go`、迁移 SQL；前端 `views/DomainLedger.vue`（列/表单/搜索占位）、`api/domain.js`
@@ -119,6 +114,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-029 | 零信任台账增加系统名称字段 | 2026-10-08 | `-` | 验收：API 含 system_name；列/表单位于申请端口后；迁移+前后端验证全绿 |
 | T-016 | Goose 迁移执行器实装 | 2026-10-08 | `82e0e07` | 验收：存量 dev 库首跑 9 迁移+幂等；build/lint/check_docs 过；口径反转已回写 |
 | T-028 | 前端导航修正：台账入口与 Tab 一致性 | 2026-10-08 | `2e32a5b` | 验收：设置菜单无台账入口；各页 Tab 含零信任+域名；lint/build 通过 |
 | T-027 | 前端 ESLint 警告清零 | 2026-10-08 | `ebb52de` | 验收：lint:check 0 problems + build 通过 |

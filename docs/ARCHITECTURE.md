@@ -276,6 +276,7 @@ go/
 | 申请人联系方式 | `contact` | VARCHAR(64) | |
 | 申请主机 | `host_id` | INTEGER | NOT NULL, FK → hosts(id)，应用层禁止删除被引用主机 |
 | 申请端口 | `port` | INTEGER | NOT NULL, 1-65535 |
+| 系统名称 | `system_name` | VARCHAR(128) | 选填 |
 | 申请时间 | `apply_time` | TIMESTAMPTZ | NOT NULL |
 | 备注 | `remark` | TEXT | |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
