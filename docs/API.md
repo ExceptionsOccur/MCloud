@@ -184,10 +184,10 @@
 
 `keyword` 模糊匹配以下字段（hosts 与 host_applications OR 联合搜索）：
 
-- hosts 表：`region`, `instance_id`, `name`, `private_ip`, `public_ip`, `os`, `status`, `tags`
+- hosts 表：`region`, `instance_id`, `name`, `private_ip`, `os`, `status`, `tags`
 - host_applications 表：`apply_unit`, `applicant`, `project`, `remark`
 
-共 12 个字段，使用 `ILIKE '%keyword%'`。
+共 11 个字段，使用 `ILIKE '%keyword%'`（`public_ip` 已改为 `ip_mapped` 布尔，不参与关键词搜索）。
 
 ---
 
@@ -203,7 +203,7 @@ POST /api/batch/hosts
       "region": "region-a",
       "name": "web-server-01",
       "private_ip": "192.168.1.10",
-      "public_ip": "10.0.0.1",
+      "ip_mapped": true,
       "asset_type": "虚拟机",
       "env_type": "生产",
       "cpu": 4,
@@ -228,7 +228,7 @@ POST /api/batch/hosts/text
 }
 ```
 
-- 每行一条记录，字段以逗号分隔，列顺序与 CSV 模板一致（`区域,实例ID,主机名称,内网IP,公网IP,资产类型,操作系统,CPU核数,CPU架构,内存(GB),系统盘(GB),数据盘(GB),环境类型,是否数据库服务器,状态,开放端口,标签,申请单位,申请人,申请人联系方式,所属项目,申请理由,申请配置,申请时间,对象存储大小,备注`）
+- 每行一条记录，字段以逗号分隔，列顺序与 CSV 模板一致（`区域,实例ID,主机名称,内网IP,是否映射公网,资产类型,操作系统,CPU核数,CPU架构,内存(GB),系统盘(GB),数据盘(GB),环境类型,是否数据库服务器,状态,开放端口,标签,申请单位,申请人,申请人联系方式,所属项目,申请理由,申请配置,申请时间,对象存储大小,备注`）
 - 至少需要前 3 列（区域、主机名称、内网IP），尾部列可省略（自动补空）
 - 支持双引号包裹含逗号的字段；空行与 `#` 开头的注释行跳过；首行为表头时自动跳过
 - 列数超过 26 或不足 3 列的行计入 `errors`

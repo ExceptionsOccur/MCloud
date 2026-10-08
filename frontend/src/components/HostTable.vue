@@ -52,11 +52,19 @@
         width="140"
       />
       <el-table-column
-        prop="public_ip"
-        label="公网IP"
-        width="140"
-        show-overflow-tooltip
-      />
+        label="是否映射公网"
+        width="120"
+        align="center"
+      >
+        <template #default="{ row }">
+          <el-tag
+            :type="row.ip_mapped ? 'success' : 'info'"
+            size="small"
+          >
+            {{ row.ip_mapped ? '是' : '否' }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column
         label="资产类型"
         min-width="70"

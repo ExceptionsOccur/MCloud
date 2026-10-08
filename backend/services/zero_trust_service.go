@@ -31,7 +31,6 @@ type ZeroTrustItem struct {
 	models.ZeroTrust
 	HostName  string `json:"host_name"`
 	PrivateIP string `json:"private_ip"`
-	PublicIP  string `json:"public_ip"`
 }
 
 // ErrZeroTrustNotFound 零信任台账记录不存在
@@ -73,8 +72,8 @@ func (s *ZeroTrustService) List(keyword string) ([]ZeroTrustItem, error) {
 	if keyword = strings.TrimSpace(keyword); keyword != "" {
 		like := "%" + keyword + "%"
 		db = db.Where(
-			"zero_trusts.apply_unit ILIKE ? OR zero_trusts.account_name ILIKE ? OR zero_trusts.contact ILIKE ? OR zero_trusts.system_name ILIKE ? OR zero_trusts.remark ILIKE ? OR EXISTS (SELECT 1 FROM hosts WHERE hosts.id = zero_trusts.host_id AND (hosts.name ILIKE ? OR hosts.private_ip ILIKE ? OR hosts.public_ip ILIKE ?))",
-			like, like, like, like, like, like, like, like,
+			"zero_trusts.apply_unit ILIKE ? OR zero_trusts.account_name ILIKE ? OR zero_trusts.contact ILIKE ? OR zero_trusts.system_name ILIKE ? OR zero_trusts.remark ILIKE ? OR EXISTS (SELECT 1 FROM hosts WHERE hosts.id = zero_trusts.host_id AND (hosts.name ILIKE ? OR hosts.private_ip ILIKE ?))",
+			like, like, like, like, like, like, like,
 		)
 	}
 
@@ -89,7 +88,6 @@ func (s *ZeroTrustService) List(keyword string) ([]ZeroTrustItem, error) {
 		if r.Host != nil {
 			item.HostName = r.Host.Name
 			item.PrivateIP = r.Host.PrivateIP
-			item.PublicIP = r.Host.PublicIP
 		}
 		items = append(items, item)
 	}

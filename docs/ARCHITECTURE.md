@@ -210,7 +210,7 @@ go/
 | 实例ID | `instance_id` | VARCHAR(128) | |
 | 主机名称 | `name` | VARCHAR(128) | NOT NULL |
 | 内网IP | `private_ip` | VARCHAR(45) | NOT NULL, UNIQUE |
-| 公网IP | `public_ip` | VARCHAR(45) | |
+| 是否映射公网 | `ip_mapped` | BOOLEAN | DEFAULT FALSE |
 | 资产类型 | `asset_type` | VARCHAR(32) | 可选值：虚拟机、裸金属服务器 |
 | 操作系统 | `os` | VARCHAR(64) | |
 | CPU核数 | `cpu` | INTEGER | |
@@ -308,4 +308,5 @@ go/
 - `zero_trusts.host_id` 外键关联 `hosts.id`；主机被零信任台账引用时禁止删除（应用层校验，返回 `40901`）
 - `domains.domain` 唯一约束，同域名不允许重复登记
 - `domains.host_id` 外键关联 `hosts.id`，可空；主机被域名台账引用时禁止删除（应用层校验）
+- `hosts.ip_mapped` 为「是否做了公网映射」布尔标记，不存 IP 地址；映射详情由零信任/域名台账的 `host_id` 关联体现
 - **GORM 列名陷阱**：`CIDR` 字段默认会被命名为 `c_id_r`，模型已显式指定 `gorm:"column:cidr"`

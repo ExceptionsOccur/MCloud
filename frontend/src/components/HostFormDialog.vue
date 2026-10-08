@@ -173,10 +173,11 @@
           </el-row>
           <el-row :gutter="16">
             <el-col :span="12">
-              <el-form-item label="公网IP">
-                <el-input
-                  v-model="form.public_ip"
-                  placeholder="请输入公网IP"
+              <el-form-item label="是否映射公网">
+                <el-switch
+                  v-model="form.ip_mapped"
+                  active-text="是"
+                  inactive-text="否"
                 />
               </el-form-item>
             </el-col>
@@ -312,6 +313,100 @@
             />
           </el-form-item>
         </el-tab-pane>
+        <el-tab-pane
+          v-if="mode === 'view'"
+          label="关联台账"
+          name="relations"
+        >
+          <div class="relations-block">
+            <h4>零信任台账（{{ relations.zeroTrusts.length }}）</h4>
+            <el-table
+              v-if="relations.zeroTrusts.length"
+              :data="relations.zeroTrusts"
+              size="small"
+              border
+            >
+              <el-table-column
+                prop="apply_unit"
+                label="申请单位"
+                min-width="120"
+              />
+              <el-table-column
+                prop="account_name"
+                label="账户名"
+                min-width="100"
+              />
+              <el-table-column
+                prop="system_name"
+                label="系统名称"
+                min-width="120"
+              >
+                <template #default="{ row }">
+                  {{ row.system_name || '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column
+                prop="port"
+                label="申请端口"
+                width="90"
+                align="center"
+              />
+            </el-table>
+            <el-empty
+              v-else
+              description="无零信任台账记录"
+              :image-size="48"
+            />
+          </div>
+          <div class="relations-block">
+            <h4>域名台账（{{ relations.domains.length }}）</h4>
+            <el-table
+              v-if="relations.domains.length"
+              :data="relations.domains"
+              size="small"
+              border
+            >
+              <el-table-column
+                prop="domain"
+                label="域名"
+                min-width="180"
+              />
+              <el-table-column
+                prop="isp"
+                label="运营商"
+                min-width="100"
+              >
+                <template #default="{ row }">
+                  {{ row.isp || '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column
+                prop="host_port"
+                label="主机端口"
+                width="90"
+                align="center"
+              >
+                <template #default="{ row }">
+                  {{ row.host_port || '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column
+                prop="public_ip"
+                label="解析公网IP"
+                min-width="120"
+              >
+                <template #default="{ row }">
+                  {{ row.public_ip || '-' }}
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-empty
+              v-else
+              description="无域名台账记录"
+              :image-size="48"
+            />
+          </div>
+        </el-tab-pane>
       </el-tabs>
     </el-form>
 
@@ -338,6 +433,7 @@ import { ref, reactive, computed } from 'vue'
 import { useHostStore } from '../stores/host'
 import { useCloudResourceStore } from '../stores/cloudResource'
 import { getPersons, createPerson } from '../api/person'
+import { getHost } from '../api/host'
 import { ElMessage } from 'element-plus'
 import { statusOptions, envTypeOptions, assetTypeOptions, cpuArchOptions } from '../utils'
 
@@ -353,12 +449,17 @@ const editId = ref(null)
 const formRef = ref(null)
 
 const form = reactive({
-  region: '', name: '', instance_id: '', private_ip: '', public_ip: '',
+  region: '', name: '', instance_id: '', private_ip: '', ip_mapped: false,
   asset_type: '', os: '', cpu: '', cpu_arch: '', memory: '', disk: '',
   system_disk: '', data_disk: '', env_type: '', is_db_server: false,
   status: '', open_ports: '', tags: '', person_id: '',
   apply_unit: '', applicant: '', applicant_contact: '', project: '',
   apply_reason: '', apply_config: '', apply_time: '', object_storage_size: '', remark: ''
+})
+
+const relations = reactive({
+  zeroTrusts: [],
+  domains: []
 })
 
 const personOptions = ref([])
@@ -483,6 +584,46 @@ function resetForm() {
     if (typeof form[key] === 'boolean') form[key] = false
     else form[key] = ''
   })
+  relations.zeroTrusts = []
+  relations.domains = []
+}
+
+function fillFormFromHost(h) {
+  form.region = h.region || ''
+  form.name = h.name || ''
+  form.instance_id = h.instance_id || ''
+  form.private_ip = h.private_ip || ''
+  form.ip_mapped = h.ip_mapped || false
+  form.asset_type = h.asset_type || ''
+  form.os = h.os || ''
+  form.cpu = h.cpu ?? ''
+  form.cpu_arch = h.cpu_arch || ''
+  form.memory = h.memory ?? ''
+  form.disk = h.disk ?? ''
+  form.system_disk = h.system_disk ?? ''
+  form.data_disk = h.data_disk ?? ''
+  form.env_type = h.env_type || ''
+  form.is_db_server = h.is_db_server || false
+  form.status = h.status || ''
+  form.open_ports = h.open_ports || ''
+  form.tags = h.tags || ''
+  form.person_id = h.person_id ?? ''
+  editId.value = h.id
+
+  if (h.application) {
+    form.apply_unit = h.application.apply_unit || ''
+    form.applicant = h.application.applicant || ''
+    form.applicant_contact = h.application.applicant_contact || ''
+    form.project = h.application.project || ''
+    form.apply_reason = h.application.apply_reason || ''
+    form.apply_config = h.application.apply_config || ''
+    form.apply_time = h.application.apply_time || ''
+    form.object_storage_size = h.application.object_storage_size || ''
+    form.remark = h.application.remark || ''
+  }
+
+  relations.zeroTrusts = h.zero_trusts || []
+  relations.domains = h.domains || []
 }
 
 async function open(data) {
@@ -494,39 +635,16 @@ async function open(data) {
   await loadPersons()
 
   if (data?.data) {
-    const h = data.data
-    form.region = h.region || ''
-    form.name = h.name || ''
-    form.instance_id = h.instance_id || ''
-    form.private_ip = h.private_ip || ''
-    form.public_ip = h.public_ip || ''
-    form.asset_type = h.asset_type || ''
-    form.os = h.os || ''
-    form.cpu = h.cpu ?? ''
-    form.cpu_arch = h.cpu_arch || ''
-    form.memory = h.memory ?? ''
-    form.disk = h.disk ?? ''
-    form.system_disk = h.system_disk ?? ''
-    form.data_disk = h.data_disk ?? ''
-    form.env_type = h.env_type || ''
-    form.is_db_server = h.is_db_server || false
-    form.status = h.status || ''
-    form.open_ports = h.open_ports || ''
-    form.tags = h.tags || ''
-    form.person_id = h.person_id ?? ''
-    editId.value = h.id
-
-    if (h.application) {
-      form.apply_unit = h.application.apply_unit || ''
-      form.applicant = h.application.applicant || ''
-      form.applicant_contact = h.application.applicant_contact || ''
-      form.project = h.application.project || ''
-      form.apply_reason = h.application.apply_reason || ''
-      form.apply_config = h.application.apply_config || ''
-      form.apply_time = h.application.apply_time || ''
-      form.object_storage_size = h.application.object_storage_size || ''
-      form.remark = h.application.remark || ''
+    let h = data.data
+    if (mode.value === 'view' && h.id) {
+      try {
+        const res = await getHost(h.id)
+        if (res.code === 0 && res.data) h = res.data
+      } catch {
+        // 详情拉取失败时回退列表行数据
+      }
     }
+    fillFormFromHost(h)
 
     // 已关联人员但申请信息为空时，从人员库回填
     if (form.person_id) {
@@ -557,6 +675,7 @@ async function handleSubmit() {
 
     const payload = { ...form }
     payload.person_id = personId || null
+    payload.ip_mapped = !!form.ip_mapped
     ;['cpu', 'memory', 'disk', 'system_disk', 'data_disk'].forEach(key => {
       payload[key] = Number(payload[key]) || 0
     })
@@ -584,3 +703,15 @@ import { onMounted, onUnmounted } from 'vue'
 onMounted(() => window.addEventListener('open-host-form', handleOpenHostForm))
 onUnmounted(() => window.removeEventListener('open-host-form', handleOpenHostForm))
 </script>
+
+<style scoped>
+.relations-block {
+  margin-bottom: 16px;
+}
+
+.relations-block h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #303133;
+}
+</style>
