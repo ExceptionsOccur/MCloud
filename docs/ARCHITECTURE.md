@@ -40,7 +40,7 @@
 
 - **前端**：单页应用，`/api` 请求经 Axios，IP 探测走 WebSocket 长连接
 - **后端**：分层架构，启动时 goose 执行 `migrations/*.sql`（embed）+ AutoMigrate 兜底 + 种子数据
-- **数据库**：PostgreSQL，8 张表
+- **数据库**：PostgreSQL，9 张表
 
 ---
 
@@ -93,7 +93,8 @@ go/
 │   │   ├── cloud_resource.go      # CloudResource 模型
 │   │   ├── ip_subnet.go           # IPSubnet 模型（IP 网段管理）
 │   │   ├── zero_trust.go          # ZeroTrust 模型（零信任台账）
-│   │   └── domain.go              # Domain 模型（域名台账）
+│   │   ├── domain.go              # Domain 模型（域名台账）
+│   │   └── public_ip.go           # PublicIP 模型（公网IP资源台账）
 │   │
 │   ├── controllers/
 │   │   ├── response.go            # 统一响应辅助函数
@@ -105,6 +106,7 @@ go/
 │   │   ├── person.go              # 人员 CRUD
 │   │   ├── zero_trust.go          # 零信任台账 CRUD
 │   │   ├── domain.go              # 域名台账 CRUD
+│   │   ├── public_ip.go           # 公网IP资源台账 CRUD
 │   │   ├── stats.go               # 统计（IP 使用、探测、业务统计）
 │   │   ├── subnet.go              # IP 网段 CRUD
 │   │   └── websocket.go           # WebSocket IP 探测通道
@@ -119,6 +121,7 @@ go/
 │   │   ├── person_service.go      # 人员业务逻辑
 │   │   ├── zero_trust_service.go  # 零信任台账业务逻辑
 │   │   ├── domain_service.go      # 域名台账业务逻辑
+│   │   ├── public_ip_service.go   # 公网IP资源台账业务逻辑
 │   │   ├── stats_service.go       # IP 使用统计 + 连通性探测
 │   │   ├── business_stats.go      # 业务统计聚合（项目/公司/人员）
 │   │   └── subnet_service.go      # IP 网段业务逻辑（/24 校验）
@@ -152,7 +155,7 @@ go/
         │
         ├── stores/                # Pinia 状态：auth / host / cloudResource / stats / business
         ├── api/                   # API 封装：index / auth / host / csv / cloud_resource / person / zero_trust / domain / stats / subnet
-        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / ZeroTrustLedger / DomainLedger
+        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / PublicIPManagement / ZeroTrustLedger / DomainLedger
         ├── components/            # 组件：工具栏/表格/各类弹窗
         │
         ├── utils/
@@ -166,7 +169,7 @@ go/
 
 ## 数据模型
 
-数据库共 8 张表：
+数据库共 9 张表：
 
 | 表 | 模型 | 说明 |
 |----|------|------|
@@ -178,6 +181,7 @@ go/
 | `ip_subnets` | `models/ip_subnet.go` | IP 网段管理 |
 | `zero_trusts` | `models/zero_trust.go` | 零信任接入申请台账 |
 | `domains` | `models/domain.go` | 域名台账（域名/公网IP/运营商/内网主机FK/主机端口） |
+| `public_ips` | `models/public_ip.go` | 公网IP资源台账（IP/运营商/备注） |
 
 ### users 表
 
@@ -295,6 +299,16 @@ go/
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 | 更新时间 | `updated_at` | TIMESTAMPTZ | DEFAULT NOW() |
 
+### public_ips 表（公网IP资源台账）
+
+| 字段 | 列名 | 类型 | 约束 |
+|------|------|------|------|
+| ID | `id` | SERIAL | PRIMARY KEY |
+| 公网IP | `ip` | VARCHAR(45) | NOT NULL, UNIQUE |
+| 运营商 | `isp` | VARCHAR(128) | |
+| 备注 | `remark` | TEXT | |
+| 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
+
 ### 字段约束说明
 
 - `private_ip` 唯一约束，防止重复内网 IP
@@ -309,4 +323,5 @@ go/
 - `domains.domain` 唯一约束，同域名不允许重复登记
 - `domains.host_id` 外键关联 `hosts.id`，可空；主机被域名台账引用时禁止删除（应用层校验）
 - `hosts.ip_mapped` 为「是否做了公网映射」布尔标记，不存 IP 地址；映射详情由零信任/域名台账的 `host_id` 关联体现
+- `public_ips.ip` 唯一约束，公网 IP 资源池录入；允许直接删除（无外键引用校验）
 - **GORM 列名陷阱**：`CIDR` 字段默认会被命名为 `c_id_r`，模型已显式指定 `gorm:"column:cidr"`

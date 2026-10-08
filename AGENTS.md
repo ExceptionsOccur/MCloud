@@ -72,7 +72,7 @@
 | 功能完成度 | 核心功能 12/12 完成；待开发 2 项 + 技术债 10 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
 | 已知风险 | 无测试、`host_service.go` 待拆分、`csv.go` 违反红线 1、密码为 SHA-256（详见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
 
-> T-015 公网IP映射+双台账关联已合并 main（提交号见 ROADMAP）；T-030/T-029/T-016/T-013/T-014/T-026/T-027/T-028 已合并 main。多任务串行合并协议已生效。
+> T-031 公网IP资源录入进行中；T-015/T-030/T-029/T-016 已合并 main。多任务串行合并协议已生效。
 
 ## 项目速览
 
@@ -92,7 +92,7 @@ MCloud 是云平台主机资产信息管理系统：**Go (Gin) 后端 + Vue 3 SP
 |----------|-----|
 | 开发端口 | 前端 5173（Vite，`/api` 代理到 `backend:5677`）、后端 5677、Postgres 5432、生产 5678 |
 | 默认账号 | `admin` / `Pass4MCloud`（种子见 `backend/database/postgres.go` 的 `seedAdmin()`） |
-| 数据库表 | 8 张：`users` / `hosts` / `host_applications` / `persons` / `cloud_resources` / `ip_subnets` / `zero_trusts` / `domains` |
+| 数据库表 | 9 张：`users` / `hosts` / `host_applications` / `persons` / `cloud_resources` / `ip_subnets` / `zero_trusts` / `domains` / `public_ips` |
 | 开发环境 | `cd docker && cp .env.example .env && docker-compose -f docker-compose.dev.yml up -d` |
 
 ## 核心约定（红线）
@@ -184,7 +184,7 @@ cd backend && go build ./...   # 确认模型可编译 + 迁移 SQL 文件已按
 | [README.md](./README.md) | 功能特性、快速开始（面向人类） | 需要产品视角 / 部署说明 |
 | [docs/ROADMAP.md](./docs/ROADMAP.md) | **任务队列（唯一事实来源）** | 领任务、回写状态 |
 | [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md) | 完成度、变更记录、技术债、注意事项 | 判断某功能是否已存在、避坑 |
-| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 目录结构、分层、8 张表模型 | 定位模块、改模型 |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 目录结构、分层、9 张表模型 | 定位模块、改模型 |
 | [docs/API.md](./docs/API.md) | 响应格式、错误码、全部路由与参数 | 增改/调用接口 |
 | [docs/BUSINESS_LOGIC.md](./docs/BUSINESS_LOGIC.md) | 认证、搜索、CSV、IP 探测状态机、统计口径 | 改业务逻辑 |
 | [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) | 编码规范、提交规范、测试、安全 | 写代码时的细则 |

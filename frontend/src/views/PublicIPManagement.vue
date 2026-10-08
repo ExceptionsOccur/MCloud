@@ -1,5 +1,5 @@
 <template>
-  <div class="domain-ledger">
+  <div class="public-ip-management">
     <el-header class="app-header">
       <div class="header-left">
         <h1>MCloud</h1>
@@ -94,15 +94,15 @@
       <div class="toolbar">
         <el-input
           v-model="keyword"
-          placeholder="搜索域名 / 公网IP / 运营商 / 主机 / 备注"
+          placeholder="搜索 IP / 运营商 / 备注"
           clearable
-          style="width: 280px"
-          @keyup.enter="loadDomains"
-          @clear="loadDomains"
+          style="width: 260px"
+          @keyup.enter="loadList"
+          @clear="loadList"
         />
         <el-button
           type="primary"
-          @click="loadDomains"
+          @click="loadList"
         >
           查询
         </el-button>
@@ -110,13 +110,13 @@
           type="primary"
           @click="openDialog()"
         >
-          新增域名
+          新增公网IP
         </el-button>
       </div>
 
       <el-table
         v-loading="loading"
-        :data="domains"
+        :data="records"
         border
         stripe
       >
@@ -129,21 +129,11 @@
           </template>
         </el-table-column>
         <el-table-column
-          prop="domain"
-          label="域名"
-          min-width="200"
+          prop="ip"
+          label="公网IP"
+          min-width="160"
           show-overflow-tooltip
         />
-        <el-table-column
-          prop="public_ip"
-          label="解析公网IP"
-          min-width="140"
-          show-overflow-tooltip
-        >
-          <template #default="{ row }">
-            {{ row.public_ip || '-' }}
-          </template>
-        </el-table-column>
         <el-table-column
           prop="isp"
           label="运营商"
@@ -155,34 +145,21 @@
           </template>
         </el-table-column>
         <el-table-column
-          label="内网主机"
+          prop="remark"
+          label="备注"
           min-width="180"
           show-overflow-tooltip
         >
           <template #default="{ row }">
-            <span v-if="row.host">
-              {{ row.host.name }}
-              <span class="host-ip">({{ row.host.private_ip }})</span>
-            </span>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="主机端口"
-          width="100"
-          align="center"
-        >
-          <template #default="{ row }">
-            {{ row.host_port || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="备注"
-          min-width="140"
-          show-overflow-tooltip
-        >
-          <template #default="{ row }">
             {{ row.remark || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="创建时间"
+          width="170"
+        >
+          <template #default="{ row }">
+            {{ formatTime(row.created_at) }}
           </template>
         </el-table-column>
         <el-table-column
@@ -201,7 +178,7 @@
               编辑
             </el-button>
             <el-popconfirm
-              :title="`确定删除域名 ${row.domain}？`"
+              :title="`确定删除公网IP ${row.ip}？`"
               @confirm="handleDelete(row.id)"
             >
               <template #reference>
@@ -229,25 +206,15 @@
         ref="formRef"
         :model="form"
         :rules="rules"
-        label-width="100px"
+        label-width="90px"
       >
         <el-form-item
-          label="域名"
-          prop="domain"
+          label="公网IP"
+          prop="ip"
         >
           <el-input
-            v-model="form.domain"
-            placeholder="请输入域名"
-            maxlength="255"
-          />
-        </el-form-item>
-        <el-form-item
-          label="解析公网IP"
-          prop="public_ip"
-        >
-          <el-input
-            v-model="form.public_ip"
-            placeholder="请输入解析公网IP"
+            v-model="form.ip"
+            placeholder="请输入公网IP"
             maxlength="45"
           />
         </el-form-item>
@@ -259,38 +226,6 @@
             v-model="form.isp"
             placeholder="请输入运营商"
             maxlength="128"
-          />
-        </el-form-item>
-        <el-form-item
-          label="内网主机"
-          prop="host_id"
-        >
-          <el-select
-            v-model="form.host_id"
-            placeholder="请选择内网主机（选填）"
-            filterable
-            clearable
-            style="width: 100%"
-            :loading="hostsLoading"
-          >
-            <el-option
-              v-for="h in hosts"
-              :key="h.id"
-              :label="`${h.name} (${h.private_ip})`"
-              :value="h.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item
-          label="主机端口"
-          prop="host_port"
-        >
-          <el-input-number
-            v-model="form.host_port"
-            :min="0"
-            :max="65535"
-            controls-position="right"
-            style="width: 100%"
           />
         </el-form-item>
         <el-form-item
@@ -330,8 +265,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
-import { getDomains, createDomain, updateDomain, deleteDomain } from '../api/domain'
-import { getHosts } from '../api/host'
+import { getPublicIPs, createPublicIP, updatePublicIP, deletePublicIP } from '../api/public_ip'
+import { formatTime } from '../utils'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
 
@@ -341,43 +276,33 @@ const authStore = useAuthStore()
 const changePasswordDialog = ref(null)
 const cloudResourceDialog = ref(null)
 
-const domains = ref([])
+const records = ref([])
 const loading = ref(false)
 const keyword = ref('')
 const dialogVisible = ref(false)
 const submitting = ref(false)
 const editId = ref(null)
 const formRef = ref(null)
-const hosts = ref([])
-const hostsLoading = ref(false)
 
-const form = reactive({
-  domain: '',
-  public_ip: '',
-  isp: '',
-  host_id: null,
-  host_port: 0,
-  remark: ''
-})
+const form = reactive({ ip: '', isp: '', remark: '' })
 
 const rules = {
-  domain: [{ required: true, message: '请输入域名', trigger: 'blur' }]
+  ip: [{ required: true, message: '请输入公网IP', trigger: 'blur' }]
 }
 
-const dialogTitle = computed(() => (editId.value ? '编辑域名' : '新增域名'))
+const dialogTitle = computed(() => (editId.value ? '编辑公网IP' : '新增公网IP'))
 
 onMounted(() => {
   authStore.fetchUserInfo()
-  loadDomains()
-  loadHosts()
+  loadList()
 })
 
-async function loadDomains() {
+async function loadList() {
   loading.value = true
   try {
-    const res = await getDomains(keyword.value)
+    const res = await getPublicIPs(keyword.value)
     if (res.code === 0) {
-      domains.value = res.data || []
+      records.value = res.data || []
     }
   } catch {
     // 错误提示由 axios 拦截器统一弹出
@@ -386,27 +311,10 @@ async function loadDomains() {
   }
 }
 
-async function loadHosts() {
-  hostsLoading.value = true
-  try {
-    const res = await getHosts({ page: 1, page_size: 100 })
-    if (res.code === 0) {
-      hosts.value = res.data?.hosts || []
-    }
-  } catch {
-    // 错误提示由 axios 拦截器统一弹出
-  } finally {
-    hostsLoading.value = false
-  }
-}
-
 function openDialog(row) {
   editId.value = row?.id || null
-  form.domain = row?.domain || ''
-  form.public_ip = row?.public_ip || ''
+  form.ip = row?.ip || ''
   form.isp = row?.isp || ''
-  form.host_id = row?.host_id || null
-  form.host_port = row?.host_port || 0
   form.remark = row?.remark || ''
   dialogVisible.value = true
   formRef.value?.clearValidate()
@@ -419,20 +327,17 @@ async function handleSubmit() {
   submitting.value = true
   try {
     const payload = {
-      domain: form.domain.trim(),
-      public_ip: form.public_ip.trim(),
+      ip: form.ip.trim(),
       isp: form.isp.trim(),
-      host_id: form.host_id || 0,
-      host_port: form.host_port || 0,
       remark: form.remark.trim()
     }
     const res = editId.value
-      ? await updateDomain(editId.value, payload)
-      : await createDomain(payload)
+      ? await updatePublicIP(editId.value, payload)
+      : await createPublicIP(payload)
     if (res.code === 0) {
       ElMessage.success(editId.value ? '修改成功' : '新增成功')
       dialogVisible.value = false
-      await loadDomains()
+      await loadList()
     }
   } finally {
     submitting.value = false
@@ -441,10 +346,10 @@ async function handleSubmit() {
 
 async function handleDelete(id) {
   try {
-    const res = await deleteDomain(id)
+    const res = await deletePublicIP(id)
     if (res.code === 0) {
       ElMessage.success('删除成功')
-      await loadDomains()
+      await loadList()
     }
   } catch {
     // 错误提示由 axios 拦截器统一弹出
@@ -461,14 +366,12 @@ function handleCommand(command) {
     cloudResourceDialog.value?.open()
   } else if (command === 'personnel') {
     router.push('/personnel')
-  } else if (command === 'publicIP') {
-    router.push('/public-ip')
   }
 }
 </script>
 
 <style scoped>
-.domain-ledger {
+.public-ip-management {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -548,10 +451,5 @@ function handleCommand(command) {
   display: flex;
   gap: 8px;
   margin-bottom: 16px;
-}
-
-.host-ip {
-  color: #909399;
-  font-size: 12px;
 }
 </style>

@@ -7,6 +7,7 @@ import ResourceStatistics from '../views/ResourceStatistics.vue'
 import IpStatistics from '../views/IpStatistics.vue'
 import BusinessStatistics from '../views/BusinessStatistics.vue'
 import PersonnelManagement from '../views/PersonnelManagement.vue'
+import PublicIPManagement from '../views/PublicIPManagement.vue'
 import ZeroTrustLedger from '../views/ZeroTrustLedger.vue'
 import DomainLedger from '../views/DomainLedger.vue'
 
@@ -45,6 +46,12 @@ const routes = [
     path: '/personnel',
     name: 'PersonnelManagement',
     component: PersonnelManagement,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/public-ip',
+    name: 'PublicIPManagement',
+    component: PublicIPManagement,
     meta: { requiresAuth: true }
   },
   {
