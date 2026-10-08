@@ -72,7 +72,7 @@
 | 功能完成度 | 核心功能 12/12 完成；待开发 4 项 + 技术债 10 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
 | 已知风险 | 无测试、`host_service.go` 待拆分、`csv.go` 违反红线 1、密码为 SHA-256（详见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
 
-> T-016 Goose 迁移执行器已实装（代码+文档完成，待提交）；T-013/T-014/T-026/T-027/T-028 已合并 main。多任务串行合并协议已生效。
+> T-016 Goose 迁移执行器已合并 main（`82e0e07`）；T-013/T-014/T-026/T-027/T-028 已合并 main。多任务串行合并协议已生效。
 
 ## 项目速览
 
