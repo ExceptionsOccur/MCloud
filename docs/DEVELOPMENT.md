@@ -382,8 +382,9 @@ docker-compose -f docker-compose.prod.yml up -d --build
 
 1. 频繁拉取 `main` 最新代码，减少合并冲突
 2. 每次提交前检查 `git status`，确认无无关文件混入
-3. 修改公共文件（`routes/routes.go`、`models/` 下的模型）时，主动通知相关开发者
+3. 修改公共文件（`routes/routes.go`、`models/` 下的模型、各页导航）时，主动通知相关开发者
 4. 一个功能分支只做一件事，不混入无关改动
+5. **多任务串行合并**：人类一次指定多条任务时，完成任务 N（提交 + 合并 `main` + 回填提交号 + 验证绿）后才开始任务 N+1；N+1 分支从合并后的 `main` 拉出，禁止并行开多任务分支（细则见 AGENTS.md「分支与提交协议」）
 
 ### 任务结束
 
@@ -405,6 +406,7 @@ docker-compose -f docker-compose.prod.yml up -d --build
    - PR 描述包含：改了什么、为什么改、影响范围（哪些接口/表/页面受影响）
    - 人类指令明确要求提交时：验证全绿后 `git commit`（禁止 push 除非明说）；提交号回填 ROADMAP `done` 与 PROJECT_STATUS 变更记录，再补 `docs:` 提交并跑绿 `check_docs.sh`（时序见 AGENTS.md「提交号回写时序」）
    - 合并回 `main`，删除功能分支
+4. **多任务会话**：合并回 `main` 并删除本任务分支后，方可认领下一条任务；下一条分支从更新后的 `main` 拉出（串行合并，见上）
 
 ---
 

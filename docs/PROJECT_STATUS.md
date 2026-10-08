@@ -33,6 +33,7 @@
 
 ### 2026-10-08
 
+- `待提交` `docs:` **T-026** 协议补强：多任务会话串行合并（AGENTS A.2/A.4 + 分支协议 + DEVELOPMENT 协作流程）
 - `4e0190c` `feat:` **T-014** 域名台账上线（models/services/controllers/routes + 迁移 SQL + 前端 `/domain-ledger` 页；域名唯一约束）
 - `6a6e760` `feat:` **T-013** 零信任台账上线（models/services/controllers/routes + 迁移 SQL + 前端 `/zero-trust` 页；申请主机 FK 级联校验；顺带修前端 lint 既有 error 并加 `.eslintignore`）
 

@@ -22,7 +22,12 @@
 
 ## in_progress
 
-（无。认领规则：从 `todo` 取 1 条 P0/P1 移入此处）
+- [ ] **T-026** 协议补强：多任务会话串行合并 ｜ P2 ｜ 负责: AI 2026-10-08 ｜ 备注: 2026-10-08 人类授权改协议条文
+  - 内容：会话协议与分支协议补充——人类一次指定多条任务时，必须**串行合并**：完成任务 N（commit + 合并 main + 回填 SHA + 验证绿）后才认领 N+1，且 N+1 分支从已更新 `main` 拉出
+  - 定位：`AGENTS.md` 会话协议 A.2/A.4、「分支与提交协议」；`docs/DEVELOPMENT.md` 协作流程章节
+  - 验收标准：两处口径一致写明串行合并规则；`bash scripts/check_docs.sh` 退出码 0
+  - 回写：PROJECT_STATUS 变更记录、AGENTS 状态快照
+  - 分支：`docs/serial-merge-protocol`
 
 ## todo（按优先级）
 
