@@ -34,6 +34,7 @@
 
 ### 2026-10-08
 
+- `ab7e3d0` `feat:` **T-036** 零信任台账多组主机:端口配对 + 公网IP入口带出接入地区（迁移 targets/public_ip；配对行表单；批量等长配对）
 - `627ee8f` `fix:` **T-035** 映射公网IP改资源池选择（表单移除运营商/出口位置；列表从 public_ips 带出）
 - `d26d6ad` `feat:` **T-034** 域名台账改造为端口映射台账（`port_mappings` 多端口等长校验；`ip_mapped` 自动重算；`/mapping-ledger`）
 - `aac7fea` `feat:` **T-033** 域名/公网IP增加出口位置字段（`exit_location`；运营商之后；域名+公网IP+批量列同步）
