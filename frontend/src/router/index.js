@@ -8,6 +8,7 @@ import IpStatistics from '../views/IpStatistics.vue'
 import BusinessStatistics from '../views/BusinessStatistics.vue'
 import PersonnelManagement from '../views/PersonnelManagement.vue'
 import ZeroTrustLedger from '../views/ZeroTrustLedger.vue'
+import DomainLedger from '../views/DomainLedger.vue'
 
 const routes = [
   {
@@ -50,6 +51,12 @@ const routes = [
     path: '/zero-trust',
     name: 'ZeroTrustLedger',
     component: ZeroTrustLedger,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/domain-ledger',
+    name: 'DomainLedger',
+    component: DomainLedger,
     meta: { requiresAuth: true }
   }
 ]

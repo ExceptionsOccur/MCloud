@@ -11,6 +11,7 @@
         <router-link to="/ip-statistics" class="nav-tab active">IP统计</router-link>
         <router-link to="/business-statistics" class="nav-tab">业务统计</router-link>
         <router-link to="/zero-trust" class="nav-tab">零信任</router-link>
+        <router-link to="/domain-ledger" class="nav-tab">域名</router-link>
       </div>
       <div class="header-right">
         <span v-if="authStore.user" class="user-info">{{ authStore.user.username }}</span>
@@ -23,6 +24,7 @@
               <el-dropdown-item command="cloudResource">云资源录入</el-dropdown-item>
               <el-dropdown-item command="personnel">人员录入</el-dropdown-item>
               <el-dropdown-item command="zeroTrust">零信任台账</el-dropdown-item>
+              <el-dropdown-item command="domain">域名台账</el-dropdown-item>
               <el-dropdown-item command="changePassword">修改密码</el-dropdown-item>
               <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
             </el-dropdown-menu>
@@ -274,6 +276,8 @@ function handleCommand(command) {
     router.push('/personnel')
   } else if (command === 'zeroTrust') {
     router.push('/zero-trust')
+  } else if (command === 'domain') {
+    router.push('/domain-ledger')
   }
 }
 

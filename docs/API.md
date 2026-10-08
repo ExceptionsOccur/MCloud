@@ -125,6 +125,15 @@
 | PUT | `/api/zero-trusts/:id` | `zeroTrust.Update` | 修改申请记录 |
 | DELETE | `/api/zero-trusts/:id` | `zeroTrust.Delete` | 删除申请记录 |
 
+### 域名台账（需 JWT）
+
+| 方法 | 路由 | Controller | 说明 |
+|------|------|-----------|------|
+| GET | `/api/domains` | `domain.List` | 域名台账列表，`keyword` 模糊匹配域名/公网IP/服务商/备注 |
+| POST | `/api/domains` | `domain.Create` | 新增域名记录（`domain` 必填，唯一） |
+| PUT | `/api/domains/:id` | `domain.Update` | 修改域名记录 |
+| DELETE | `/api/domains/:id` | `domain.Delete` | 删除域名记录 |
+
 ---
 
 ## WebSocket 探测帧协议
@@ -294,6 +303,23 @@ POST /api/zero-trusts
 - `host_id` 为 `hosts.id` 外键；主机不存在返回 `40001`
 - `apply_time` 可选，缺省为服务端当前时间
 - 列表返回嵌套 `host` 对象（名称/IP）；删除主机时若被台账引用返回 `40901`
+
+### 域名台账请求体
+
+```json
+POST /api/domains
+{
+  "domain": "www.example.com",
+  "public_ip": "1.2.3.4",
+  "provider": "阿里云",
+  "expires_at": "2027-01-01T00:00:00",
+  "remark": "业务主站"
+}
+```
+
+- `domain` 必填且全局唯一，重复返回 `40001`
+- `public_ip` / `provider` / `expires_at` / `remark` 可选
+- 到期时间为 TIMESTAMPTZ，可空
 
 ### 主机的人员关联
 

@@ -64,15 +64,15 @@
 | 字段 | 值 |
 |------|-----|
 | last_updated | 2026-10-08 |
-| in_progress | 无 |
+| in_progress | `T-014` 域名台账（提交号待回填） |
 | next_task | `T-002` 后端 `host_service.go` 拆分（= ROADMAP todo 首条，P1 最高优先级） |
 | todo（P1） | `T-002` host_service 拆分 → `T-003` csv controller 下沉 → `T-004` composables 抽取 → `T-005` IpStatistics 拆分 → `T-006` 测试骨架 |
-| todo（P2） | `T-008` 报表导出、`T-009` bcrypt 升级、`T-010` 路由拆分、`T-011` ping 解耦、`T-012` 文档巡检、`T-014` 域名台账、`T-015` 公网IP字段改映射布尔+关联、`T-016` Goose 执行器实装（暂不执行）、`T-019` 抽 Layout/AppNav、`T-020` config ServerPort 硬编码（暂不执行）、`T-022` WS probe token 校验 |
+| todo（P2） | `T-008` 报表导出、`T-009` bcrypt 升级、`T-010` 路由拆分、`T-011` ping 解耦、`T-012` 文档巡检、`T-015` 公网IP字段改映射布尔+关联、`T-016` Goose 执行器实装（暂不执行）、`T-019` 抽 Layout/AppNav、`T-020` config ServerPort 硬编码（暂不执行）、`T-022` WS probe token 校验 |
 | blocked | 无 |
-| 功能完成度 | 核心功能 11/11 完成；待开发 5 项 + 技术债 10 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
+| 功能完成度 | 核心功能 12/12 完成；待开发 4 项 + 技术债 10 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
 | 已知风险 | 无测试、`host_service.go` 待拆分、`csv.go` 违反红线 1、密码为 SHA-256（详见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
 
-> T-013 零信任台账已实现并验证（done 表提交号待人类确认后回填）；本会话按人类指令继续处理 `T-014` 域名台账。
+> T-013 已合并 main（`6a6e760`）；本分支实现 T-014 域名台账，提交号待回填。
 
 ## 项目速览
 
@@ -92,7 +92,7 @@ MCloud 是云平台主机资产信息管理系统：**Go (Gin) 后端 + Vue 3 SP
 |----------|-----|
 | 开发端口 | 前端 5173（Vite，`/api` 代理到 `backend:5677`）、后端 5677、Postgres 5432、生产 5678 |
 | 默认账号 | `admin` / `Pass4MCloud`（种子见 `backend/database/postgres.go` 的 `seedAdmin()`） |
-| 数据库表 | 7 张：`users` / `hosts` / `host_applications` / `persons` / `cloud_resources` / `ip_subnets` / `zero_trusts` |
+| 数据库表 | 8 张：`users` / `hosts` / `host_applications` / `persons` / `cloud_resources` / `ip_subnets` / `zero_trusts` / `domains` |
 | 开发环境 | `cd docker && cp .env.example .env && docker-compose -f docker-compose.dev.yml up -d` |
 
 ## 核心约定（红线）
@@ -179,7 +179,7 @@ cd backend && go build ./...   # 确认模型可编译 + 迁移 SQL 文件已按
 | [README.md](./README.md) | 功能特性、快速开始（面向人类） | 需要产品视角 / 部署说明 |
 | [docs/ROADMAP.md](./docs/ROADMAP.md) | **任务队列（唯一事实来源）** | 领任务、回写状态 |
 | [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md) | 完成度、变更记录、技术债、注意事项 | 判断某功能是否已存在、避坑 |
-| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 目录结构、分层、7 张表模型 | 定位模块、改模型 |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 目录结构、分层、8 张表模型 | 定位模块、改模型 |
 | [docs/API.md](./docs/API.md) | 响应格式、错误码、全部路由与参数 | 增改/调用接口 |
 | [docs/BUSINESS_LOGIC.md](./docs/BUSINESS_LOGIC.md) | 认证、搜索、CSV、IP 探测状态机、统计口径 | 改业务逻辑 |
 | [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) | 编码规范、提交规范、测试、安全 | 写代码时的细则 |
@@ -193,6 +193,7 @@ cd backend && go build ./...   # 确认模型可编译 + 迁移 SQL 文件已按
 | 申请信息 | `host_applications`，与 `hosts` 一对一，删主机必须级联删除 |
 | 人员 person | `persons` 表，经 `hosts.person_id` 关联主机 |
 | 零信任台账 | `zero_trusts` 表，申请单位/账户名/申请主机(FK)/端口/时间/备注；主机被引用禁止删除 |
+| 域名台账 | `domains` 表，域名/解析公网IP/服务商/到期时间/备注；域名唯一 |
 | `is_db_server` | BOOLEAN，API 统一返回 `true/false` |
 | 云资源总览 | `cloud_resources`，按区域手工录入的总量资源 |
 | 裸金属 | 物理服务器，**资源统计一律排除**（避免重复计算） |

@@ -40,7 +40,7 @@
 
 - **前端**：单页应用，`/api` 请求经 Axios，IP 探测走 WebSocket 长连接
 - **后端**：分层架构，启动时 GORM AutoMigrate 自动建表 + 种子数据
-- **数据库**：PostgreSQL，7 张表
+- **数据库**：PostgreSQL，8 张表
 
 ---
 
@@ -92,7 +92,8 @@ go/
 │   │   ├── person.go              # Person 模型（人员信息）
 │   │   ├── cloud_resource.go      # CloudResource 模型
 │   │   ├── ip_subnet.go           # IPSubnet 模型（IP 网段管理）
-│   │   └── zero_trust.go          # ZeroTrust 模型（零信任台账）
+│   │   ├── zero_trust.go          # ZeroTrust 模型（零信任台账）
+│   │   └── domain.go              # Domain 模型（域名台账）
 │   │
 │   ├── controllers/
 │   │   ├── response.go            # 统一响应辅助函数
@@ -103,6 +104,7 @@ go/
 │   │   ├── cloud_resource.go      # 云资源总览
 │   │   ├── person.go              # 人员 CRUD
 │   │   ├── zero_trust.go          # 零信任台账 CRUD
+│   │   ├── domain.go              # 域名台账 CRUD
 │   │   ├── stats.go               # 统计（IP 使用、探测、业务统计）
 │   │   ├── subnet.go              # IP 网段 CRUD
 │   │   └── websocket.go           # WebSocket IP 探测通道
@@ -116,6 +118,7 @@ go/
 │   │   ├── cloud_resource_service.go # 云资源总览业务逻辑
 │   │   ├── person_service.go      # 人员业务逻辑
 │   │   ├── zero_trust_service.go  # 零信任台账业务逻辑
+│   │   ├── domain_service.go      # 域名台账业务逻辑
 │   │   ├── stats_service.go       # IP 使用统计 + 连通性探测
 │   │   ├── business_stats.go      # 业务统计聚合（项目/公司/人员）
 │   │   └── subnet_service.go      # IP 网段业务逻辑（/24 校验）
@@ -148,8 +151,8 @@ go/
         │   └── index.js           # 路由配置 + 路由守卫
         │
         ├── stores/                # Pinia 状态：auth / host / cloudResource / stats / business
-        ├── api/                   # API 封装：index / auth / host / csv / cloud_resource / person / zero_trust / stats / subnet
-        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / ZeroTrustLedger
+        ├── api/                   # API 封装：index / auth / host / csv / cloud_resource / person / zero_trust / domain / stats / subnet
+        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / ZeroTrustLedger / DomainLedger
         ├── components/            # 组件：工具栏/表格/各类弹窗
         │
         ├── utils/
@@ -163,7 +166,7 @@ go/
 
 ## 数据模型
 
-数据库共 7 张表：
+数据库共 8 张表：
 
 | 表 | 模型 | 说明 |
 |----|------|------|
@@ -174,6 +177,7 @@ go/
 | `cloud_resources` | `models/cloud_resource.go` | 云资源总览（按区域） |
 | `ip_subnets` | `models/ip_subnet.go` | IP 网段管理 |
 | `zero_trusts` | `models/zero_trust.go` | 零信任接入申请台账 |
+| `domains` | `models/domain.go` | 域名台账 |
 
 ### users 表
 
@@ -276,6 +280,19 @@ go/
 | 备注 | `remark` | TEXT | |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 
+### domains 表（域名台账）
+
+| 字段 | 列名 | 类型 | 约束 |
+|------|------|------|------|
+| ID | `id` | SERIAL | PRIMARY KEY |
+| 域名 | `domain` | VARCHAR(255) | NOT NULL, UNIQUE |
+| 解析公网IP | `public_ip` | VARCHAR(45) | |
+| 服务商 | `provider` | VARCHAR(128) | |
+| 到期时间 | `expires_at` | TIMESTAMPTZ | 可空 |
+| 备注 | `remark` | TEXT | |
+| 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
+| 更新时间 | `updated_at` | TIMESTAMPTZ | DEFAULT NOW() |
+
 ### 字段约束说明
 
 - `private_ip` 唯一约束，防止重复内网 IP
@@ -287,4 +304,5 @@ go/
 - `ip_subnets.cidr` 仅允许 `/24` IPv4 网段，写入时自动规范化为网络地址（末位归 0）
 - 系统**不预置默认网段**，由用户在「IP统计 → 管理网段」中维护
 - `zero_trusts.host_id` 外键关联 `hosts.id`；主机被零信任台账引用时禁止删除（应用层校验，返回 `40901`）
+- `domains.domain` 唯一约束，同域名不允许重复登记
 - **GORM 列名陷阱**：`CIDR` 字段默认会被命名为 `c_id_r`，模型已显式指定 `gorm:"column:cidr"`

@@ -6,7 +6,7 @@
 
 ## 功能完成度
 
-> 计数（2026-10-08）：核心功能 **11/11** 完成；待开发 **5** 项；技术债 **10** 项。
+> 计数（2026-10-08）：核心功能 **12/12** 完成；待开发 **4** 项；技术债 **10** 项。
 
 | 模块 | 状态 | 说明 |
 |------|------|------|
@@ -33,7 +33,8 @@
 
 ### 2026-10-08
 
-- `待提交` `feat:` **T-013** 零信任台账上线（models/services/controllers/routes + 迁移 SQL + 前端 `/zero-trust` 页；申请主机 FK 级联校验；顺带修前端 lint 既有 error 并加 `.eslintignore`）
+- `待提交` `feat:` **T-014** 域名台账上线（models/services/controllers/routes + 迁移 SQL + 前端 `/domain-ledger` 页；域名唯一约束）
+- `6a6e760` `feat:` **T-013** 零信任台账上线（models/services/controllers/routes + 迁移 SQL + 前端 `/zero-trust` 页；申请主机 FK 级联校验；顺带修前端 lint 既有 error 并加 `.eslintignore`）
 
 ### 2026-10-06
 
@@ -48,7 +49,7 @@
 - `docs:` 会话协议新增第 4 步「定位代码」（读 CODE_INDEX 补齐任务「定位」字段，补不出先声明不盲写）；ROADMAP 字段约定新增「定位」，14 条 todo 任务已回填涉及文件清单
 - `docs:` 补齐 CODE_INDEX 缺失的**人员管理模块**（models/controllers/services/api/views/功能映射/`persons` 表 共 8 处）；修正 README「4 个功能页面」为 5 个并补 `/personnel` 与设置菜单入口
 - `docs:` **统一迁移口径**（消除红线 9 与运行时的矛盾）：迁移 SQL = 归档/评审要求（不被执行），运行时由启动时 `AutoMigrate` 兜底——DEVELOPMENT.md 迁移规范加口径表、AGENTS 红线 9 改写、PROJECT_STATUS 注意事项 8 与 ARCHITECTURE 目录树同步（代码事实：`go.mod` 无 goose，`Migrate()` 仅 AutoMigrate+seedAdmin）
-- `docs:` 排查确认 **goose 从未实装**（8 个 `-- +goose` SQL 从未执行、`go.mod`/`go.sum` 无依赖、全仓库无调用）；按人类决定暂不实装，新增 `T-016` 入队并标注"口径反转回写"要求
+- `docs:` 排查确认 **goose 从未实装**（9 个 `-- +goose` SQL 从未执行、`go.mod`/`go.sum` 无依赖、全仓库无调用）；按人类决定暂不实装，新增 `T-016` 入队并标注"口径反转回写"要求
 
 ### 2026-09-30
 

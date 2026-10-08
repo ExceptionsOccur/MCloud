@@ -1,5 +1,5 @@
 <template>
-  <div class="personnel-management">
+  <div class="domain-ledger">
     <el-header class="app-header">
       <div class="header-left">
         <h1>MCloud</h1>
@@ -95,15 +95,15 @@
       <div class="toolbar">
         <el-input
           v-model="keyword"
-          placeholder="搜索姓名 / 联系方式 / 单位名称"
+          placeholder="搜索域名 / 公网IP / 服务商 / 备注"
           clearable
-          style="width: 260px"
-          @keyup.enter="loadPersons"
-          @clear="loadPersons"
+          style="width: 280px"
+          @keyup.enter="loadDomains"
+          @clear="loadDomains"
         />
         <el-button
           type="primary"
-          @click="loadPersons"
+          @click="loadDomains"
         >
           查询
         </el-button>
@@ -111,13 +111,13 @@
           type="primary"
           @click="openDialog()"
         >
-          新增人员
+          新增域名
         </el-button>
       </div>
 
       <el-table
         v-loading="loading"
-        :data="persons"
+        :data="domains"
         border
         stripe
       >
@@ -130,46 +130,46 @@
           </template>
         </el-table-column>
         <el-table-column
-          prop="name"
-          label="姓名"
-          min-width="120"
+          prop="domain"
+          label="域名"
+          min-width="200"
           show-overflow-tooltip
         />
         <el-table-column
-          prop="contact"
-          label="联系方式"
+          prop="public_ip"
+          label="解析公网IP"
           min-width="140"
           show-overflow-tooltip
         >
           <template #default="{ row }">
-            {{ row.contact || '-' }}
+            {{ row.public_ip || '-' }}
           </template>
         </el-table-column>
         <el-table-column
-          prop="unit"
-          label="单位名称"
-          min-width="180"
+          prop="provider"
+          label="服务商"
+          min-width="140"
           show-overflow-tooltip
         >
           <template #default="{ row }">
-            {{ row.unit || '-' }}
+            {{ row.provider || '-' }}
           </template>
         </el-table-column>
         <el-table-column
-          label="关联主机"
-          width="90"
-          align="center"
-        >
-          <template #default="{ row }">
-            {{ row.host_count || 0 }}
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="创建时间"
+          label="到期时间"
           width="170"
         >
           <template #default="{ row }">
-            {{ formatTime(row.created_at) }}
+            {{ row.expires_at ? formatTime(row.expires_at) : '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="备注"
+          min-width="140"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            {{ row.remark || '-' }}
           </template>
         </el-table-column>
         <el-table-column
@@ -188,7 +188,7 @@
               编辑
             </el-button>
             <el-popconfirm
-              :title="deleteHint(row)"
+              :title="`确定删除域名 ${row.domain}？`"
               @confirm="handleDelete(row.id)"
             >
               <template #reference>
@@ -216,36 +216,60 @@
         ref="formRef"
         :model="form"
         :rules="rules"
-        label-width="90px"
+        label-width="100px"
       >
         <el-form-item
-          label="姓名"
-          prop="name"
+          label="域名"
+          prop="domain"
         >
           <el-input
-            v-model="form.name"
-            placeholder="请输入姓名"
-            maxlength="64"
+            v-model="form.domain"
+            placeholder="请输入域名"
+            maxlength="255"
           />
         </el-form-item>
         <el-form-item
-          label="联系方式"
-          prop="contact"
+          label="解析公网IP"
+          prop="public_ip"
         >
           <el-input
-            v-model="form.contact"
-            placeholder="请输入联系方式"
-            maxlength="64"
+            v-model="form.public_ip"
+            placeholder="请输入解析公网IP"
+            maxlength="45"
           />
         </el-form-item>
         <el-form-item
-          label="单位名称"
-          prop="unit"
+          label="服务商"
+          prop="provider"
         >
           <el-input
-            v-model="form.unit"
-            placeholder="请输入单位名称"
+            v-model="form.provider"
+            placeholder="请输入服务商"
             maxlength="128"
+          />
+        </el-form-item>
+        <el-form-item
+          label="到期时间"
+          prop="expires_at"
+        >
+          <el-date-picker
+            v-model="form.expires_at"
+            type="datetime"
+            placeholder="请选择到期时间"
+            style="width: 100%"
+            value-format="YYYY-MM-DDTHH:mm:ss"
+          />
+        </el-form-item>
+        <el-form-item
+          label="备注"
+          prop="remark"
+        >
+          <el-input
+            v-model="form.remark"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入备注"
+            maxlength="500"
           />
         </el-form-item>
       </el-form>
@@ -273,7 +297,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
-import { getPersons, createPerson, updatePerson, deletePerson } from '../api/person'
+import { getDomains, createDomain, updateDomain, deleteDomain } from '../api/domain'
 import { formatTime } from '../utils'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
@@ -284,7 +308,7 @@ const authStore = useAuthStore()
 const changePasswordDialog = ref(null)
 const cloudResourceDialog = ref(null)
 
-const persons = ref([])
+const domains = ref([])
 const loading = ref(false)
 const keyword = ref('')
 const dialogVisible = ref(false)
@@ -292,25 +316,31 @@ const submitting = ref(false)
 const editId = ref(null)
 const formRef = ref(null)
 
-const form = reactive({ name: '', contact: '', unit: '' })
+const form = reactive({
+  domain: '',
+  public_ip: '',
+  provider: '',
+  expires_at: '',
+  remark: ''
+})
 
 const rules = {
-  name: [{ required: true, message: '请输入姓名', trigger: 'blur' }]
+  domain: [{ required: true, message: '请输入域名', trigger: 'blur' }]
 }
 
-const dialogTitle = computed(() => (editId.value ? '编辑人员' : '新增人员'))
+const dialogTitle = computed(() => (editId.value ? '编辑域名' : '新增域名'))
 
 onMounted(() => {
   authStore.fetchUserInfo()
-  loadPersons()
+  loadDomains()
 })
 
-async function loadPersons() {
+async function loadDomains() {
   loading.value = true
   try {
-    const res = await getPersons(keyword.value)
+    const res = await getDomains(keyword.value)
     if (res.code === 0) {
-      persons.value = res.data || []
+      domains.value = res.data || []
     }
   } catch {
     // 错误提示由 axios 拦截器统一弹出
@@ -321,9 +351,11 @@ async function loadPersons() {
 
 function openDialog(row) {
   editId.value = row?.id || null
-  form.name = row?.name || ''
-  form.contact = row?.contact || ''
-  form.unit = row?.unit || ''
+  form.domain = row?.domain || ''
+  form.public_ip = row?.public_ip || ''
+  form.provider = row?.provider || ''
+  form.expires_at = row?.expires_at ? row.expires_at.slice(0, 19) : ''
+  form.remark = row?.remark || ''
   dialogVisible.value = true
   formRef.value?.clearValidate()
 }
@@ -334,30 +366,32 @@ async function handleSubmit() {
 
   submitting.value = true
   try {
-    const payload = { name: form.name.trim(), contact: form.contact.trim(), unit: form.unit.trim() }
-    const res = editId.value ? await updatePerson(editId.value, payload) : await createPerson(payload)
+    const payload = {
+      domain: form.domain.trim(),
+      public_ip: form.public_ip.trim(),
+      provider: form.provider.trim(),
+      expires_at: form.expires_at || undefined,
+      remark: form.remark.trim()
+    }
+    const res = editId.value
+      ? await updateDomain(editId.value, payload)
+      : await createDomain(payload)
     if (res.code === 0) {
       ElMessage.success(editId.value ? '修改成功' : '新增成功')
       dialogVisible.value = false
-      await loadPersons()
+      await loadDomains()
     }
   } finally {
     submitting.value = false
   }
 }
 
-function deleteHint(row) {
-  return row.host_count > 0
-    ? `该人员关联 ${row.host_count} 台主机，删除将被拒绝，仍要尝试删除？`
-    : `确定删除人员 ${row.name}？`
-}
-
 async function handleDelete(id) {
   try {
-    const res = await deletePerson(id)
+    const res = await deleteDomain(id)
     if (res.code === 0) {
       ElMessage.success('删除成功')
-      await loadPersons()
+      await loadDomains()
     }
   } catch {
     // 错误提示由 axios 拦截器统一弹出
@@ -383,7 +417,7 @@ function handleCommand(command) {
 </script>
 
 <style scoped>
-.personnel-management {
+.domain-ledger {
   min-height: 100vh;
   display: flex;
   flex-direction: column;

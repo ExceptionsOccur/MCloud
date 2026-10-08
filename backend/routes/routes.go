@@ -110,6 +110,17 @@ func SetupRoutes(r *gin.Engine) {
 		zeroTrustGroup.DELETE("/:id", zeroTrust.Delete)
 	}
 
+	// Domains - protected
+	domain := controllers.NewDomainController()
+	domainGroup := api.Group("/domains")
+	domainGroup.Use(middleware.JWTAuth())
+	{
+		domainGroup.GET("", domain.List)
+		domainGroup.POST("", domain.Create)
+		domainGroup.PUT("/:id", domain.Update)
+		domainGroup.DELETE("/:id", domain.Delete)
+	}
+
 	// WebSocket - token via query param
 	api.GET("/ws/probe", func(c *gin.Context) {
 		token := c.Query("token")

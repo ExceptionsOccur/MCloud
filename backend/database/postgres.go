@@ -43,6 +43,7 @@ func Migrate() {
 		&models.CloudResource{},
 		&models.IPSubnet{},
 		&models.ZeroTrust{},
+		&models.Domain{},
 	)
 	if err != nil {
 		log.Fatalf("数据库迁移失败: %v", err)
