@@ -16,9 +16,10 @@ func NewPublicIPService() *PublicIPService {
 }
 
 type PublicIPRequest struct {
-	IP     string `json:"ip" binding:"required"`
-	ISP    string `json:"isp"`
-	Remark string `json:"remark"`
+	IP           string `json:"ip" binding:"required"`
+	ISP          string `json:"isp"`
+	ExitLocation string `json:"exit_location"`
+	Remark       string `json:"remark"`
 }
 
 var ErrPublicIPNotFound = errors.New("公网IP记录不存在")
@@ -26,6 +27,7 @@ var ErrPublicIPNotFound = errors.New("公网IP记录不存在")
 func normalizePublicIP(req PublicIPRequest) (PublicIPRequest, error) {
 	req.IP = strings.TrimSpace(req.IP)
 	req.ISP = strings.TrimSpace(req.ISP)
+	req.ExitLocation = strings.TrimSpace(req.ExitLocation)
 	req.Remark = strings.TrimSpace(req.Remark)
 	if req.IP == "" {
 		return req, errors.New("公网IP不能为空")
@@ -40,7 +42,7 @@ func (s *PublicIPService) List(keyword string) ([]models.PublicIP, error) {
 	db := database.DB.Model(&models.PublicIP{})
 	if keyword = strings.TrimSpace(keyword); keyword != "" {
 		like := "%" + keyword + "%"
-		db = db.Where("ip ILIKE ? OR isp ILIKE ? OR remark ILIKE ?", like, like, like)
+		db = db.Where("ip ILIKE ? OR isp ILIKE ? OR exit_location ILIKE ? OR remark ILIKE ?", like, like, like, like)
 	}
 	var items []models.PublicIP
 	if err := db.Order("id ASC").Find(&items).Error; err != nil {
@@ -59,7 +61,7 @@ func (s *PublicIPService) Create(req PublicIPRequest) (uint, error) {
 	if count > 0 {
 		return 0, errors.New("该公网IP已存在")
 	}
-	record := models.PublicIP{IP: req.IP, ISP: req.ISP, Remark: req.Remark}
+	record := models.PublicIP{IP: req.IP, ISP: req.ISP, ExitLocation: req.ExitLocation, Remark: req.Remark}
 	if err := database.DB.Create(&record).Error; err != nil {
 		return 0, err
 	}
@@ -82,6 +84,7 @@ func (s *PublicIPService) Update(id uint, req PublicIPRequest) error {
 	}
 	record.IP = req.IP
 	record.ISP = req.ISP
+	record.ExitLocation = req.ExitLocation
 	record.Remark = req.Remark
 	return database.DB.Save(&record).Error
 }

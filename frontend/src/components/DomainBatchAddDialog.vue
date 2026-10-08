@@ -16,9 +16,9 @@
       v-model="textInput"
       type="textarea"
       :rows="12"
-      placeholder="域名,解析公网IP,运营商,内网IP,主机端口,备注
-www.example.com,203.0.113.10,电信,,,业务主站
-api.example.com,203.0.113.11,联通,192.168.1.10,443,接口"
+      placeholder="域名,解析公网IP,运营商,出口位置,内网IP,主机端口,备注
+www.example.com,203.0.113.10,电信,上海,,,业务主站
+api.example.com,203.0.113.11,联通,北京,192.168.1.10,443,接口"
     />
     <template #footer>
       <el-button @click="visible = false">
@@ -41,7 +41,7 @@ import { batchCreateDomainsText } from '../api/domain'
 import { ElMessage } from 'element-plus'
 
 const columnOrder = [
-  '域名', '解析公网IP', '运营商', '内网IP', '主机端口', '备注'
+  '域名', '解析公网IP', '运营商', '出口位置', '内网IP', '主机端口', '备注'
 ].join(' | ')
 
 const visible = ref(false)
