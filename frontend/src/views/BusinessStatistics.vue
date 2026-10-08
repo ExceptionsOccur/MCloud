@@ -60,6 +60,12 @@
               <el-dropdown-item command="personnel">
                 人员录入
               </el-dropdown-item>
+              <el-dropdown-item
+                command="publicIP"
+                :disabled="$route.path === '/public-ip'"
+              >
+                公网IP录入
+              </el-dropdown-item>
               <el-dropdown-item command="changePassword">
                 修改密码
               </el-dropdown-item>
@@ -440,6 +446,8 @@ function handleCommand(command) {
     cloudResourceDialog.value?.open()
   } else if (command === 'personnel') {
     router.push('/personnel')
+  } else if (command === 'publicIP') {
+    router.push('/public-ip')
   }
 }
 </script>

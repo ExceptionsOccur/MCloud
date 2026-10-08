@@ -116,6 +116,15 @@
 | PUT | `/api/persons/:id` | `person.Update` | 修改人员 |
 | DELETE | `/api/persons/:id` | `person.Delete` | 删除人员；被主机引用时返回 `40901` |
 
+### 公网IP资源台账（需 JWT）
+
+| 方法 | 路由 | Controller | 说明 |
+|------|------|-----------|------|
+| GET | `/api/public-ips` | `publicIP.List` | 公网IP列表，`keyword` 模糊匹配 IP/运营商/备注 |
+| POST | `/api/public-ips` | `publicIP.Create` | 新增公网IP（`ip` 必填、唯一、格式校验；`isp`/`remark` 选填） |
+| PUT | `/api/public-ips/:id` | `publicIP.Update` | 修改公网IP记录 |
+| DELETE | `/api/public-ips/:id` | `publicIP.Delete` | 删除公网IP记录（允许直接删除） |
+
 ### 零信任台账（需 JWT）
 
 | 方法 | 路由 | Controller | 说明 |
@@ -283,6 +292,21 @@ POST /api/persons
 
 - `name` 必填，`contact` / `unit` 可选
 - 姓名 + 联系方式 + 单位完全重复时返回 `40001`
+
+### 公网IP资源台账请求体
+
+```json
+POST /api/public-ips
+{
+  "ip": "203.0.113.10",
+  "isp": "电信",
+  "remark": "办公出口"
+}
+```
+
+- `ip` 必填、全局唯一、须为合法 IPv4/IPv6；重复或格式错误返回 `40001`
+- `isp` / `remark` 可选
+- 删除无引用校验，可直接删除
 
 ### 零信任台账请求体
 

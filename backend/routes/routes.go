@@ -99,6 +99,17 @@ func SetupRoutes(r *gin.Engine) {
 		personGroup.DELETE("/:id", person.Delete)
 	}
 
+	// Public IP Ledger - protected
+	publicIP := controllers.NewPublicIPController()
+	publicIPGroup := api.Group("/public-ips")
+	publicIPGroup.Use(middleware.JWTAuth())
+	{
+		publicIPGroup.GET("", publicIP.List)
+		publicIPGroup.POST("", publicIP.Create)
+		publicIPGroup.PUT("/:id", publicIP.Update)
+		publicIPGroup.DELETE("/:id", publicIP.Delete)
+	}
+
 	// Zero Trust Ledger - protected
 	zeroTrust := controllers.NewZeroTrustController()
 	zeroTrustGroup := api.Group("/zero-trusts")

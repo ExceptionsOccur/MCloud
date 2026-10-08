@@ -38,6 +38,7 @@
 | `backend/models/person.go` | `Person` | `persons` |
 | `backend/models/zero_trust.go` | `ZeroTrust` | `zero_trusts` |
 | `backend/models/domain.go` | `Domain` | `domains` |
+| `backend/models/public_ip.go` | `PublicIP` | `public_ips` |
 
 ### 控制器（controllers/）
 
@@ -56,6 +57,7 @@
 | `controllers/person.go` | 人员 CRUD（`List`/`Create`/`Update`/`Delete`） |
 | `controllers/zero_trust.go` | 零信任台账 CRUD |
 | `controllers/domain.go` | 域名台账 CRUD |
+| `controllers/public_ip.go` | 公网IP资源台账 CRUD |
 | `controllers/websocket.go` | WebSocket 探测通道（并发处理探测请求） |
 
 ### 业务服务（services/）
@@ -71,6 +73,7 @@
 | `services/person_service.go` | 人员管理 | `List`/`Create`/`Update`/`Delete`、`normalizePerson`；删除时校验关联主机数 |
 | `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`；`HostReferencedByZeroTrust` |
 | `services/domain_service.go` | 域名台账 | `List`/`Create`/`Update`/`Delete` |
+| `services/public_ip_service.go` | 公网IP资源台账 | `List`/`Create`/`Update`/`Delete`、`normalizePublicIP`（IP 唯一/格式校验） |
 
 ### 中间件与工具
 
@@ -113,6 +116,7 @@
 | `api/person.js` | `/persons` |
 | `api/zero_trust.js` | `/zero-trusts` |
 | `api/domain.js` | `/domains` |
+| `api/public_ip.js` | `/public-ips` |
 
 ### 状态管理（stores/）
 
@@ -134,6 +138,7 @@
 | `views/IpStatistics.vue` | `/ip-statistics` | IP 统计（位图 + 探测 + 网段管理） |
 | `views/BusinessStatistics.vue` | `/business-statistics` | 业务统计（概览 + 柱状图 + 表格 + 下钻弹窗） |
 | `views/PersonnelManagement.vue` | `/personnel` | 人员管理（搜索 + 新增/编辑/删除，含关联主机数校验） |
+| `views/PublicIPManagement.vue` | `/public-ip` | 公网IP资源台账（搜索 + 新增/编辑/删除，设置菜单入口） |
 | `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 新增/编辑/删除，申请主机外键） |
 | `views/DomainLedger.vue` | `/domain-ledger` | 域名台账（搜索 + 新增/编辑/删除） |
 
@@ -183,6 +188,7 @@
 | **IP 连通性探测** | `controllers/websocket.go` `controllers/stats.go` → `Probe` `services/stats_service.go` → `Probe` | `views/IpStatistics.vue`（WebSocket + 颜色状态机） |
 | **IP 网段管理** | `controllers/subnet.go` `services/subnet_service.go` `models/ip_subnet.go` | `components/SubnetManageDialog.vue` `api/subnet.js` |
 | **人员管理** | `controllers/person.go` `services/person_service.go` `models/person.go` | `views/PersonnelManagement.vue` `api/person.js` |
+| **公网IP资源录入** | `controllers/public_ip.go` `services/public_ip_service.go` `models/public_ip.go` | `views/PublicIPManagement.vue` `api/public_ip.js` |
 | **零信任台账** | `controllers/zero_trust.go` `services/zero_trust_service.go` `models/zero_trust.go` | `views/ZeroTrustLedger.vue` `api/zero_trust.js` |
 | **域名台账** | `controllers/domain.go` `services/domain_service.go` `models/domain.go` | `views/DomainLedger.vue` `api/domain.js` |
 | **主机关联人员** | `services/host_service.go`（`person_id` 事务写入） | `components/HostFormDialog.vue` `components/BatchEditDialog.vue`（选择/手输自动新增） |
@@ -247,3 +253,4 @@ PUT /api/cloud-resources
 | `persons` | `models/person.go` | `services/person_service.go`；`hosts.person_id` 由 `services/host_service.go` 写入 |
 | `zero_trusts` | `models/zero_trust.go` | `services/zero_trust_service.go`；删除主机前经 `HostReferencedByZeroTrust` 校验 |
 | `domains` | `models/domain.go` | `services/domain_service.go` |
+| `public_ips` | `models/public_ip.go` | `services/public_ip_service.go` |
