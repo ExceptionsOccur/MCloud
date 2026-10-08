@@ -117,6 +117,7 @@ func SetupRoutes(r *gin.Engine) {
 	{
 		zeroTrustGroup.GET("", zeroTrust.List)
 		zeroTrustGroup.POST("", zeroTrust.Create)
+		zeroTrustGroup.POST("/batch", zeroTrust.BatchCreateText)
 		zeroTrustGroup.PUT("/:id", zeroTrust.Update)
 		zeroTrustGroup.DELETE("/:id", zeroTrust.Delete)
 	}
@@ -128,6 +129,7 @@ func SetupRoutes(r *gin.Engine) {
 	{
 		domainGroup.GET("", domain.List)
 		domainGroup.POST("", domain.Create)
+		domainGroup.POST("/batch", domain.BatchCreateText)
 		domainGroup.PUT("/:id", domain.Update)
 		domainGroup.DELETE("/:id", domain.Delete)
 	}

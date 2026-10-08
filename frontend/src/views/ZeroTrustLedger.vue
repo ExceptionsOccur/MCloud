@@ -109,6 +109,13 @@
         >
           新增申请
         </el-button>
+        <el-button
+          type="primary"
+          plain
+          @click="zeroTrustBatchDialog?.open()"
+        >
+          批量添加
+        </el-button>
       </div>
 
       <el-table
@@ -350,6 +357,7 @@
 
     <ChangePasswordDialog ref="changePasswordDialog" />
     <CloudResourceDialog ref="cloudResourceDialog" />
+    <ZeroTrustBatchAddDialog ref="zeroTrustBatchDialog" />
   </div>
 </template>
 
@@ -363,12 +371,14 @@ import { getHosts } from '../api/host'
 import { formatTime } from '../utils'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
+import ZeroTrustBatchAddDialog from '../components/ZeroTrustBatchAddDialog.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const changePasswordDialog = ref(null)
 const cloudResourceDialog = ref(null)
+const zeroTrustBatchDialog = ref(null)
 
 const records = ref([])
 const loading = ref(false)
@@ -405,6 +415,12 @@ onMounted(() => {
   authStore.fetchUserInfo()
   loadList()
   loadHosts()
+  window.addEventListener('ledger-batch-done', loadList)
+})
+
+import { onUnmounted } from 'vue'
+onUnmounted(() => {
+  window.removeEventListener('ledger-batch-done', loadList)
 })
 
 async function loadList() {

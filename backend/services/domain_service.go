@@ -3,10 +3,12 @@ package services
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"mcloud/database"
 	"mcloud/models"
+	"mcloud/utils"
 )
 
 type DomainService struct{}
@@ -87,7 +89,11 @@ func (s *DomainService) Create(req DomainRequest) (uint, error) {
 		HostPort: req.HostPort,
 		Remark:   req.Remark,
 	}
-	if err := database.DB.Create(&d).Error; err != nil {
+	cols := []string{"domain", "public_ip", "isp", "host_port", "remark"}
+	if req.HostID > 0 {
+		cols = append(cols, "host_id")
+	}
+	if err := database.DB.Select(cols).Create(&d).Error; err != nil {
 		return 0, err
 	}
 	return d.ID, nil
@@ -117,10 +123,21 @@ func (s *DomainService) Update(id uint, req DomainRequest) error {
 	d.Domain = req.Domain
 	d.PublicIP = req.PublicIP
 	d.ISP = req.ISP
-	d.HostID = req.HostID
 	d.HostPort = req.HostPort
 	d.Remark = req.Remark
-	return database.DB.Save(&d).Error
+	if req.HostID > 0 {
+		d.HostID = req.HostID
+		return database.DB.Save(&d).Error
+	}
+	// 清除关联：显式置空 host_id，避免写入 0 违反外键
+	return database.DB.Model(&d).Updates(map[string]interface{}{
+		"domain":    d.Domain,
+		"public_ip": d.PublicIP,
+		"isp":       d.ISP,
+		"host_id":   nil,
+		"host_port": d.HostPort,
+		"remark":    d.Remark,
+	}).Error
 }
 
 func (s *DomainService) Delete(id uint) error {
@@ -139,4 +156,97 @@ func HostReferencedByDomain(hostID uint) (int64, error) {
 		return 0, fmt.Errorf("查询域名台账引用失败: %w", err)
 	}
 	return count, nil
+}
+
+// BatchCreateText 域名批量添加：列顺序 域名,解析公网IP,运营商,内网IP,主机端口,备注
+// 域名已存在则跳过；内网IP为空表示不关联主机；填了内网IP但主机不存在则该行失败
+func (s *DomainService) BatchCreateText(text string) (*BatchCreateResponse, error) {
+	resp := &BatchCreateResponse{}
+	headerSkipped := false
+
+	for i, raw := range strings.Split(text, "\n") {
+		lineNo := i + 1
+		line := strings.TrimSpace(raw)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		row, err := utils.ParseCSVLine(line)
+		if err != nil {
+			resp.Errors++
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 格式错误(%v)", lineNo, err))
+			continue
+		}
+
+		if !headerSkipped && len(row) > 0 && strings.TrimSpace(row[0]) == "域名" {
+			headerSkipped = true
+			continue
+		}
+
+		if len(row) > 6 {
+			resp.Errors++
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 列数超出 6 列", lineNo))
+			continue
+		}
+		if len(row) < 1 {
+			resp.Errors++
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 至少需要1列(域名)", lineNo))
+			continue
+		}
+		for len(row) < 6 {
+			row = append(row, "")
+		}
+
+		domainName := strings.TrimSpace(row[0])
+		if domainName == "" {
+			resp.Errors++
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 域名不能为空", lineNo))
+			continue
+		}
+
+		var count int64
+		database.DB.Model(&models.Domain{}).Where("domain = ?", domainName).Count(&count)
+		if count > 0 {
+			resp.Skipped++
+			continue
+		}
+
+		req := DomainRequest{
+			Domain:   domainName,
+			PublicIP: strings.TrimSpace(row[1]),
+			ISP:      strings.TrimSpace(row[2]),
+			Remark:   strings.TrimSpace(row[5]),
+		}
+		if privateIP := strings.TrimSpace(row[3]); privateIP != "" {
+			var host models.Host
+			if err := database.DB.Where("private_ip = ?", privateIP).First(&host).Error; err != nil {
+				resp.Errors++
+				resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 内网主机不存在(%s)", lineNo, privateIP))
+				continue
+			}
+			req.HostID = host.ID
+			if p := strings.TrimSpace(row[4]); p != "" {
+				port, err := strconv.Atoi(p)
+				if err != nil || port < 0 || port > 65535 {
+					resp.Errors++
+					resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 主机端口必须在 0-65535 之间", lineNo))
+					continue
+				}
+				req.HostPort = port
+			}
+		}
+
+		if _, err := s.Create(req); err != nil {
+			if strings.Contains(err.Error(), "已存在") {
+				resp.Skipped++
+			} else {
+				resp.Errors++
+				resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: %v", lineNo, err))
+			}
+		} else {
+			resp.Success++
+		}
+	}
+
+	return resp, nil
 }

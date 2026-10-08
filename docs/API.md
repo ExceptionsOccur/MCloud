@@ -131,6 +131,7 @@
 |------|------|-----------|------|
 | GET | `/api/zero-trusts` | `zeroTrust.List` | 零信任申请列表，`keyword` 模糊匹配申请单位/账户名/联系方式/系统名称/备注/主机名/IP |
 | POST | `/api/zero-trusts` | `zeroTrust.Create` | 新增申请（申请单位、账户名、申请主机、申请端口、申请时间必填；`system_name` 选填） |
+| POST | `/api/zero-trusts/batch` | `zeroTrust.BatchCreateText` | 批量添加（文本粘贴，主机按内网IP定位；合法行全部插入） |
 | PUT | `/api/zero-trusts/:id` | `zeroTrust.Update` | 修改申请记录 |
 | DELETE | `/api/zero-trusts/:id` | `zeroTrust.Delete` | 删除申请记录 |
 
@@ -140,6 +141,7 @@
 |------|------|-----------|------|
 | GET | `/api/domains` | `domain.List` | 域名台账列表，`keyword` 模糊匹配域名/公网IP/运营商/备注/主机名/IP |
 | POST | `/api/domains` | `domain.Create` | 新增域名记录（`domain` 必填，唯一；`host_id`/`host_port`/`isp` 选填） |
+| POST | `/api/domains/batch` | `domain.BatchCreateText` | 批量添加（文本粘贴；域名已存在跳过；内网IP可选关联主机） |
 | PUT | `/api/domains/:id` | `domain.Update` | 修改域名记录 |
 | DELETE | `/api/domains/:id` | `domain.Delete` | 删除域名记录 |
 
@@ -329,6 +331,22 @@ POST /api/zero-trusts
 - `host_id` 为 `hosts.id` 外键；主机不存在返回 `40001`
 - `apply_time` 可选，缺省为服务端当前时间
 - 列表返回嵌套 `host` 对象（名称/IP）；删除主机时若被台账引用返回 `40901`
+
+### 台账批量添加请求体
+
+```json
+POST /api/zero-trusts/batch
+{ "text": "申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注\n某某研究院,zhangsan,138,192.168.1.10,22,统一门户" }
+```
+
+```json
+POST /api/domains/batch
+{ "text": "域名,解析公网IP,运营商,内网IP,主机端口,备注\nwww.example.com,203.0.113.10,电信,,," }
+```
+
+- 零信任列顺序：`申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注`（至少前 4 列）；主机按内网IP定位，不存在则该行失败；合法行全部插入
+- 域名列顺序：`域名,解析公网IP,运营商,内网IP,主机端口,备注`（至少域名）；域名已存在跳过；内网IP为空不关联主机
+- 返回 `{success, skipped, errors, line_errors[]}`，与主机批量接口同结构
 
 ### 域名台账请求体
 
