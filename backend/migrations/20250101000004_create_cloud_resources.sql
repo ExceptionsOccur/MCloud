@@ -1,5 +1,5 @@
 -- +goose Up
-CREATE TABLE cloud_resources (
+CREATE TABLE IF NOT EXISTS cloud_resources (
     id SERIAL PRIMARY KEY,
     region VARCHAR(64) NOT NULL UNIQUE,
     physical_cpu INTEGER DEFAULT 0,

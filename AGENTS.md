@@ -64,15 +64,15 @@
 | 字段 | 值 |
 |------|-----|
 | last_updated | 2026-10-08 |
-| in_progress | 无（按认领规则从 todo 取 1 条） |
+| in_progress | 无 |
 | next_task | `T-002` 后端 `host_service.go` 拆分（= ROADMAP todo 首条，P1 最高优先级） |
-| todo（P1） | `T-002` host_service 拆分 → `T-003` csv controller 下沉 → `T-004` composables 抽取 → `T-005` IpStatistics 拆分 → `T-006` 测试骨架 |
-| todo（P2） | `T-008` 报表导出、`T-009` bcrypt 升级、`T-010` 路由拆分、`T-011` ping 解耦、`T-012` 文档巡检、`T-015` 公网IP字段改映射布尔+关联、`T-016` Goose 执行器实装（暂不执行）、`T-019` 抽 Layout/AppNav、`T-020` config ServerPort 硬编码（暂不执行）、`T-022` WS probe token 校验 |
+| todo（P1） | `T-002` host_service 拆分 → `T-003` csv controller 下沉 → `T-004` composables 抽取 → `T-005` IpStatistics 拆分 → `T-006` 测试骨架 → `T-029` 零信任系统名称 → `T-030` 域名台账字段改造 |
+| todo（P2） | `T-008` 报表导出、`T-009` bcrypt 升级、`T-010` 路由拆分、`T-011` ping 解耦、`T-012` 文档巡检、`T-015` 公网IP字段改映射布尔+关联、`T-019` 抽 Layout/AppNav、`T-020` config ServerPort 硬编码（暂不执行）、`T-022` WS probe token 校验 |
 | blocked | 无 |
 | 功能完成度 | 核心功能 12/12 完成；待开发 4 项 + 技术债 10 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
 | 已知风险 | 无测试、`host_service.go` 待拆分、`csv.go` 违反红线 1、密码为 SHA-256（详见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
 
-> T-013/T-014/T-026/T-027/T-028 已合并 main；功能分支已删除。多任务串行合并协议已生效。
+> T-016 Goose 迁移执行器已合并 main（`82e0e07`）；T-013/T-014/T-026/T-027/T-028 已合并 main。多任务串行合并协议已生效。
 
 ## 项目速览
 
@@ -113,7 +113,7 @@ MCloud 是云平台主机资产信息管理系统：**Go (Gin) 后端 + Vue 3 SP
    - **协议条文**（本文件的「会话协议 / 红线 / 状态快照规则」、`docs/DEVELOPMENT.md` 的规范条文）→ **默认禁止**；只有任务验收标准**明确写明**要改它（即人类发起的 `docs:` 任务）才可改，否则在输出中提出建议、不动手
    - **构建文件**（`Dockerfile`、`docker-compose*.yml`、`.golangci.yml`、`.eslintrc.cjs`、`nginx.conf`）→ **未经人类明确要求禁止修改**
 8. **分支**：从 `main` 拉 `feat/fix/docs/refactor` 短生命周期分支，PR 合并回 `main`；**禁止直接 push `main`**
-9. **迁移**：模型变更必须随附迁移 SQL（`backend/migrations/`，**归档/评审要求**）；运行时结构由启动时 `AutoMigrate` 兜底执行，**SQL 文件不会被自动执行**，故 SQL 必须与模型定义一致（统一口径见 [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) 数据库迁移规范）
+9. **迁移**：模型变更必须随附迁移 SQL（`backend/migrations/`，`-- +goose` 格式）；运行时由启动时 `Migrate()` 先执行 goose（embed FS 打包进二进制），`AutoMigrate` 仅兜底；**SQL 必须与模型定义一致**（统一口径见 [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) 数据库迁移规范）
 10. **门禁**：提交前「验证命令」必须全绿
 11. **环境一致**：数据库只用 docker-compose 启动，禁止手动安装
 12. **文档同步**：代码改完必须按下表回写文档；**未回写 = 任务未完成**

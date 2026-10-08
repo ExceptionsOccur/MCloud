@@ -22,7 +22,8 @@
 |------|------|----------|
 | `backend/main.go` | 程序入口 | `config.Load` → `database.Connect` → `database.Migrate` → `routes.SetupRoutes` → 启动 Gin |
 | `backend/config/config.go` | 配置加载 | `Config` 结构体、`Load()`（从环境变量/`.env` 读取） |
-| `backend/database/postgres.go` | 数据库连接与迁移 | `Connect()`、`Migrate()`（AutoMigrate）、`seedAdmin()` |
+| `backend/database/postgres.go` | 数据库连接与迁移 | `Connect()`、`Migrate()`（goose.Up + AutoMigrate 兜底 + seedAdmin）、`seedAdmin()` |
+| `backend/migrations/embed.go` | 迁移 SQL embed FS | `//go:embed *.sql` → `migrations.FS`，供 goose 加载 |
 | `backend/routes/routes.go` | 路由注册 | `SetupRoutes()`，公开路由 + JWT 鉴权分组 + WebSocket |
 
 ### 数据模型（models/）

@@ -6,8 +6,10 @@ import (
 	"log"
 
 	"mcloud/config"
+	"mcloud/migrations"
 	"mcloud/models"
 
+	"github.com/pressly/goose/v3"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -35,7 +37,21 @@ func Connect() {
 }
 
 func Migrate() {
-	err := DB.AutoMigrate(
+	sqlDB, err := DB.DB()
+	if err != nil {
+		log.Fatalf("获取数据库连接失败: %v", err)
+	}
+
+	if err = goose.SetDialect("postgres"); err != nil {
+		log.Fatalf("goose 设置方言失败: %v", err)
+	}
+	goose.SetBaseFS(migrations.FS)
+	if err = goose.Up(sqlDB, "."); err != nil {
+		log.Fatalf("goose 迁移失败: %v", err)
+	}
+
+	// AutoMigrate 兜底：SQL 未覆盖的模型变更仍可由启动时补齐
+	err = DB.AutoMigrate(
 		&models.User{},
 		&models.Person{},
 		&models.Host{},

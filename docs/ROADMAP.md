@@ -22,7 +22,7 @@
 
 ## in_progress
 
-（无。认领规则：从 `todo` 取 1 条 P0/P1 移入此处）
+（无）
 
 ## todo（按优先级）
 
@@ -52,6 +52,16 @@
   - 内容：后端 `services` 表驱动单测（先覆盖主机 CRUD、登录）+ 前端 Vitest 冒烟
   - 定位：新建 `backend/services/*_test.go`；前端 `frontend/package.json`（加 vitest 依赖与 script）+ `src/**/__tests__/`
   - 验收标准：`cd backend && go test ./...` 有用例非零且通过；`npm run test` 可运行
+- [ ] **T-029** 零信任台账增加系统名称字段 ｜ P1 ｜ 负责: — ｜ 备注: 2026-10-08 人类需求；顺序在 T-016 之后
+  - 内容：`zero_trusts` 新增 `system_name` VARCHAR(128) **选填**；前端列表列与表单项位于「申请端口」之后
+  - 定位：`backend/models/zero_trust.go`、`services/zero_trust_service.go`（`ZeroTrustRequest`/`normalizeZeroTrust`/`Create`/`Update`/`List` 搜索）、`controllers/zero_trust.go`、迁移 SQL；前端 `views/ZeroTrustLedger.vue`（表格列/表单/payload/搜索占位）
+  - 验收标准：API 响应含 `system_name`；表格「申请端口」后新增「系统名称」列、表单同位置选填输入框；迁移 SQL 写入 `backend/migrations/`；前后端验证命令全绿；ARCHITECTURE/API 同步
+  - 分支：`feat/zero-trust-system-name`
+- [ ] **T-030** 域名台账字段改造 ｜ P1 ｜ 负责: — ｜ 备注: 2026-10-08 人类需求；顺序在 T-029 之后
+  - 内容：新增「内网主机」`host_id` FK→`hosts`（下拉选择，删除主机前校验）与「主机端口」`host_port`；`provider` **列重命名** `isp`（显示「运营商」，JSON 字段同步改 `isp`）；删除 `expires_at`（DROP COLUMN，存量丢弃已确认）
+  - 定位：`backend/models/domain.go`、`services/domain_service.go`（`DomainRequest`/`List` 搜索/CRUD）、`controllers/domain.go`、迁移 SQL；前端 `views/DomainLedger.vue`（列/表单/搜索占位）、`api/domain.js`
+  - 验收标准：API 响应含 `isp`/`host_id`/`host_port`，无 `provider`/`expires_at`；内网主机 FK 校验（不存在主机拒绝）；迁移 SQL（ADD/RENAME/DROP）写入 `backend/migrations/`；前后端验证全绿；ARCHITECTURE/API 同步
+  - 分支：`feat/domain-ledger-fields`
 - [ ] **T-008** 数据导出报表（Excel/CSV） ｜ P2 ｜ 负责: —
   - 内容：报表导出接口与前端入口
   - 定位：新建 `backend/services/report_service.go` + `controllers/report.go`，注册于 `routes/routes.go`；前端入口 `components/SearchToolbar.vue` / `views/HostManagement.vue`；CSV 工具复用 `utils/csv.go`（BOM 红线）
@@ -72,20 +82,13 @@
 - [ ] **T-012** 文档一致性巡检 ｜ P2 ｜ 负责: — ｜ 备注: 适合小型会话
   - 定位：`docs/*.md`、`README.md`、`AGENTS.md`（协议条文部分需人类授权，见红线 7）；校验器 `scripts/check_docs.sh`（T-021 已交付）
   - 验收标准：`bash scripts/check_docs.sh` 退出码 0（links/tree/snapshot/counts/shas 全绿）；warn 一并处理；发现的错误全部修复
-- [ ] **T-015** 公网 IP 字段改造 + 双台账关联 ｜ P2 ｜ 依赖: T-013、T-014 ｜ 负责: —
-  - 内容：按人类指定方案，`hosts.public_ip`（`varchar(45)`）改为**布尔值「是否做了映射」**；主机记录展示与零信任台账、域名台账的关联状态
+- [ ] **T-015** 公网 IP 字段改造 + 双台账关联 ｜ P2 ｜ 依赖: T-013、T-014、T-030 ｜ 负责: — ｜ 备注: 2026-10-08 人类指定串行顺序末位
+  - 内容：`hosts.public_ip` 改为**布尔值** `ip_mapped`（「是否做了映射」）；主机**详情弹窗**展示与零信任台账、域名台账的关联记录（列表不变）；CSV 导入导出/筛选/表单同步
   - 定位（行号为 2026-10-06 T-018 后快照，以 grep `PublicIP\|public_ip` 复核）：后端 `models/host.go:11`、`services/host_service.go`（L100/202/244/302/359-360/473/608/727/760 共 9 处）、`utils/csv.go:15`（表头「公网IP」）、迁移 SQL；前端 `components/HostTable.vue:28`、`components/HostFormDialog.vue:100/209/355`
-  - 验收标准：迁移 SQL 写入 `backend/migrations/`（含改名/改类型）；API 响应、主机表单、CSV 导入导出、筛选同步更新；`docs/ARCHITECTURE.md` hosts 表与 `docs/API.md` 同步；前后端验证命令全绿
-  - 进入条件（实现前须人类确认）：① 新字段名（如 `ip_mapped`）② 布尔值语义（"已映射"是否区分映射到哪个台账）③ 旧 `public_ip` 数据的迁移/丢弃策略
+  - 验收标准：迁移 SQL 写入 `backend/migrations/`（DROP `public_ip` + ADD `ip_mapped`）；API 响应、主机表单、CSV 导入导出、筛选同步更新；详情弹窗展示关联的零信任/域名记录；`docs/ARCHITECTURE.md` hosts 表与 `docs/API.md` 同步；前后端验证命令全绿
+  - 进入条件（2026-10-08 人类已确认）：① 字段名 `ip_mapped` ② 简单布尔「已做公网映射」，不区分映射目标（关联状态由 FK 关联记录体现）③ 存量 `public_ip` **全部重置为 false**（旧数据丢弃）
   - 回写：ARCHITECTURE.md、API.md、BUSINESS_LOGIC.md（如涉及统计口径）、PROJECT_STATUS 变更记录
   - 分支：`feat/host-ip-mapping-flag`
-- [ ] **T-016** Goose 迁移执行器实装 ｜ P2 ｜ 负责: — ｜ 备注: 2026-10-06 人类确认**暂不实装，仅入队**；现状为归档-only 口径
-  - 内容：引入 `github.com/pressly/goose/v3`，启动 `Migrate()` 时执行 `migrations/*.sql`（`goose.Up`），`AutoMigrate` 降级为兜底或移除；存量 9 个 SQL 与现有库结构一致性验证
-  - 定位：`backend/go.mod`（当前无 goose 依赖）、`backend/database/postgres.go` → `Migrate()`（L39-54，现仅 AutoMigrate+seedAdmin）、`backend/migrations/`（9 个 `-- +goose` SQL，**从未执行过**）、如用 CLI 则涉 `backend/run.sh` / `Dockerfile`
-  - 进入条件（实现前须人类确认）：① 存量 dev/prod 库结构与 SQL 文件是否一致（不一致需先补差量 SQL）② AutoMigrate 的去留 ③ seed_admin.sql 与 `seedAdmin()` 的职责划分
-  - 验收标准：新库从零启动仅靠 SQL 建表成功；重复启动幂等；`go build` + lint 通过
-  - 回写（口径反转，必做）：DEVELOPMENT.md 迁移规范口径表、AGENTS.md 红线 9、PROJECT_STATUS 注意事项 8、ARCHITECTURE 目录树注释——改回"运行时执行 SQL"
-  - 分支：`feat/goose-migrator`
 - [ ] **T-019** 前端抽 Layout/AppNav ｜ P2 ｜ 负责: — ｜ 备注: 定位已实测（2026-10-06）
   - 内容：5 个页面 Tab 各自内嵌同一段 `nav-tab` 导航结构（各 7 处 `nav-tab` 引用），抽为共享 `components/AppNav.vue` 或 Layout（`App.vue` 根布局），消除重复粘贴
   - 定位：`frontend/src/views/HostManagement.vue`、`ResourceStatistics.vue`、`IpStatistics.vue`、`BusinessStatistics.vue`、`PersonnelManagement.vue`（`Login.vue` 不涉及）
@@ -116,6 +119,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-016 | Goose 迁移执行器实装 | 2026-10-08 | `82e0e07` | 验收：存量 dev 库首跑 9 迁移+幂等；build/lint/check_docs 过；口径反转已回写 |
 | T-028 | 前端导航修正：台账入口与 Tab 一致性 | 2026-10-08 | `2e32a5b` | 验收：设置菜单无台账入口；各页 Tab 含零信任+域名；lint/build 通过 |
 | T-027 | 前端 ESLint 警告清零 | 2026-10-08 | `ebb52de` | 验收：lint:check 0 problems + build 通过 |
 | T-026 | 协议补强：多任务串行合并 | 2026-10-08 | `c5208c6` | 验收：AGENTS A.2/A.4 + 分支协议 + DEVELOPMENT 口径一致；check_docs 0 errors |

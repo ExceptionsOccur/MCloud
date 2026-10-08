@@ -111,30 +111,30 @@ c.JSON(400, gin.H{"error": "..."})
 
 ### 数据库迁移规范
 
-**统一口径（2026-10-06 确认，消除红线 9 与运行时行为的表述矛盾）**：
+**统一口径（2026-10-08 T-016 反转：运行时执行 SQL）**：
 
 | 层面 | 机制 | 说明 |
 |------|------|------|
-| 归档 / 评审 | `backend/migrations/*.sql` | **红线 9 的迁移 SQL 是归档要求**：随模型变更一起提交，供追溯与多人协调；**运行时不会被执行**（`go.mod` 无 goose 依赖，代码中无加载逻辑） |
-| 运行时 | `database/postgres.go` → `Migrate()` | 启动时执行 `AutoMigrate()` + `seedAdmin()`，由它**兜底**应用结构变更 |
+| 运行时 | `backend/migrations/*.sql`（embed FS）+ `github.com/pressly/goose/v3` | 启动时 `Migrate()` 先 `goose.Up` 执行 `migrations/*.sql`（SQL 打包进二进制） |
+| 兜底 | `database/postgres.go` → `AutoMigrate()` + `seedAdmin()` | goose 之后仍执行 AutoMigrate 补齐 SQL 未覆盖的模型变更；种子管理员留在代码 |
 
-> 一句话：**SQL 必须写（归档），AutoMigrate 实际执行（兜底），两者不冲突**。SQL 防止 schema 变更无历史，AutoMigrate 负责落地。若未来需要真正执行 SQL（如生产结构管控），执行 [ROADMAP](./ROADMAP.md) 的 `T-016`（Goose 执行器实装），届时本口径随该任务反转更新。
+> 一句话：**SQL 是运行时迁移的唯一事实来源（goose 执行），AutoMigrate 仅兜底，两者不冲突**。SQL 必须与模型定义一致；已执行的迁移文件禁止修改。
 
 **迁移文件规则**：
 
 1. 迁移文件存放在 `backend/migrations/`，命名格式：`YYYYMMDDHHMMSS_<描述>.sql`
-2. 每次模型变更（新增字段、改类型、加索引、加约束）必须写对应的 SQL 迁移文件
+2. 每次模型变更（新增字段、改类型、加索引、加约束）必须写对应的 SQL 迁移文件（`-- +goose Up` / `-- +goose Down`）
 3. 迁移文件一旦提交，**禁止修改或删除**（已执行的迁移不可变）
-4. 运行时**只**执行 `AutoMigrate()`，SQL 文件不参与执行——因此 **SQL 内容必须与模型定义保持一致**，否则归档与实际结构会漂移（这正是红线 9 存在的意义）
+4. 运行时**先**执行 goose（`Migrate()` 内 `goose.Up`），**再** `AutoMigrate()` 兜底——**SQL 内容必须与模型定义保持一致**，否则 goose 落地结构与 GORM 模型会漂移
 
 **多人协作流程**：
 
 ```
 1. 拉取最新 main
 2. 创建迁移文件（如 20260322120000_add_status_index.sql）
-3. 本地启动，确认 AutoMigrate 应用后的结构与 SQL 描述一致
+3. 本地启动，确认 goose 应用后的结构与模型/SQL 描述一致
 4. 提交 PR（迁移文件 + 模型变更 + 业务代码一起）
-5. 合并后其他开发者拉取代码，启动时由 AutoMigrate 应用新结构（SQL 文件仅归档，不被执行）
+5. 合并后其他开发者拉取代码，启动时由 goose 应用新结构（AutoMigrate 兜底未覆盖项）
 ```
 
 **冲突预防**：
