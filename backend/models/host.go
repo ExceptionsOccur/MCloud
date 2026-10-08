@@ -8,7 +8,7 @@ type Host struct {
 	InstanceID string    `json:"instance_id" gorm:"type:varchar(128)"`
 	Name       string    `json:"name" gorm:"type:varchar(128);not null"`
 	PrivateIP  string    `json:"private_ip" gorm:"type:varchar(45);not null;uniqueIndex"`
-	PublicIP   string    `json:"public_ip" gorm:"type:varchar(45)"`
+	IPMapped   bool      `json:"ip_mapped" gorm:"default:false"`
 	AssetType  string    `json:"asset_type" gorm:"type:varchar(32)"`
 	OS         string    `json:"os" gorm:"type:varchar(64)"`
 	CPU        int       `json:"cpu" gorm:"type:integer"`
@@ -27,4 +27,6 @@ type Host struct {
 
 	Application *HostApplication `json:"application,omitempty" gorm:"foreignKey:HostID"`
 	Person      *Person          `json:"person,omitempty" gorm:"foreignKey:PersonID"`
+	ZeroTrusts  []ZeroTrust      `json:"zero_trusts,omitempty" gorm:"foreignKey:HostID"`
+	Domains     []Domain         `json:"domains,omitempty" gorm:"foreignKey:HostID"`
 }

@@ -16,9 +16,9 @@
       v-model="textInput"
       type="textarea"
       :rows="12"
-      placeholder="区域,实例ID,主机名称,内网IP,公网IP,资产类型,操作系统,CPU核数,CPU架构,内存(GB),系统盘(GB),数据盘(GB),环境类型,是否数据库服务器,状态,开放端口,标签,申请单位,申请人,申请人联系方式,所属项目,申请理由,申请配置,申请时间,对象存储大小,备注
-region-a,ins-001,web-01,192.168.1.10,,虚拟机,CentOS 7.9,4,X86,8,50,100,生产,否,运行中
-region-a,ins-002,db-01,192.168.1.11,,虚拟机,CentOS 7.9,8,X86,16,100,200,生产,是,运行中"
+      placeholder="区域,实例ID,主机名称,内网IP,是否映射公网,资产类型,操作系统,CPU核数,CPU架构,内存(GB),系统盘(GB),数据盘(GB),环境类型,是否数据库服务器,状态,开放端口,标签,申请单位,申请人,申请人联系方式,所属项目,申请理由,申请配置,申请时间,对象存储大小,备注
+region-a,ins-001,web-01,192.168.1.10,否,虚拟机,CentOS 7.9,4,X86,8,50,100,生产,否,运行中
+region-a,ins-002,db-01,192.168.1.11,是,虚拟机,CentOS 7.9,8,X86,16,100,200,生产,是,运行中"
     />
     <template #footer>
       <el-button @click="visible = false">
@@ -41,7 +41,7 @@ import { batchCreateHostsText } from '../api/host'
 import { ElMessage } from 'element-plus'
 
 const columnOrder = [
-  '区域', '实例ID', '主机名称', '内网IP', '公网IP',
+  '区域', '实例ID', '主机名称', '内网IP', '是否映射公网',
   '资产类型', '操作系统', 'CPU核数', 'CPU架构', '内存(GB)',
   '系统盘(GB)', '数据盘(GB)', '环境类型', '是否数据库服务器',
   '状态', '开放端口', '标签', '申请单位', '申请人', '申请人联系方式',

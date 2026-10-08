@@ -97,9 +97,9 @@ func (s *HostService) Filter(req FilterHostRequest) (*ListHostResponse, error) {
 				like, like, like, like)
 		db = db.Where(`
 			(region ILIKE ? OR instance_id ILIKE ? OR name ILIKE ? OR private_ip ILIKE ? OR
-			 public_ip ILIKE ? OR os ILIKE ? OR status ILIKE ? OR tags ILIKE ?
+			 os ILIKE ? OR status ILIKE ? OR tags ILIKE ?
 			 OR hosts.id IN (?))
-		`, like, like, like, like, like, like, like, like, subQuery)
+		`, like, like, like, like, like, like, like, subQuery)
 	}
 
 	if req.EnvType != "" {
@@ -167,7 +167,12 @@ func (s *HostService) ListRegions() ([]string, error) {
 
 func (s *HostService) GetByID(id uint) (*models.Host, error) {
 	var host models.Host
-	result := database.DB.Preload("Application").Preload("Person").First(&host, id)
+	result := database.DB.
+		Preload("Application").
+		Preload("Person").
+		Preload("ZeroTrusts").
+		Preload("Domains").
+		First(&host, id)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -199,7 +204,7 @@ type CreateHostRequest struct {
 	InstanceID string       `json:"instance_id"`
 	Name       string       `json:"name" binding:"required"`
 	PrivateIP  string       `json:"private_ip" binding:"required"`
-	PublicIP   string       `json:"public_ip"`
+	IPMapped   bool         `json:"ip_mapped"`
 	AssetType  string       `json:"asset_type"`
 	OS         string       `json:"os"`
 	CPU        int          `json:"cpu"`
@@ -241,7 +246,7 @@ func (s *HostService) Create(req CreateHostRequest) (uint, error) {
 		InstanceID: req.InstanceID,
 		Name:       req.Name,
 		PrivateIP:  req.PrivateIP,
-		PublicIP:   req.PublicIP,
+		IPMapped:   req.IPMapped,
 		AssetType:  req.AssetType,
 		OS:         req.OS,
 		CPU:        req.CPU,
@@ -299,7 +304,7 @@ type UpdateHostRequest struct {
 	InstanceID string       `json:"instance_id"`
 	Name       string       `json:"name"`
 	PrivateIP  string       `json:"private_ip"`
-	PublicIP   string       `json:"public_ip"`
+	IPMapped   *bool        `json:"ip_mapped"`
 	AssetType  string       `json:"asset_type"`
 	OS         string       `json:"os"`
 	CPU        int          `json:"cpu"`
@@ -356,8 +361,8 @@ func (s *HostService) Update(id uint, req UpdateHostRequest) error {
 	if req.PrivateIP != "" {
 		updates["private_ip"] = req.PrivateIP
 	}
-	if req.PublicIP != "" {
-		updates["public_ip"] = req.PublicIP
+	if req.IPMapped != nil {
+		updates["ip_mapped"] = *req.IPMapped
 	}
 	if req.AssetType != "" {
 		updates["asset_type"] = req.AssetType
@@ -486,7 +491,7 @@ type BatchCreateItem struct {
 	InstanceID        string `json:"instance_id"`
 	Name              string `json:"name" binding:"required"`
 	PrivateIP         string `json:"private_ip" binding:"required"`
-	PublicIP          string `json:"public_ip"`
+	IPMapped          bool   `json:"ip_mapped"`
 	AssetType         string `json:"asset_type"`
 	OS                string `json:"os"`
 	CPU               int    `json:"cpu"`
@@ -621,7 +626,7 @@ func (s *HostService) BatchCreate(req BatchCreateRequest) (*BatchCreateResponse,
 			InstanceID:        item.InstanceID,
 			Name:              item.Name,
 			PrivateIP:         item.PrivateIP,
-			PublicIP:          item.PublicIP,
+			IPMapped:          item.IPMapped,
 			AssetType:         item.AssetType,
 			OS:                item.OS,
 			CPU:               item.CPU,
@@ -734,13 +739,14 @@ func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, 
 	dataDisk := atoiOrZero(row[11])
 
 	isDB := strings.TrimSpace(row[13]) == "是" || strings.TrimSpace(row[13]) == "true" || strings.TrimSpace(row[13]) == "1"
+	ipMapped := strings.TrimSpace(row[4]) == "是" || strings.TrimSpace(row[4]) == "true" || strings.TrimSpace(row[4]) == "1"
 
 	return CreateHostRequest{
 		Region:            strings.TrimSpace(row[0]),
 		InstanceID:        strings.TrimSpace(row[1]),
 		Name:              strings.TrimSpace(row[2]),
 		PrivateIP:         strings.TrimSpace(row[3]),
-		PublicIP:          strings.TrimSpace(row[4]),
+		IPMapped:          ipMapped,
 		AssetType:         strings.TrimSpace(row[5]),
 		OS:                strings.TrimSpace(row[6]),
 		CPU:               cpu,
@@ -772,8 +778,12 @@ func (s *HostService) ExportToCSVRows(hosts []models.Host) [][]string {
 		if h.IsDBServer {
 			isDB = "是"
 		}
+		ipMapped := "否"
+		if h.IPMapped {
+			ipMapped = "是"
+		}
 		row := []string{
-			h.Region, h.InstanceID, h.Name, h.PrivateIP, h.PublicIP,
+			h.Region, h.InstanceID, h.Name, h.PrivateIP, ipMapped,
 			h.AssetType, h.OS, strconv.Itoa(h.CPU), h.CPUArch, strconv.Itoa(h.Memory),
 			strconv.Itoa(h.SystemDisk), strconv.Itoa(h.DataDisk), h.EnvType, isDB,
 			h.Status, h.OpenPorts, h.Tags,

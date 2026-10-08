@@ -72,13 +72,6 @@
 - [ ] **T-012** 文档一致性巡检 ｜ P2 ｜ 负责: — ｜ 备注: 适合小型会话
   - 定位：`docs/*.md`、`README.md`、`AGENTS.md`（协议条文部分需人类授权，见红线 7）；校验器 `scripts/check_docs.sh`（T-021 已交付）
   - 验收标准：`bash scripts/check_docs.sh` 退出码 0（links/tree/snapshot/counts/shas 全绿）；warn 一并处理；发现的错误全部修复
-- [ ] **T-015** 公网 IP 字段改造 + 双台账关联 ｜ P2 ｜ 依赖: T-013、T-014、T-030 ｜ 负责: — ｜ 备注: 2026-10-08 人类指定串行顺序末位
-  - 内容：`hosts.public_ip` 改为**布尔值** `ip_mapped`（「是否做了映射」）；主机**详情弹窗**展示与零信任台账、域名台账的关联记录（列表不变）；CSV 导入导出/筛选/表单同步
-  - 定位（行号为 2026-10-06 T-018 后快照，以 grep `PublicIP\|public_ip` 复核）：后端 `models/host.go:11`、`services/host_service.go`（L100/202/244/302/359-360/473/608/727/760 共 9 处）、`utils/csv.go:15`（表头「公网IP」）、迁移 SQL；前端 `components/HostTable.vue:28`、`components/HostFormDialog.vue:100/209/355`
-  - 验收标准：迁移 SQL 写入 `backend/migrations/`（DROP `public_ip` + ADD `ip_mapped`）；API 响应、主机表单、CSV 导入导出、筛选同步更新；详情弹窗展示关联的零信任/域名记录；`docs/ARCHITECTURE.md` hosts 表与 `docs/API.md` 同步；前后端验证命令全绿
-  - 进入条件（2026-10-08 人类已确认）：① 字段名 `ip_mapped` ② 简单布尔「已做公网映射」，不区分映射目标（关联状态由 FK 关联记录体现）③ 存量 `public_ip` **全部重置为 false**（旧数据丢弃）
-  - 回写：ARCHITECTURE.md、API.md、BUSINESS_LOGIC.md（如涉及统计口径）、PROJECT_STATUS 变更记录
-  - 分支：`feat/host-ip-mapping-flag`
 - [ ] **T-019** 前端抽 Layout/AppNav ｜ P2 ｜ 负责: — ｜ 备注: 定位已实测（2026-10-06）
   - 内容：5 个页面 Tab 各自内嵌同一段 `nav-tab` 导航结构（各 7 处 `nav-tab` 引用），抽为共享 `components/AppNav.vue` 或 Layout（`App.vue` 根布局），消除重复粘贴
   - 定位：`frontend/src/views/HostManagement.vue`、`ResourceStatistics.vue`、`IpStatistics.vue`、`BusinessStatistics.vue`、`PersonnelManagement.vue`（`Login.vue` 不涉及）
@@ -109,6 +102,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-015 | 公网 IP 字段改造 + 双台账关联 | 2026-10-08 | `130388a` | 验收：ip_mapped 布尔；详情展示两台账关联；CSV/表单/筛选同步；迁移+验证全绿 |
 | T-030 | 域名台账字段改造 | 2026-10-08 | `e83db90` | 验收：isp/host_id/host_port；无 provider/expires_at；FK 校验+主机删除 40901；迁移+验证全绿 |
 | T-029 | 零信任台账增加系统名称字段 | 2026-10-08 | `1f70851` | 验收：API 含 system_name；列/表单位于申请端口后；迁移+前后端验证全绿 |
 | T-016 | Goose 迁移执行器实装 | 2026-10-08 | `82e0e07` | 验收：存量 dev 库首跑 9 迁移+幂等；build/lint/check_docs 过；口径反转已回写 |
