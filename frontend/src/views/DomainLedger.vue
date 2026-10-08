@@ -69,7 +69,9 @@
               >
                 人员录入
               </el-dropdown-item>
-              <el-dropdown-item command="zeroTrust">零信任台账</el-dropdown-item>
+              <el-dropdown-item command="zeroTrust">
+                零信任台账
+              </el-dropdown-item>
               <el-dropdown-item
                 command="domain"
                 :disabled="$route.path === '/domain-ledger'"

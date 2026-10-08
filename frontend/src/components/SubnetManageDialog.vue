@@ -1,24 +1,69 @@
 <template>
-  <el-dialog v-model="visible" title="IP网段管理" width="540px">
+  <el-dialog
+    v-model="visible"
+    title="IP网段管理"
+    width="540px"
+  >
     <div class="add-row">
       <el-input
         v-model="newCidr"
         placeholder="输入网段，如 172.17.100.0/24"
         @keyup.enter="handleCreate"
       />
-      <el-button type="primary" :loading="creating" @click="handleCreate">新增</el-button>
+      <el-button
+        type="primary"
+        :loading="creating"
+        @click="handleCreate"
+      >
+        新增
+      </el-button>
     </div>
-    <el-table v-loading="loading" :data="subnets" size="small" max-height="360px" style="margin-top: 12px">
-      <el-table-column type="index" label="#" width="50" align="center" />
-      <el-table-column prop="cidr" label="网段" align="left" />
-      <el-table-column label="操作" width="140" align="center">
+    <el-table
+      v-loading="loading"
+      :data="subnets"
+      size="small"
+      max-height="360px"
+      style="margin-top: 12px"
+    >
+      <el-table-column
+        type="index"
+        label="#"
+        width="50"
+        align="center"
+      />
+      <el-table-column
+        prop="cidr"
+        label="网段"
+        align="left"
+      />
+      <el-table-column
+        label="操作"
+        width="140"
+        align="center"
+      >
         <template #default="{ row }">
-          <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-          <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+          <el-button
+            link
+            type="primary"
+            size="small"
+            @click="handleEdit(row)"
+          >
+            编辑
+          </el-button>
+          <el-button
+            link
+            type="danger"
+            size="small"
+            @click="handleDelete(row)"
+          >
+            删除
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
-    <div class="hint">仅支持 /24 掩码的 IPv4 网段，系统会自动规范化为网络地址（末位归 0）</div>
+    <div class="hint">
+      仅支持 /24 掩码的 IPv4 网段，系统会自动规范化为网络地址（末位归 0）
+    </div>
   </el-dialog>
 </template>
 

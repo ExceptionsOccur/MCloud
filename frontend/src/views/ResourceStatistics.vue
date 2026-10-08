@@ -1,43 +1,107 @@
 <template>
-  <div class="resource-statistics" :class="{ 'full-height': regions.length < 3 }">
+  <div
+    class="resource-statistics"
+    :class="{ 'full-height': regions.length < 3 }"
+  >
     <el-header class="app-header">
       <div class="header-left">
         <h1>MCloud</h1>
         <span>云平台主机资产管理</span>
       </div>
       <div class="header-center">
-        <router-link to="/" class="nav-tab">主机管理</router-link>
-        <router-link to="/statistics" class="nav-tab active">资源统计</router-link>
-        <router-link to="/ip-statistics" class="nav-tab">IP统计</router-link>
-        <router-link to="/business-statistics" class="nav-tab">业务统计</router-link>
-        <router-link to="/zero-trust" class="nav-tab">零信任</router-link>
-        <router-link to="/domain-ledger" class="nav-tab">域名</router-link>
+        <router-link
+          to="/"
+          class="nav-tab"
+        >
+          主机管理
+        </router-link>
+        <router-link
+          to="/statistics"
+          class="nav-tab active"
+        >
+          资源统计
+        </router-link>
+        <router-link
+          to="/ip-statistics"
+          class="nav-tab"
+        >
+          IP统计
+        </router-link>
+        <router-link
+          to="/business-statistics"
+          class="nav-tab"
+        >
+          业务统计
+        </router-link>
+        <router-link
+          to="/zero-trust"
+          class="nav-tab"
+        >
+          零信任
+        </router-link>
+        <router-link
+          to="/domain-ledger"
+          class="nav-tab"
+        >
+          域名
+        </router-link>
       </div>
       <div class="header-right">
-        <span v-if="authStore.user" class="user-info">{{ authStore.user.username }}</span>
+        <span
+          v-if="authStore.user"
+          class="user-info"
+        >{{ authStore.user.username }}</span>
         <el-dropdown @command="handleCommand">
           <el-button text>
             <el-icon><Setting /></el-icon>
           </el-button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="cloudResource">云资源录入</el-dropdown-item>
-              <el-dropdown-item command="personnel">人员录入</el-dropdown-item>
-              <el-dropdown-item command="zeroTrust">零信任台账</el-dropdown-item>
-              <el-dropdown-item command="domain">域名台账</el-dropdown-item>
-              <el-dropdown-item command="changePassword">修改密码</el-dropdown-item>
-              <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+              <el-dropdown-item command="cloudResource">
+                云资源录入
+              </el-dropdown-item>
+              <el-dropdown-item command="personnel">
+                人员录入
+              </el-dropdown-item>
+              <el-dropdown-item command="zeroTrust">
+                零信任台账
+              </el-dropdown-item>
+              <el-dropdown-item command="domain">
+                域名台账
+              </el-dropdown-item>
+              <el-dropdown-item command="changePassword">
+                修改密码
+              </el-dropdown-item>
+              <el-dropdown-item
+                command="logout"
+                divided
+              >
+                退出登录
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
       </div>
     </el-header>
 
-    <div class="main-content" v-loading="cloudStore.loading">
-      <div v-if="cloudStore.loading" class="loading-placeholder"></div>
+    <div
+      v-loading="cloudStore.loading"
+      class="main-content"
+    >
+      <div
+        v-if="cloudStore.loading"
+        class="loading-placeholder"
+      ></div>
       <template v-else>
-        <div class="summary-section" :style="{ gridTemplateColumns: gridCols }">
-          <div v-for="region in regions" :key="region" class="summary-card">
+        <div
+          class="summary-section"
+          :style="{ gridTemplateColumns: gridCols }"
+        >
+          <div
+            v-for="region in regions"
+            :key="region"
+            class="summary-card"
+          >
             <div class="card-header">
               <h3>{{ region }}</h3>
               <span class="card-subtitle">云端总资源</span>
@@ -51,7 +115,11 @@
                 <span class="rt-col rt-running-col">运行中</span>
                 <span class="rt-col rt-stopped-col">已停止</span>
               </div>
-              <div v-for="row in resourceRows" :key="row.name" class="rt-row">
+              <div
+                v-for="row in resourceRows"
+                :key="row.name"
+                class="rt-row"
+              >
                 <span class="rt-name">{{ row.name }}<em>({{ row.unit }})</em></span>
                 <span class="rt-col rt-total">{{ getTotalField(region, row.totalField) }}</span>
                 <span class="rt-col rt-used">{{ row.hasUsage ? getUsedField(region, row.usedField) : '-' }}</span>
@@ -63,25 +131,50 @@
           </div>
         </div>
 
-        <div class="chart-columns" :style="{ gridTemplateColumns: gridCols }">
-          <div v-for="region in regions" :key="region" class="chart-column">
-            <h2 class="section-title">{{ region }}资源使用情况</h2>
+        <div
+          class="chart-columns"
+          :style="{ gridTemplateColumns: gridCols }"
+        >
+          <div
+            v-for="region in regions"
+            :key="region"
+            class="chart-column"
+          >
+            <h2 class="section-title">
+              {{ region }}资源使用情况
+            </h2>
             <div class="chart-grid">
               <div class="chart-card">
                 <h4>vCPU</h4>
-                <v-chart class="chart" :option="getPieOption(region, 'vcpu', 'cpu', 'CPU')" autoresize />
+                <v-chart
+                  class="chart"
+                  :option="getPieOption(region, 'vcpu', 'cpu', 'CPU')"
+                  autoresize
+                />
               </div>
               <div class="chart-card">
                 <h4>内存</h4>
-                <v-chart class="chart" :option="getPieOption(region, 'memory', 'memory', '内存')" autoresize />
+                <v-chart
+                  class="chart"
+                  :option="getPieOption(region, 'memory', 'memory', '内存')"
+                  autoresize
+                />
               </div>
               <div class="chart-card">
                 <h4>存储</h4>
-                <v-chart class="chart" :option="getPieOption(region, 'storage', 'storage', '存储')" autoresize />
+                <v-chart
+                  class="chart"
+                  :option="getPieOption(region, 'storage', 'storage', '存储')"
+                  autoresize
+                />
               </div>
               <div class="chart-card">
                 <h4>裸金属</h4>
-                <v-chart class="chart" :option="getPieOption(region, 'bare_metal', 'bare_metal', '裸金属')" autoresize />
+                <v-chart
+                  class="chart"
+                  :option="getPieOption(region, 'bare_metal', 'bare_metal', '裸金属')"
+                  autoresize
+                />
               </div>
             </div>
           </div>
@@ -90,7 +183,10 @@
     </div>
 
     <ChangePasswordDialog ref="changePasswordDialog" />
-    <CloudResourceDialog ref="cloudResourceDialog" @saved="onResourceSaved" />
+    <CloudResourceDialog
+      ref="cloudResourceDialog"
+      @saved="onResourceSaved"
+    />
   </div>
 </template>
 

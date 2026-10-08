@@ -1,19 +1,61 @@
 <template>
-  <el-dialog v-model="visible" title="修改密码" width="400px" :close-on-click-modal="false">
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
-      <el-form-item label="原密码" prop="old_password">
-        <el-input v-model="form.old_password" type="password" show-password placeholder="请输入原密码" />
+  <el-dialog
+    v-model="visible"
+    title="修改密码"
+    width="400px"
+    :close-on-click-modal="false"
+  >
+    <el-form
+      ref="formRef"
+      :model="form"
+      :rules="rules"
+      label-width="80px"
+    >
+      <el-form-item
+        label="原密码"
+        prop="old_password"
+      >
+        <el-input
+          v-model="form.old_password"
+          type="password"
+          show-password
+          placeholder="请输入原密码"
+        />
       </el-form-item>
-      <el-form-item label="新密码" prop="new_password">
-        <el-input v-model="form.new_password" type="password" show-password placeholder="请输入新密码" />
+      <el-form-item
+        label="新密码"
+        prop="new_password"
+      >
+        <el-input
+          v-model="form.new_password"
+          type="password"
+          show-password
+          placeholder="请输入新密码"
+        />
       </el-form-item>
-      <el-form-item label="确认密码" prop="confirm_password">
-        <el-input v-model="form.confirm_password" type="password" show-password placeholder="请再次输入新密码" />
+      <el-form-item
+        label="确认密码"
+        prop="confirm_password"
+      >
+        <el-input
+          v-model="form.confirm_password"
+          type="password"
+          show-password
+          placeholder="请再次输入新密码"
+        />
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button @click="visible = false">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">确定</el-button>
+      <el-button @click="visible = false">
+        取消
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        @click="handleSubmit"
+      >
+        确定
+      </el-button>
     </template>
   </el-dialog>
 </template>
@@ -82,4 +124,6 @@ async function handleSubmit() {
     submitting.value = false
   }
 }
+
+defineExpose({ open })
 </script>

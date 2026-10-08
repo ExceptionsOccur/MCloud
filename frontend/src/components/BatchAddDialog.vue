@@ -1,8 +1,15 @@
 <template>
-  <el-dialog v-model="visible" title="批量添加主机" width="760px" :close-on-click-modal="false">
+  <el-dialog
+    v-model="visible"
+    title="批量添加主机"
+    width="760px"
+    :close-on-click-modal="false"
+  >
     <div class="hint">
       <p>每行一条记录，字段用逗号分隔，列顺序如下（至少填写前 3 列，其余列可省略）：</p>
-      <p class="columns">{{ columnOrder }}</p>
+      <p class="columns">
+        {{ columnOrder }}
+      </p>
       <p>支持用双引号包裹含逗号的字段；以 # 开头的行视为注释；首行可直接粘贴表头。</p>
     </div>
     <el-input
@@ -14,8 +21,16 @@ region-a,ins-001,web-01,192.168.1.10,,虚拟机,CentOS 7.9,4,X86,8,50,100,生产
 region-a,ins-002,db-01,192.168.1.11,,虚拟机,CentOS 7.9,8,X86,16,100,200,生产,是,运行中"
     />
     <template #footer>
-      <el-button @click="visible = false">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">提交</el-button>
+      <el-button @click="visible = false">
+        取消
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        @click="handleSubmit"
+      >
+        提交
+      </el-button>
     </template>
   </el-dialog>
 </template>

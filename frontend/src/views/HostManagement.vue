@@ -6,27 +6,81 @@
         <span>云平台资产管理</span>
       </div>
       <div class="header-center">
-        <router-link to="/" class="nav-tab" :class="{ active: $route.path === '/' }">主机管理</router-link>
-        <router-link to="/statistics" class="nav-tab" :class="{ active: $route.path === '/statistics' }">资源统计</router-link>
-        <router-link to="/ip-statistics" class="nav-tab" :class="{ active: $route.path === '/ip-statistics' }">IP统计</router-link>
-        <router-link to="/business-statistics" class="nav-tab" :class="{ active: $route.path === '/business-statistics' }">业务统计</router-link>
-        <router-link to="/zero-trust" class="nav-tab" :class="{ active: $route.path === '/zero-trust' }">零信任</router-link>
-        <router-link to="/domain-ledger" class="nav-tab" :class="{ active: $route.path === '/domain-ledger' }">域名</router-link>
+        <router-link
+          to="/"
+          class="nav-tab"
+          :class="{ active: $route.path === '/' }"
+        >
+          主机管理
+        </router-link>
+        <router-link
+          to="/statistics"
+          class="nav-tab"
+          :class="{ active: $route.path === '/statistics' }"
+        >
+          资源统计
+        </router-link>
+        <router-link
+          to="/ip-statistics"
+          class="nav-tab"
+          :class="{ active: $route.path === '/ip-statistics' }"
+        >
+          IP统计
+        </router-link>
+        <router-link
+          to="/business-statistics"
+          class="nav-tab"
+          :class="{ active: $route.path === '/business-statistics' }"
+        >
+          业务统计
+        </router-link>
+        <router-link
+          to="/zero-trust"
+          class="nav-tab"
+          :class="{ active: $route.path === '/zero-trust' }"
+        >
+          零信任
+        </router-link>
+        <router-link
+          to="/domain-ledger"
+          class="nav-tab"
+          :class="{ active: $route.path === '/domain-ledger' }"
+        >
+          域名
+        </router-link>
       </div>
       <div class="header-right">
-        <span v-if="authStore.user" class="user-info">{{ authStore.user.username }}</span>
+        <span
+          v-if="authStore.user"
+          class="user-info"
+        >{{ authStore.user.username }}</span>
         <el-dropdown @command="handleCommand">
           <el-button text>
             <el-icon><Setting /></el-icon>
           </el-button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="cloudResource">云资源录入</el-dropdown-item>
-              <el-dropdown-item command="personnel">人员录入</el-dropdown-item>
-              <el-dropdown-item command="zeroTrust">零信任台账</el-dropdown-item>
-              <el-dropdown-item command="domain">域名台账</el-dropdown-item>
-              <el-dropdown-item command="changePassword">修改密码</el-dropdown-item>
-              <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+              <el-dropdown-item command="cloudResource">
+                云资源录入
+              </el-dropdown-item>
+              <el-dropdown-item command="personnel">
+                人员录入
+              </el-dropdown-item>
+              <el-dropdown-item command="zeroTrust">
+                零信任台账
+              </el-dropdown-item>
+              <el-dropdown-item command="domain">
+                域名台账
+              </el-dropdown-item>
+              <el-dropdown-item command="changePassword">
+                修改密码
+              </el-dropdown-item>
+              <el-dropdown-item
+                command="logout"
+                divided
+              >
+                退出登录
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>

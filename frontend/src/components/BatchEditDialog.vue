@@ -1,19 +1,46 @@
 <template>
-  <el-dialog v-model="visible" title="批量编辑主机" width="700px" :close-on-click-modal="false">
-    <p style="margin-bottom: 12px; color: #909399;">已选择 {{ selectedIds.length }} 台主机，填写需要统一修改的字段（留空的字段不会修改）。</p>
+  <el-dialog
+    v-model="visible"
+    title="批量编辑主机"
+    width="700px"
+    :close-on-click-modal="false"
+  >
+    <p style="margin-bottom: 12px; color: #909399;">
+      已选择 {{ selectedIds.length }} 台主机，填写需要统一修改的字段（留空的字段不会修改）。
+    </p>
     <el-form label-width="120px">
       <el-row :gutter="16">
         <el-col :span="12">
           <el-form-item label="区域">
-            <el-select v-model="data.region" clearable placeholder="不修改" style="width: 100%">
-              <el-option v-for="item in regionOptions" :key="item" :label="item" :value="item" />
+            <el-select
+              v-model="data.region"
+              clearable
+              placeholder="不修改"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="item in regionOptions"
+                :key="item"
+                :label="item"
+                :value="item"
+              />
             </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="环境类型">
-            <el-select v-model="data.env_type" clearable placeholder="不修改" style="width: 100%">
-              <el-option v-for="item in envTypeOptions" :key="item" :label="item" :value="item" />
+            <el-select
+              v-model="data.env_type"
+              clearable
+              placeholder="不修改"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="item in envTypeOptions"
+                :key="item"
+                :label="item"
+                :value="item"
+              />
             </el-select>
           </el-form-item>
         </el-col>
@@ -21,15 +48,35 @@
       <el-row :gutter="16">
         <el-col :span="12">
           <el-form-item label="资产类型">
-            <el-select v-model="data.asset_type" clearable placeholder="不修改" style="width: 100%">
-              <el-option v-for="item in assetTypeOptions" :key="item" :label="item" :value="item" />
+            <el-select
+              v-model="data.asset_type"
+              clearable
+              placeholder="不修改"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="item in assetTypeOptions"
+                :key="item"
+                :label="item"
+                :value="item"
+              />
             </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="状态">
-            <el-select v-model="data.status" clearable placeholder="不修改" style="width: 100%">
-              <el-option v-for="item in statusOptions" :key="item" :label="item" :value="item" />
+            <el-select
+              v-model="data.status"
+              clearable
+              placeholder="不修改"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="item in statusOptions"
+                :key="item"
+                :label="item"
+                :value="item"
+              />
             </el-select>
           </el-form-item>
         </el-col>
@@ -49,38 +96,68 @@
               @change="handleApplicantChange"
               @visible-change="handleApplicantVisibleChange"
             >
-              <el-option v-for="p in filteredPersons" :key="p.id" :label="personLabel(p)" :value="p.name" />
+              <el-option
+                v-for="p in filteredPersons"
+                :key="p.id"
+                :label="personLabel(p)"
+                :value="p.name"
+              />
             </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="所属项目">
-            <el-input v-model="data.project" placeholder="不修改请留空" />
+            <el-input
+              v-model="data.project"
+              placeholder="不修改请留空"
+            />
           </el-form-item>
         </el-col>
       </el-row>
       <el-row :gutter="16">
         <el-col :span="12">
           <el-form-item label="申请单位">
-            <el-input v-model="data.apply_unit" placeholder="不修改请留空" />
+            <el-input
+              v-model="data.apply_unit"
+              placeholder="不修改请留空"
+            />
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="联系方式">
-            <el-input v-model="data.applicant_contact" placeholder="不修改请留空" />
+            <el-input
+              v-model="data.applicant_contact"
+              placeholder="不修改请留空"
+            />
           </el-form-item>
         </el-col>
       </el-row>
       <el-form-item label="标签">
-        <el-input v-model="data.tags" placeholder="不修改请留空" />
+        <el-input
+          v-model="data.tags"
+          placeholder="不修改请留空"
+        />
       </el-form-item>
       <el-form-item label="备注">
-        <el-input v-model="data.remark" type="textarea" :rows="2" placeholder="不修改请留空" />
+        <el-input
+          v-model="data.remark"
+          type="textarea"
+          :rows="2"
+          placeholder="不修改请留空"
+        />
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button @click="visible = false">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">提交</el-button>
+      <el-button @click="visible = false">
+        取消
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        @click="handleSubmit"
+      >
+        提交
+      </el-button>
     </template>
   </el-dialog>
 </template>

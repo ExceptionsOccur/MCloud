@@ -5,13 +5,25 @@
     width="800px"
     :close-on-click-modal="false"
   >
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="120px" :disabled="mode === 'view'">
+    <el-form
+      ref="formRef"
+      :model="form"
+      :rules="rules"
+      label-width="120px"
+      :disabled="mode === 'view'"
+    >
       <el-tabs v-model="activeTab">
-        <el-tab-pane label="申请信息" name="apply">
+        <el-tab-pane
+          label="申请信息"
+          name="apply"
+        >
           <el-row :gutter="16">
             <el-col :span="12">
               <el-form-item label="申请单位">
-                <el-input v-model="form.apply_unit" placeholder="请输入申请单位" />
+                <el-input
+                  v-model="form.apply_unit"
+                  placeholder="请输入申请单位"
+                />
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -28,7 +40,12 @@
                   @change="handleApplicantChange"
                   @visible-change="handleApplicantVisibleChange"
                 >
-                  <el-option v-for="p in filteredPersons" :key="p.id" :label="personLabel(p)" :value="p.name" />
+                  <el-option
+                    v-for="p in filteredPersons"
+                    :key="p.id"
+                    :label="personLabel(p)"
+                    :value="p.name"
+                  />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -36,74 +53,146 @@
           <el-row :gutter="16">
             <el-col :span="12">
               <el-form-item label="联系方式">
-                <el-input v-model="form.applicant_contact" placeholder="请输入联系方式" />
+                <el-input
+                  v-model="form.applicant_contact"
+                  placeholder="请输入联系方式"
+                />
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="所属项目">
-                <el-input v-model="form.project" placeholder="请输入所属项目" />
+                <el-input
+                  v-model="form.project"
+                  placeholder="请输入所属项目"
+                />
               </el-form-item>
             </el-col>
           </el-row>
           <el-form-item label="申请理由">
-            <el-input v-model="form.apply_reason" type="textarea" :rows="2" placeholder="请输入申请理由" />
+            <el-input
+              v-model="form.apply_reason"
+              type="textarea"
+              :rows="2"
+              placeholder="请输入申请理由"
+            />
           </el-form-item>
           <el-form-item label="申请配置">
-            <el-input v-model="form.apply_config" type="textarea" :rows="2" placeholder="请输入申请配置" />
+            <el-input
+              v-model="form.apply_config"
+              type="textarea"
+              :rows="2"
+              placeholder="请输入申请配置"
+            />
           </el-form-item>
           <el-row :gutter="16">
             <el-col :span="12">
               <el-form-item label="申请时间">
-                <el-input v-model="form.apply_time" placeholder="如: 2025-01-01" />
+                <el-input
+                  v-model="form.apply_time"
+                  placeholder="如: 2025-01-01"
+                />
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="对象存储">
-                <el-input v-model="form.object_storage_size" placeholder="如: 500GB" />
+                <el-input
+                  v-model="form.object_storage_size"
+                  placeholder="如: 500GB"
+                />
               </el-form-item>
             </el-col>
           </el-row>
           <el-form-item label="备注">
-            <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="请输入备注" />
+            <el-input
+              v-model="form.remark"
+              type="textarea"
+              :rows="2"
+              placeholder="请输入备注"
+            />
           </el-form-item>
         </el-tab-pane>
-        <el-tab-pane label="技术信息" name="tech">
+        <el-tab-pane
+          label="技术信息"
+          name="tech"
+        >
           <el-row :gutter="16">
             <el-col :span="12">
-              <el-form-item label="区域" prop="region">
-                <el-select v-model="form.region" placeholder="请选择区域" style="width: 100%">
-                  <el-option v-for="item in regionOptions" :key="item" :label="item" :value="item" />
+              <el-form-item
+                label="区域"
+                prop="region"
+              >
+                <el-select
+                  v-model="form.region"
+                  placeholder="请选择区域"
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="item in regionOptions"
+                    :key="item"
+                    :label="item"
+                    :value="item"
+                  />
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="主机名称" prop="name">
-                <el-input v-model="form.name" placeholder="请输入主机名称" />
+              <el-form-item
+                label="主机名称"
+                prop="name"
+              >
+                <el-input
+                  v-model="form.name"
+                  placeholder="请输入主机名称"
+                />
               </el-form-item>
             </el-col>
           </el-row>
           <el-row :gutter="16">
             <el-col :span="12">
-              <el-form-item label="实例ID" prop="instance_id">
-                <el-input v-model="form.instance_id" placeholder="请输入实例ID" />
+              <el-form-item
+                label="实例ID"
+                prop="instance_id"
+              >
+                <el-input
+                  v-model="form.instance_id"
+                  placeholder="请输入实例ID"
+                />
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="内网IP" prop="private_ip">
-                <el-input v-model="form.private_ip" placeholder="请输入内网IP" />
+              <el-form-item
+                label="内网IP"
+                prop="private_ip"
+              >
+                <el-input
+                  v-model="form.private_ip"
+                  placeholder="请输入内网IP"
+                />
               </el-form-item>
             </el-col>
           </el-row>
           <el-row :gutter="16">
             <el-col :span="12">
               <el-form-item label="公网IP">
-                <el-input v-model="form.public_ip" placeholder="请输入公网IP" />
+                <el-input
+                  v-model="form.public_ip"
+                  placeholder="请输入公网IP"
+                />
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="资产类型">
-                <el-select v-model="form.asset_type" placeholder="请选择" style="width: 100%">
-                  <el-option v-for="item in assetTypeOptions" :key="item" :label="item" :value="item" />
+                <el-select
+                  v-model="form.asset_type"
+                  placeholder="请选择"
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="item in assetTypeOptions"
+                    :key="item"
+                    :label="item"
+                    :value="item"
+                  />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -111,20 +200,35 @@
           <el-row :gutter="16">
             <el-col :span="12">
               <el-form-item label="操作系统">
-                <el-input v-model="form.os" placeholder="如: CentOS 7.9" />
+                <el-input
+                  v-model="form.os"
+                  placeholder="如: CentOS 7.9"
+                />
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="CPU核数">
-                <el-input v-model="form.cpu" placeholder="请输入CPU核数" />
+                <el-input
+                  v-model="form.cpu"
+                  placeholder="请输入CPU核数"
+                />
               </el-form-item>
             </el-col>
           </el-row>
           <el-row :gutter="16">
             <el-col :span="12">
               <el-form-item label="CPU架构">
-                <el-select v-model="form.cpu_arch" placeholder="请选择" style="width: 100%">
-                  <el-option v-for="item in cpuArchOptions" :key="item.value" :label="item.label" :value="item.value" />
+                <el-select
+                  v-model="form.cpu_arch"
+                  placeholder="请选择"
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="item in cpuArchOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -133,32 +237,59 @@
           <el-row :gutter="16">
             <el-col :span="8">
               <el-form-item label="内存(GB)">
-                <el-input v-model="form.memory" placeholder="请输入内存" />
+                <el-input
+                  v-model="form.memory"
+                  placeholder="请输入内存"
+                />
               </el-form-item>
             </el-col>
             <el-col :span="8">
               <el-form-item label="系统盘(GB)">
-                <el-input v-model="form.system_disk" placeholder="请输入系统盘" />
+                <el-input
+                  v-model="form.system_disk"
+                  placeholder="请输入系统盘"
+                />
               </el-form-item>
             </el-col>
             <el-col :span="8">
               <el-form-item label="数据盘(GB)">
-                <el-input v-model="form.data_disk" placeholder="请输入数据盘" />
+                <el-input
+                  v-model="form.data_disk"
+                  placeholder="请输入数据盘"
+                />
               </el-form-item>
             </el-col>
           </el-row>
           <el-row :gutter="16">
             <el-col :span="8">
               <el-form-item label="环境类型">
-                <el-select v-model="form.env_type" placeholder="请选择" style="width: 100%">
-                  <el-option v-for="item in envTypeOptions" :key="item" :label="item" :value="item" />
+                <el-select
+                  v-model="form.env_type"
+                  placeholder="请选择"
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="item in envTypeOptions"
+                    :key="item"
+                    :label="item"
+                    :value="item"
+                  />
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :span="8">
               <el-form-item label="状态">
-                <el-select v-model="form.status" placeholder="请选择" style="width: 100%">
-                  <el-option v-for="item in statusOptions" :key="item" :label="item" :value="item" />
+                <el-select
+                  v-model="form.status"
+                  placeholder="请选择"
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="item in statusOptions"
+                    :key="item"
+                    :label="item"
+                    :value="item"
+                  />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -169,19 +300,35 @@
             </el-col>
           </el-row>
           <el-form-item label="开放端口">
-            <el-input v-model="form.open_ports" placeholder="如: 80,443,22/tcp" />
+            <el-input
+              v-model="form.open_ports"
+              placeholder="如: 80,443,22/tcp"
+            />
           </el-form-item>
           <el-form-item label="标签">
-            <el-input v-model="form.tags" placeholder="标签，逗号分隔" />
+            <el-input
+              v-model="form.tags"
+              placeholder="标签，逗号分隔"
+            />
           </el-form-item>
         </el-tab-pane>
-
       </el-tabs>
     </el-form>
 
-    <template #footer v-if="mode !== 'view'">
-      <el-button @click="visible = false">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">{{ submitting ? '提交中...' : '确定' }}</el-button>
+    <template
+      v-if="mode !== 'view'"
+      #footer
+    >
+      <el-button @click="visible = false">
+        取消
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        @click="handleSubmit"
+      >
+        {{ submitting ? '提交中...' : '确定' }}
+      </el-button>
     </template>
   </el-dialog>
 </template>

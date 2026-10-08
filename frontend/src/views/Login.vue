@@ -1,21 +1,52 @@
 <template>
   <div class="login-container">
-    <el-card class="login-card" shadow="hover">
+    <el-card
+      class="login-card"
+      shadow="hover"
+    >
       <template #header>
         <div class="login-header">
           <h2>MCloud</h2>
           <p>资产管理系统</p>
         </div>
       </template>
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="80px" @submit.prevent="handleLogin">
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" placeholder="请输入用户名" prefix-icon="User" />
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        label-width="80px"
+        @submit.prevent="handleLogin"
+      >
+        <el-form-item
+          label="用户名"
+          prop="username"
+        >
+          <el-input
+            v-model="form.username"
+            placeholder="请输入用户名"
+            prefix-icon="User"
+          />
         </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input v-model="form.password" type="password" placeholder="请输入密码" prefix-icon="Lock" show-password @keyup.enter="handleLogin" />
+        <el-form-item
+          label="密码"
+          prop="password"
+        >
+          <el-input
+            v-model="form.password"
+            type="password"
+            placeholder="请输入密码"
+            prefix-icon="Lock"
+            show-password
+            @keyup.enter="handleLogin"
+          />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" :loading="loading" style="width: 100%" @click="handleLogin">
+          <el-button
+            type="primary"
+            :loading="loading"
+            style="width: 100%"
+            @click="handleLogin"
+          >
             {{ loading ? '登录中...' : '登 录' }}
           </el-button>
         </el-form-item>

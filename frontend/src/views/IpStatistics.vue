@@ -6,46 +6,112 @@
         <span>云平台主机资产管理</span>
       </div>
       <div class="header-center">
-        <router-link to="/" class="nav-tab">主机管理</router-link>
-        <router-link to="/statistics" class="nav-tab">资源统计</router-link>
-        <router-link to="/ip-statistics" class="nav-tab active">IP统计</router-link>
-        <router-link to="/business-statistics" class="nav-tab">业务统计</router-link>
-        <router-link to="/zero-trust" class="nav-tab">零信任</router-link>
-        <router-link to="/domain-ledger" class="nav-tab">域名</router-link>
+        <router-link
+          to="/"
+          class="nav-tab"
+        >
+          主机管理
+        </router-link>
+        <router-link
+          to="/statistics"
+          class="nav-tab"
+        >
+          资源统计
+        </router-link>
+        <router-link
+          to="/ip-statistics"
+          class="nav-tab active"
+        >
+          IP统计
+        </router-link>
+        <router-link
+          to="/business-statistics"
+          class="nav-tab"
+        >
+          业务统计
+        </router-link>
+        <router-link
+          to="/zero-trust"
+          class="nav-tab"
+        >
+          零信任
+        </router-link>
+        <router-link
+          to="/domain-ledger"
+          class="nav-tab"
+        >
+          域名
+        </router-link>
       </div>
       <div class="header-right">
-        <span v-if="authStore.user" class="user-info">{{ authStore.user.username }}</span>
+        <span
+          v-if="authStore.user"
+          class="user-info"
+        >{{ authStore.user.username }}</span>
         <el-dropdown @command="handleCommand">
           <el-button text>
             <el-icon><Setting /></el-icon>
           </el-button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="cloudResource">云资源录入</el-dropdown-item>
-              <el-dropdown-item command="personnel">人员录入</el-dropdown-item>
-              <el-dropdown-item command="zeroTrust">零信任台账</el-dropdown-item>
-              <el-dropdown-item command="domain">域名台账</el-dropdown-item>
-              <el-dropdown-item command="changePassword">修改密码</el-dropdown-item>
-              <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+              <el-dropdown-item command="cloudResource">
+                云资源录入
+              </el-dropdown-item>
+              <el-dropdown-item command="personnel">
+                人员录入
+              </el-dropdown-item>
+              <el-dropdown-item command="zeroTrust">
+                零信任台账
+              </el-dropdown-item>
+              <el-dropdown-item command="domain">
+                域名台账
+              </el-dropdown-item>
+              <el-dropdown-item command="changePassword">
+                修改密码
+              </el-dropdown-item>
+              <el-dropdown-item
+                command="logout"
+                divided
+              >
+                退出登录
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
       </div>
     </el-header>
 
-    <div class="main-content" v-loading="statsStore.loading">
+    <div
+      v-loading="statsStore.loading"
+      class="main-content"
+    >
       <template v-if="!statsStore.loading">
         <div class="top-bar">
-          <div class="ws-status" :class="wsConnected ? 'online' : 'offline'">
+          <div
+            class="ws-status"
+            :class="wsConnected ? 'online' : 'offline'"
+          >
             <em></em>{{ wsConnected ? '探测服务已连接' : '探测服务连接中...' }}
           </div>
-          <el-button size="small" @click="subnetDialog?.open()">管理网段</el-button>
+          <el-button
+            size="small"
+            @click="subnetDialog?.open()"
+          >
+            管理网段
+          </el-button>
         </div>
-        <div v-if="statsStore.ipUsage.length === 0" class="empty-state">
+        <div
+          v-if="statsStore.ipUsage.length === 0"
+          class="empty-state"
+        >
           暂无 IP 网段，请点击右上角「管理网段」添加
         </div>
         <div class="subnet-grid">
-          <div v-for="subnet in statsStore.ipUsage" :key="subnet.subnet" class="subnet-card">
+          <div
+            v-for="subnet in statsStore.ipUsage"
+            :key="subnet.subnet"
+            class="subnet-card"
+          >
             <div class="subnet-header">
               <h3>{{ subnet.subnet }}</h3>
               <el-button
@@ -54,14 +120,19 @@
                 :loading="isBatchRunning(subnet)"
                 :disabled="isBatchRunning(subnet)"
                 @click="handleBatchTest(subnet)"
-              >全量测试</el-button>
+              >
+                全量测试
+              </el-button>
             </div>
             <div class="subnet-stats">
               <span class="stat"><em class="used-dot"></em>已用 {{ getUsedCount(subnet) }}</span>
               <span class="stat"><em class="empty-dot"></em>空记录 {{ getEmptyCount(subnet) }}</span>
               <span class="stat"><em class="unused-dot"></em>未用 {{ getUnusedCount(subnet) }}</span>
             </div>
-            <div v-if="isBatchRunning(subnet)" class="batch-progress">
+            <div
+              v-if="isBatchRunning(subnet)"
+              class="batch-progress"
+            >
               <el-progress
                 :percentage="getBatchPercent(subnet)"
                 :stroke-width="8"
@@ -73,13 +144,21 @@
             </div>
             <div class="bitmap-wrapper">
               <div class="col-labels">
-                <span v-for="c in 10" :key="c">{{ c - 1 }}</span>
+                <span
+                  v-for="c in 10"
+                  :key="c"
+                >{{ c - 1 }}</span>
               </div>
               <div class="bitmap-body">
-                <div v-for="row in 26" :key="'r'+row" class="bitmap-row">
+                <div
+                  v-for="row in 26"
+                  :key="'r'+row"
+                  class="bitmap-row"
+                >
                   <span class="row-label">{{ row - 1 }}</span>
                   <div
-                    v-for="col in 10" :key="'c'+col"
+                    v-for="col in 10"
+                    :key="'c'+col"
                     class="bit-cell"
                     :class="getCellClasses(subnet, (row - 1) * 10 + (col - 1))"
                     :title="getIP(subnet.subnet, (row - 1) * 10 + (col - 1))"
@@ -95,7 +174,10 @@
 
     <ChangePasswordDialog ref="changePasswordDialog" />
     <CloudResourceDialog ref="cloudResourceDialog" />
-    <SubnetManageDialog ref="subnetDialog" @changed="onSubnetChanged" />
+    <SubnetManageDialog
+      ref="subnetDialog"
+      @changed="onSubnetChanged"
+    />
   </div>
 </template>
 
@@ -149,8 +231,8 @@ onMounted(async () => {
   try {
     await statsStore.fetchIPUsage()
     initCellColors()
-  } catch (e) {
-    console.error('加载IP使用情况失败:', e)
+  } catch {
+    // 错误提示由 axios 拦截器统一弹出
   }
 })
 
@@ -179,34 +261,30 @@ function connectWS() {
 
   try {
     ws = new WebSocket(url)
-  } catch (e) {
-    console.error('创建WebSocket失败:', e)
+  } catch {
     scheduleReconnect()
     return
   }
 
   ws.onopen = () => {
     wsConnected.value = true
-    console.log('WebSocket已连接')
   }
 
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data)
       applyProbeResult(data)
-    } catch (e) {
-      console.error('解析WebSocket消息失败:', e)
+    } catch {
+      // 非法帧静默丢弃
     }
   }
 
   ws.onclose = () => {
     wsConnected.value = false
-    console.log('WebSocket已断开，3秒后重连')
     scheduleReconnect()
   }
 
-  ws.onerror = (err) => {
-    console.error('WebSocket错误:', err)
+  ws.onerror = () => {
     if (ws) ws.close()
   }
 }

@@ -6,34 +6,85 @@
         <span>云平台主机资产管理</span>
       </div>
       <div class="header-center">
-        <router-link to="/" class="nav-tab">主机管理</router-link>
-        <router-link to="/statistics" class="nav-tab">资源统计</router-link>
-        <router-link to="/ip-statistics" class="nav-tab">IP统计</router-link>
-        <router-link to="/business-statistics" class="nav-tab active">业务统计</router-link>
-        <router-link to="/zero-trust" class="nav-tab">零信任</router-link>
-        <router-link to="/domain-ledger" class="nav-tab">域名</router-link>
+        <router-link
+          to="/"
+          class="nav-tab"
+        >
+          主机管理
+        </router-link>
+        <router-link
+          to="/statistics"
+          class="nav-tab"
+        >
+          资源统计
+        </router-link>
+        <router-link
+          to="/ip-statistics"
+          class="nav-tab"
+        >
+          IP统计
+        </router-link>
+        <router-link
+          to="/business-statistics"
+          class="nav-tab active"
+        >
+          业务统计
+        </router-link>
+        <router-link
+          to="/zero-trust"
+          class="nav-tab"
+        >
+          零信任
+        </router-link>
+        <router-link
+          to="/domain-ledger"
+          class="nav-tab"
+        >
+          域名
+        </router-link>
       </div>
       <div class="header-right">
-        <span v-if="authStore.user" class="user-info">{{ authStore.user.username }}</span>
+        <span
+          v-if="authStore.user"
+          class="user-info"
+        >{{ authStore.user.username }}</span>
         <el-dropdown @command="handleCommand">
           <el-button text>
             <el-icon><Setting /></el-icon>
           </el-button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="cloudResource">云资源录入</el-dropdown-item>
-              <el-dropdown-item command="personnel">人员录入</el-dropdown-item>
-              <el-dropdown-item command="zeroTrust">零信任台账</el-dropdown-item>
-              <el-dropdown-item command="domain">域名台账</el-dropdown-item>
-              <el-dropdown-item command="changePassword">修改密码</el-dropdown-item>
-              <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+              <el-dropdown-item command="cloudResource">
+                云资源录入
+              </el-dropdown-item>
+              <el-dropdown-item command="personnel">
+                人员录入
+              </el-dropdown-item>
+              <el-dropdown-item command="zeroTrust">
+                零信任台账
+              </el-dropdown-item>
+              <el-dropdown-item command="domain">
+                域名台账
+              </el-dropdown-item>
+              <el-dropdown-item command="changePassword">
+                修改密码
+              </el-dropdown-item>
+              <el-dropdown-item
+                command="logout"
+                divided
+              >
+                退出登录
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
       </div>
     </el-header>
 
-    <div class="main-content" v-loading="businessStore.loading">
+    <div
+      v-loading="businessStore.loading"
+      class="main-content"
+    >
       <div class="summary-section">
         <div class="summary-card">
           <span class="sc-value">{{ businessStore.summary.project_count }}</span>
@@ -54,67 +105,225 @@
       </div>
 
       <div class="control-bar">
-        <el-radio-group v-model="dimension" size="small">
-          <el-radio-button value="project">按项目</el-radio-button>
-          <el-radio-button value="company">按公司</el-radio-button>
-          <el-radio-button value="applicant">按人员</el-radio-button>
+        <el-radio-group
+          v-model="dimension"
+          size="small"
+        >
+          <el-radio-button value="project">
+            按项目
+          </el-radio-button>
+          <el-radio-button value="company">
+            按公司
+          </el-radio-button>
+          <el-radio-button value="applicant">
+            按人员
+          </el-radio-button>
         </el-radio-group>
-        <el-radio-group v-model="metric" size="small">
-          <el-radio-button value="host_count">主机数</el-radio-button>
-          <el-radio-button value="cpu">vCPU</el-radio-button>
-          <el-radio-button value="memory">内存</el-radio-button>
-          <el-radio-button value="storage">存储</el-radio-button>
+        <el-radio-group
+          v-model="metric"
+          size="small"
+        >
+          <el-radio-button value="host_count">
+            主机数
+          </el-radio-button>
+          <el-radio-button value="cpu">
+            vCPU
+          </el-radio-button>
+          <el-radio-button value="memory">
+            内存
+          </el-radio-button>
+          <el-radio-button value="storage">
+            存储
+          </el-radio-button>
         </el-radio-group>
       </div>
 
       <div class="chart-panel">
-        <v-chart class="chart" :option="chartOption" autoresize @click="handleChartClick" />
+        <v-chart
+          class="chart"
+          :option="chartOption"
+          autoresize
+          @click="handleChartClick"
+        />
       </div>
 
       <div class="table-panel">
-        <el-table :data="tableData" height="100%" size="small" stripe>
-          <el-table-column label="#" type="index" width="50" align="center" />
-          <el-table-column :label="keyLabel" prop="key" min-width="160" align="left" show-overflow-tooltip />
+        <el-table
+          :data="tableData"
+          height="100%"
+          size="small"
+          stripe
+        >
+          <el-table-column
+            label="#"
+            type="index"
+            width="50"
+            align="center"
+          />
+          <el-table-column
+            :label="keyLabel"
+            prop="key"
+            min-width="160"
+            align="left"
+            show-overflow-tooltip
+          />
           <template v-if="dimension === 'project'">
-            <el-table-column label="所属公司" min-width="180" align="left" show-overflow-tooltip>
-              <template #default="{ row }">{{ row.companies.join('、') || '-' }}</template>
+            <el-table-column
+              label="所属公司"
+              min-width="180"
+              align="left"
+              show-overflow-tooltip
+            >
+              <template #default="{ row }">
+                {{ row.companies.join('、') || '-' }}
+              </template>
             </el-table-column>
-            <el-table-column label="申请人" min-width="100" align="left" show-overflow-tooltip>
-              <template #default="{ row }">{{ row.applicants.join('、') || '-' }}</template>
+            <el-table-column
+              label="申请人"
+              min-width="100"
+              align="left"
+              show-overflow-tooltip
+            >
+              <template #default="{ row }">
+                {{ row.applicants.join('、') || '-' }}
+              </template>
             </el-table-column>
           </template>
           <template v-else-if="dimension === 'company'">
-            <el-table-column label="项目数" prop="projectCount" width="80" align="center" sortable />
-            <el-table-column label="涉及项目" min-width="200" align="left" show-overflow-tooltip>
-              <template #default="{ row }">{{ row.projects.join('、') || '-' }}</template>
+            <el-table-column
+              label="项目数"
+              prop="projectCount"
+              width="80"
+              align="center"
+              sortable
+            />
+            <el-table-column
+              label="涉及项目"
+              min-width="200"
+              align="left"
+              show-overflow-tooltip
+            >
+              <template #default="{ row }">
+                {{ row.projects.join('、') || '-' }}
+              </template>
             </el-table-column>
-            <el-table-column label="人员数" prop="applicantCount" width="80" align="center" />
+            <el-table-column
+              label="人员数"
+              prop="applicantCount"
+              width="80"
+              align="center"
+            />
           </template>
           <template v-else>
-            <el-table-column label="所属公司" min-width="180" align="left" show-overflow-tooltip>
-              <template #default="{ row }">{{ row.companies.join('、') || '-' }}</template>
+            <el-table-column
+              label="所属公司"
+              min-width="180"
+              align="left"
+              show-overflow-tooltip
+            >
+              <template #default="{ row }">
+                {{ row.companies.join('、') || '-' }}
+              </template>
             </el-table-column>
-            <el-table-column label="项目数" prop="projectCount" width="80" align="center" />
-            <el-table-column label="涉及项目" min-width="200" align="left" show-overflow-tooltip>
-              <template #default="{ row }">{{ row.projects.join('、') || '-' }}</template>
+            <el-table-column
+              label="项目数"
+              prop="projectCount"
+              width="80"
+              align="center"
+            />
+            <el-table-column
+              label="涉及项目"
+              min-width="200"
+              align="left"
+              show-overflow-tooltip
+            >
+              <template #default="{ row }">
+                {{ row.projects.join('、') || '-' }}
+              </template>
             </el-table-column>
           </template>
-          <el-table-column label="主机数" prop="host_count" width="80" align="center" sortable />
-          <el-table-column label="vCPU" prop="cpu" width="90" align="center" sortable />
-          <el-table-column label="内存(GB)" prop="memory" width="100" align="center" sortable />
-          <el-table-column label="存储(GB)" prop="storage" width="110" align="center" sortable />
-          <el-table-column label="运行中" prop="running" width="80" align="center" />
-          <el-table-column label="已停止" prop="stopped" width="80" align="center" />
+          <el-table-column
+            label="主机数"
+            prop="host_count"
+            width="80"
+            align="center"
+            sortable
+          />
+          <el-table-column
+            label="vCPU"
+            prop="cpu"
+            width="90"
+            align="center"
+            sortable
+          />
+          <el-table-column
+            label="内存(GB)"
+            prop="memory"
+            width="100"
+            align="center"
+            sortable
+          />
+          <el-table-column
+            label="存储(GB)"
+            prop="storage"
+            width="110"
+            align="center"
+            sortable
+          />
+          <el-table-column
+            label="运行中"
+            prop="running"
+            width="80"
+            align="center"
+          />
+          <el-table-column
+            label="已停止"
+            prop="stopped"
+            width="80"
+            align="center"
+          />
         </el-table>
       </div>
     </div>
 
-    <el-dialog v-model="hostDialogVisible" :title="hostDialogTitle" width="640px" top="8vh">
-      <el-table :data="dialogHosts" height="420px" size="small" stripe>
-        <el-table-column type="index" label="#" width="50" align="center" />
-        <el-table-column prop="name" label="主机名" min-width="180" align="left" show-overflow-tooltip />
-        <el-table-column prop="ip" label="内网IP" width="150" align="center" />
-        <el-table-column prop="project" label="对应项目" min-width="180" align="left" show-overflow-tooltip />
+    <el-dialog
+      v-model="hostDialogVisible"
+      :title="hostDialogTitle"
+      width="640px"
+      top="8vh"
+    >
+      <el-table
+        :data="dialogHosts"
+        height="420px"
+        size="small"
+        stripe
+      >
+        <el-table-column
+          type="index"
+          label="#"
+          width="50"
+          align="center"
+        />
+        <el-table-column
+          prop="name"
+          label="主机名"
+          min-width="180"
+          align="left"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="ip"
+          label="内网IP"
+          width="150"
+          align="center"
+        />
+        <el-table-column
+          prop="project"
+          label="对应项目"
+          min-width="180"
+          align="left"
+          show-overflow-tooltip
+        />
       </el-table>
       <template #footer>
         <span class="dialog-count">共 {{ dialogHosts.length }} 台主机</span>

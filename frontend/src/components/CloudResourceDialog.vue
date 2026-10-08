@@ -1,9 +1,27 @@
 <template>
-  <el-dialog v-model="visible" title="云资源录入" width="560px" :close-on-click-modal="false">
+  <el-dialog
+    v-model="visible"
+    title="云资源录入"
+    width="560px"
+    :close-on-click-modal="false"
+  >
     <el-tabs v-model="activeRegion">
-      <el-tab-pane v-for="region in dialogRegions" :key="region" :label="region" :name="region">
-        <el-form :model="forms[region]" label-width="120px" size="default">
-          <el-form-item v-for="f in fields" :key="f.key" :label="f.label">
+      <el-tab-pane
+        v-for="region in dialogRegions"
+        :key="region"
+        :label="region"
+        :name="region"
+      >
+        <el-form
+          :model="forms[region]"
+          label-width="120px"
+          size="default"
+        >
+          <el-form-item
+            v-for="f in fields"
+            :key="f.key"
+            :label="f.label"
+          >
             <el-input
               v-model="forms[region][f.key]"
               placeholder="请输入"
@@ -14,8 +32,16 @@
       </el-tab-pane>
     </el-tabs>
     <template #footer>
-      <el-button @click="visible = false">取消</el-button>
-      <el-button type="primary" :loading="saving" @click="handleSave">保存{{ activeRegion }}</el-button>
+      <el-button @click="visible = false">
+        取消
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="saving"
+        @click="handleSave"
+      >
+        保存{{ activeRegion }}
+      </el-button>
     </template>
   </el-dialog>
 </template>

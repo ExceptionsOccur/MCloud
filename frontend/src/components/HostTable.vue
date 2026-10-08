@@ -7,60 +7,139 @@
       stripe
       @selection-change="handleSelectionChange"
     >
-      <el-table-column type="selection" width="40" />
-      <el-table-column label="#" width="50">
+      <el-table-column
+        type="selection"
+        width="40"
+      />
+      <el-table-column
+        label="#"
+        width="50"
+      >
         <template #default="{ $index }">
           {{ (hostStore.currentPage - 1) * hostStore.pageSize + $index + 1 }}
         </template>
       </el-table-column>
-      <el-table-column prop="region" label="区域" width="80" />
-      <el-table-column label="主机名称" min-width="140">
+      <el-table-column
+        prop="region"
+        label="区域"
+        width="80"
+      />
+      <el-table-column
+        label="主机名称"
+        min-width="140"
+      >
         <template #default="{ row }">
           <div class="name-cell">
             <span class="name-text">{{ row.name }}</span>
-            <span v-if="row.env_type === '生产'" class="env-tag-prod">生产</span>
-            <span v-else-if="row.env_type === '测试'" class="env-tag-test">测试</span>
-            <span v-if="row.is_db_server" class="db-tag">DB</span>
+            <span
+              v-if="row.env_type === '生产'"
+              class="env-tag-prod"
+            >生产</span>
+            <span
+              v-else-if="row.env_type === '测试'"
+              class="env-tag-test"
+            >测试</span>
+            <span
+              v-if="row.is_db_server"
+              class="db-tag"
+            >DB</span>
           </div>
         </template>
       </el-table-column>
-      <el-table-column prop="private_ip" label="内网IP" width="140" />
-      <el-table-column prop="public_ip" label="公网IP" width="140" show-overflow-tooltip />
-      <el-table-column label="资产类型" min-width="70">
+      <el-table-column
+        prop="private_ip"
+        label="内网IP"
+        width="140"
+      />
+      <el-table-column
+        prop="public_ip"
+        label="公网IP"
+        width="140"
+        show-overflow-tooltip
+      />
+      <el-table-column
+        label="资产类型"
+        min-width="70"
+      >
         <template #default="{ row }">
           <div class="name-cell">
             <span class="name-text">{{ row.asset_type }}</span>
-            <span v-if="row.cpu_arch" :class="'arch-tag arch-' + row.cpu_arch">{{ row.cpu_arch }}</span>
+            <span
+              v-if="row.cpu_arch"
+              :class="'arch-tag arch-' + row.cpu_arch"
+            >{{ row.cpu_arch }}</span>
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="规格" min-width="90">
+      <el-table-column
+        label="规格"
+        min-width="90"
+      >
         <template #default="{ row }">
           {{ row.cpu ? row.cpu + 'vCPU' : '-' }}/{{ row.memory ? row.memory + 'G' : '-' }}/{{ row.system_disk ? row.system_disk + 'G' : '-' }}/{{ row.data_disk ? row.data_disk + 'G' : '-' }}
         </template>
       </el-table-column>
-      <el-table-column prop="status" label="状态" width="80">
+      <el-table-column
+        prop="status"
+        label="状态"
+        width="80"
+      >
         <template #default="{ row }">
           <span :class="'status-' + row.status">{{ row.status }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="项目" min-width="120" show-overflow-tooltip>
+      <el-table-column
+        label="项目"
+        min-width="120"
+        show-overflow-tooltip
+      >
         <template #default="{ row }">
           {{ row.application?.project || '' }}
         </template>
       </el-table-column>
-      <el-table-column label="申请人" min-width="40" show-overflow-tooltip>
+      <el-table-column
+        label="申请人"
+        min-width="40"
+        show-overflow-tooltip
+      >
         <template #default="{ row }">
           {{ row.application?.applicant || '' }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="140" fixed="right">
+      <el-table-column
+        label="操作"
+        width="140"
+        fixed="right"
+      >
         <template #default="{ row }">
-          <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-          <el-button type="primary" link size="small" @click="handleView(row)">详情</el-button>
-          <el-popconfirm title="确定删除？" @confirm="handleDelete(row.id)">
+          <el-button
+            type="primary"
+            link
+            size="small"
+            @click="handleEdit(row)"
+          >
+            编辑
+          </el-button>
+          <el-button
+            type="primary"
+            link
+            size="small"
+            @click="handleView(row)"
+          >
+            详情
+          </el-button>
+          <el-popconfirm
+            title="确定删除？"
+            @confirm="handleDelete(row.id)"
+          >
             <template #reference>
-              <el-button type="danger" link size="small">删除</el-button>
+              <el-button
+                type="danger"
+                link
+                size="small"
+              >
+                删除
+              </el-button>
             </template>
           </el-popconfirm>
         </template>

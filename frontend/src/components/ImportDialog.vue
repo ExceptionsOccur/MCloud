@@ -1,5 +1,10 @@
 <template>
-  <el-dialog v-model="visible" title="导入CSV" width="500px" :close-on-click-modal="false">
+  <el-dialog
+    v-model="visible"
+    title="导入CSV"
+    width="500px"
+    :close-on-click-modal="false"
+  >
     <el-upload
       ref="uploadRef"
       drag
@@ -8,18 +13,43 @@
       accept=".csv"
       :on-change="handleFileChange"
     >
-      <el-icon class="el-icon--upload" :size="40"><Upload /></el-icon>
-      <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+      <el-icon
+        class="el-icon--upload"
+        :size="40"
+      >
+        <Upload />
+      </el-icon>
+      <div class="el-upload__text">
+        将文件拖到此处，或<em>点击上传</em>
+      </div>
       <template #tip>
-        <div class="el-upload__tip">仅支持 .csv 文件，最大 16MB</div>
+        <div class="el-upload__tip">
+          仅支持 .csv 文件，最大 16MB
+        </div>
       </template>
     </el-upload>
-    <div v-if="uploadResult" style="margin-top: 16px;">
-      <el-alert :title="resultMessage" :type="resultType" show-icon />
+    <div
+      v-if="uploadResult"
+      style="margin-top: 16px;"
+    >
+      <el-alert
+        :title="resultMessage"
+        :type="resultType"
+        show-icon
+      />
     </div>
     <template #footer>
-      <el-button @click="visible = false">关闭</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit" :disabled="!file">开始导入</el-button>
+      <el-button @click="visible = false">
+        关闭
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        :disabled="!file"
+        @click="handleSubmit"
+      >
+        开始导入
+      </el-button>
     </template>
   </el-dialog>
 </template>

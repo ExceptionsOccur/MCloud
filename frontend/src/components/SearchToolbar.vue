@@ -11,16 +11,27 @@
           @keyup.enter="handleSearch"
           @clear="handleSearch"
         />
-        <el-button type="primary" @click="handleSearch">搜索</el-button>
+        <el-button
+          type="primary"
+          @click="handleSearch"
+        >
+          搜索
+        </el-button>
       </div>
       <div class="action-buttons">
-        <el-button type="primary" @click="openCreateDialog">
+        <el-button
+          type="primary"
+          @click="openCreateDialog"
+        >
           <el-icon><Plus /></el-icon> 新增主机
         </el-button>
         <el-button @click="openBatchAdd">
           <el-icon><Upload /></el-icon> 批量添加
         </el-button>
-        <el-button :disabled="!selectedIds.length" @click="openBatchEdit">
+        <el-button
+          :disabled="!selectedIds.length"
+          @click="openBatchEdit"
+        >
           <el-icon><Edit /></el-icon> 批量编辑
         </el-button>
         <el-button @click="handleExport">
@@ -35,30 +46,111 @@
       </div>
     </div>
     <div class="filter-row">
-      <el-select v-model="filters.region" placeholder="区域" clearable @change="v => hostStore.setFilter('region', v)" style="width: 120px">
-        <el-option v-for="item in regionOptions" :key="item" :label="item" :value="item" />
+      <el-select
+        v-model="filters.region"
+        placeholder="区域"
+        clearable
+        style="width: 120px"
+        @change="v => hostStore.setFilter('region', v)"
+      >
+        <el-option
+          v-for="item in regionOptions"
+          :key="item"
+          :label="item"
+          :value="item"
+        />
       </el-select>
-      <el-select v-model="filters.env_type" placeholder="环境类型" clearable @change="v => hostStore.setFilter('env_type', v)" style="width: 120px">
-        <el-option v-for="item in envTypeOptions" :key="item" :label="item" :value="item" />
+      <el-select
+        v-model="filters.env_type"
+        placeholder="环境类型"
+        clearable
+        style="width: 120px"
+        @change="v => hostStore.setFilter('env_type', v)"
+      >
+        <el-option
+          v-for="item in envTypeOptions"
+          :key="item"
+          :label="item"
+          :value="item"
+        />
       </el-select>
-      <el-select v-model="filters.asset_type" placeholder="资产类型" clearable @change="v => hostStore.setFilter('asset_type', v)" style="width: 150px">
-        <el-option v-for="item in assetTypeOptions" :key="item" :label="item" :value="item" />
+      <el-select
+        v-model="filters.asset_type"
+        placeholder="资产类型"
+        clearable
+        style="width: 150px"
+        @change="v => hostStore.setFilter('asset_type', v)"
+      >
+        <el-option
+          v-for="item in assetTypeOptions"
+          :key="item"
+          :label="item"
+          :value="item"
+        />
       </el-select>
-      <el-select v-model="filters.cpu_arch" placeholder="CPU架构" clearable @change="v => hostStore.setFilter('cpu_arch', v)" style="width: 130px">
-        <el-option v-for="item in cpuArchOptions" :key="item.value" :label="item.label" :value="item.value" />
+      <el-select
+        v-model="filters.cpu_arch"
+        placeholder="CPU架构"
+        clearable
+        style="width: 130px"
+        @change="v => hostStore.setFilter('cpu_arch', v)"
+      >
+        <el-option
+          v-for="item in cpuArchOptions"
+          :key="item.value"
+          :label="item.label"
+          :value="item.value"
+        />
       </el-select>
-      <el-select v-model="filters.is_db_server" placeholder="数据库服务器" clearable @change="v => hostStore.setFilter('is_db_server', v)" style="width: 140px">
-        <el-option label="是" value="1" />
-        <el-option label="否" value="0" />
+      <el-select
+        v-model="filters.is_db_server"
+        placeholder="数据库服务器"
+        clearable
+        style="width: 140px"
+        @change="v => hostStore.setFilter('is_db_server', v)"
+      >
+        <el-option
+          label="是"
+          value="1"
+        />
+        <el-option
+          label="否"
+          value="0"
+        />
       </el-select>
-      <el-select v-model="filters.status" placeholder="状态" clearable @change="v => hostStore.setFilter('status', v)" style="width: 120px">
-        <el-option v-for="item in statusOptions" :key="item" :label="item" :value="item" />
+      <el-select
+        v-model="filters.status"
+        placeholder="状态"
+        clearable
+        style="width: 120px"
+        @change="v => hostStore.setFilter('status', v)"
+      >
+        <el-option
+          v-for="item in statusOptions"
+          :key="item"
+          :label="item"
+          :value="item"
+        />
       </el-select>
-      <el-select v-model="filters.applicant_empty" placeholder="申请人" clearable @change="v => hostStore.setFilter('applicant_empty', v)" style="width: 130px">
-        <el-option label="未填写" value="1" />
-        <el-option label="已填写" value="0" />
+      <el-select
+        v-model="filters.applicant_empty"
+        placeholder="申请人"
+        clearable
+        style="width: 130px"
+        @change="v => hostStore.setFilter('applicant_empty', v)"
+      >
+        <el-option
+          label="未填写"
+          value="1"
+        />
+        <el-option
+          label="已填写"
+          value="0"
+        />
       </el-select>
-      <el-button @click="hostStore.resetFilters(); resetLocalFilters()">重置筛选</el-button>
+      <el-button @click="hostStore.resetFilters(); resetLocalFilters()">
+        重置筛选
+      </el-button>
     </div>
   </div>
 </template>

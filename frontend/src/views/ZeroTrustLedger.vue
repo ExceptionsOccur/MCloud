@@ -6,25 +6,74 @@
         <span>云平台资产管理</span>
       </div>
       <div class="header-center">
-        <router-link to="/" class="nav-tab" :class="{ active: $route.path === '/' }">主机管理</router-link>
-        <router-link to="/statistics" class="nav-tab" :class="{ active: $route.path === '/statistics' }">资源统计</router-link>
-        <router-link to="/ip-statistics" class="nav-tab" :class="{ active: $route.path === '/ip-statistics' }">IP统计</router-link>
-        <router-link to="/business-statistics" class="nav-tab" :class="{ active: $route.path === '/business-statistics' }">业务统计</router-link>
-        <router-link to="/zero-trust" class="nav-tab" :class="{ active: $route.path === '/zero-trust' }">零信任</router-link>
+        <router-link
+          to="/"
+          class="nav-tab"
+          :class="{ active: $route.path === '/' }"
+        >
+          主机管理
+        </router-link>
+        <router-link
+          to="/statistics"
+          class="nav-tab"
+          :class="{ active: $route.path === '/statistics' }"
+        >
+          资源统计
+        </router-link>
+        <router-link
+          to="/ip-statistics"
+          class="nav-tab"
+          :class="{ active: $route.path === '/ip-statistics' }"
+        >
+          IP统计
+        </router-link>
+        <router-link
+          to="/business-statistics"
+          class="nav-tab"
+          :class="{ active: $route.path === '/business-statistics' }"
+        >
+          业务统计
+        </router-link>
+        <router-link
+          to="/zero-trust"
+          class="nav-tab"
+          :class="{ active: $route.path === '/zero-trust' }"
+        >
+          零信任
+        </router-link>
       </div>
       <div class="header-right">
-        <span v-if="authStore.user" class="user-info">{{ authStore.user.username }}</span>
+        <span
+          v-if="authStore.user"
+          class="user-info"
+        >{{ authStore.user.username }}</span>
         <el-dropdown @command="handleCommand">
           <el-button text>
             <el-icon><Setting /></el-icon>
           </el-button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="cloudResource">云资源录入</el-dropdown-item>
-              <el-dropdown-item command="personnel">人员录入</el-dropdown-item>
-              <el-dropdown-item command="zeroTrust" :disabled="$route.path === '/zero-trust'">零信任台账</el-dropdown-item>
-              <el-dropdown-item command="changePassword">修改密码</el-dropdown-item>
-              <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+              <el-dropdown-item command="cloudResource">
+                云资源录入
+              </el-dropdown-item>
+              <el-dropdown-item command="personnel">
+                人员录入
+              </el-dropdown-item>
+              <el-dropdown-item
+                command="zeroTrust"
+                :disabled="$route.path === '/zero-trust'"
+              >
+                零信任台账
+              </el-dropdown-item>
+              <el-dropdown-item command="changePassword">
+                修改密码
+              </el-dropdown-item>
+              <el-dropdown-item
+                command="logout"
+                divided
+              >
+                退出登录
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -41,24 +90,60 @@
           @keyup.enter="loadList"
           @clear="loadList"
         />
-        <el-button type="primary" @click="loadList">查询</el-button>
-        <el-button type="primary" @click="openDialog()">新增申请</el-button>
+        <el-button
+          type="primary"
+          @click="loadList"
+        >
+          查询
+        </el-button>
+        <el-button
+          type="primary"
+          @click="openDialog()"
+        >
+          新增申请
+        </el-button>
       </div>
 
-      <el-table v-loading="loading" :data="records" border stripe>
-        <el-table-column label="#" width="60">
+      <el-table
+        v-loading="loading"
+        :data="records"
+        border
+        stripe
+      >
+        <el-table-column
+          label="#"
+          width="60"
+        >
           <template #default="{ $index }">
             {{ $index + 1 }}
           </template>
         </el-table-column>
-        <el-table-column prop="apply_unit" label="申请单位" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="account_name" label="账户名" min-width="120" show-overflow-tooltip />
-        <el-table-column label="申请人联系方式" min-width="140" show-overflow-tooltip>
+        <el-table-column
+          prop="apply_unit"
+          label="申请单位"
+          min-width="140"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="account_name"
+          label="账户名"
+          min-width="120"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="申请人联系方式"
+          min-width="140"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.contact || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="申请主机" min-width="180" show-overflow-tooltip>
+        <el-table-column
+          label="申请主机"
+          min-width="180"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             <span v-if="row.host">
               {{ row.host.name }}
@@ -67,23 +152,56 @@
             <span v-else>#{{ row.host_id }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="port" label="申请端口" width="100" align="center" />
-        <el-table-column label="申请时间" width="170">
+        <el-table-column
+          prop="port"
+          label="申请端口"
+          width="100"
+          align="center"
+        />
+        <el-table-column
+          label="申请时间"
+          width="170"
+        >
           <template #default="{ row }">
             {{ formatTime(row.apply_time) }}
           </template>
         </el-table-column>
-        <el-table-column label="备注" min-width="140" show-overflow-tooltip>
+        <el-table-column
+          label="备注"
+          min-width="140"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.remark || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="140" align="center" fixed="right">
+        <el-table-column
+          label="操作"
+          width="140"
+          align="center"
+          fixed="right"
+        >
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="openDialog(row)">编辑</el-button>
-            <el-popconfirm :title="`确定删除账户 ${row.account_name} 的申请记录？`" @confirm="handleDelete(row.id)">
+            <el-button
+              type="primary"
+              link
+              size="small"
+              @click="openDialog(row)"
+            >
+              编辑
+            </el-button>
+            <el-popconfirm
+              :title="`确定删除账户 ${row.account_name} 的申请记录？`"
+              @confirm="handleDelete(row.id)"
+            >
               <template #reference>
-                <el-button type="danger" link size="small">删除</el-button>
+                <el-button
+                  type="danger"
+                  link
+                  size="small"
+                >
+                  删除
+                </el-button>
               </template>
             </el-popconfirm>
           </template>
@@ -97,17 +215,46 @@
       width="520px"
       :close-on-click-modal="false"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
-        <el-form-item label="申请单位" prop="apply_unit">
-          <el-input v-model="form.apply_unit" placeholder="请输入申请单位" maxlength="128" />
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        label-width="110px"
+      >
+        <el-form-item
+          label="申请单位"
+          prop="apply_unit"
+        >
+          <el-input
+            v-model="form.apply_unit"
+            placeholder="请输入申请单位"
+            maxlength="128"
+          />
         </el-form-item>
-        <el-form-item label="账户名" prop="account_name">
-          <el-input v-model="form.account_name" placeholder="请输入账户名" maxlength="64" />
+        <el-form-item
+          label="账户名"
+          prop="account_name"
+        >
+          <el-input
+            v-model="form.account_name"
+            placeholder="请输入账户名"
+            maxlength="64"
+          />
         </el-form-item>
-        <el-form-item label="联系方式" prop="contact">
-          <el-input v-model="form.contact" placeholder="请输入申请人联系方式" maxlength="64" />
+        <el-form-item
+          label="联系方式"
+          prop="contact"
+        >
+          <el-input
+            v-model="form.contact"
+            placeholder="请输入申请人联系方式"
+            maxlength="64"
+          />
         </el-form-item>
-        <el-form-item label="申请主机" prop="host_id">
+        <el-form-item
+          label="申请主机"
+          prop="host_id"
+        >
           <el-select
             v-model="form.host_id"
             placeholder="请选择申请主机"
@@ -124,7 +271,10 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="申请端口" prop="port">
+        <el-form-item
+          label="申请端口"
+          prop="port"
+        >
           <el-input-number
             v-model="form.port"
             :min="1"
@@ -133,7 +283,10 @@
             style="width: 100%"
           />
         </el-form-item>
-        <el-form-item label="申请时间" prop="apply_time">
+        <el-form-item
+          label="申请时间"
+          prop="apply_time"
+        >
           <el-date-picker
             v-model="form.apply_time"
             type="datetime"
@@ -142,13 +295,28 @@
             value-format="YYYY-MM-DDTHH:mm:ss"
           />
         </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="请输入备注" maxlength="500" />
+        <el-form-item
+          label="备注"
+          prop="remark"
+        >
+          <el-input
+            v-model="form.remark"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入备注"
+            maxlength="500"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="handleSubmit">
+        <el-button @click="dialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="submitting"
+          @click="handleSubmit"
+        >
           {{ submitting ? '提交中...' : '确定' }}
         </el-button>
       </template>
