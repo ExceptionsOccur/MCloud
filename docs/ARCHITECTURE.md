@@ -40,7 +40,7 @@
 
 - **前端**：单页应用，`/api` 请求经 Axios，IP 探测走 WebSocket 长连接
 - **后端**：分层架构，启动时 GORM AutoMigrate 自动建表 + 种子数据
-- **数据库**：PostgreSQL，6 张表
+- **数据库**：PostgreSQL，7 张表
 
 ---
 
@@ -91,7 +91,8 @@ go/
 │   │   ├── host_application.go    # HostApplication 模型
 │   │   ├── person.go              # Person 模型（人员信息）
 │   │   ├── cloud_resource.go      # CloudResource 模型
-│   │   └── ip_subnet.go           # IPSubnet 模型（IP 网段管理）
+│   │   ├── ip_subnet.go           # IPSubnet 模型（IP 网段管理）
+│   │   └── zero_trust.go          # ZeroTrust 模型（零信任台账）
 │   │
 │   ├── controllers/
 │   │   ├── response.go            # 统一响应辅助函数
@@ -101,6 +102,7 @@ go/
 │   │   ├── csv.go                 # CSV 导入/导出/模板
 │   │   ├── cloud_resource.go      # 云资源总览
 │   │   ├── person.go              # 人员 CRUD
+│   │   ├── zero_trust.go          # 零信任台账 CRUD
 │   │   ├── stats.go               # 统计（IP 使用、探测、业务统计）
 │   │   ├── subnet.go              # IP 网段 CRUD
 │   │   └── websocket.go           # WebSocket IP 探测通道
@@ -113,6 +115,7 @@ go/
 │   │   ├── host_service.go        # 主机业务逻辑（CRUD + 批量 + CSV，待拆分）
 │   │   ├── cloud_resource_service.go # 云资源总览业务逻辑
 │   │   ├── person_service.go      # 人员业务逻辑
+│   │   ├── zero_trust_service.go  # 零信任台账业务逻辑
 │   │   ├── stats_service.go       # IP 使用统计 + 连通性探测
 │   │   ├── business_stats.go      # 业务统计聚合（项目/公司/人员）
 │   │   └── subnet_service.go      # IP 网段业务逻辑（/24 校验）
@@ -134,6 +137,7 @@ go/
     ├── package.json
     ├── package-lock.json
     ├── .eslintrc.cjs              # ESLint 配置（eslint:recommended + vue 插件）
+    ├── .eslintignore              # ESLint 忽略：dist/、node_modules/
     ├── vite.config.js             # 代理 /api 到后端（ws: true 支持 WebSocket）
     │
     └── src/
@@ -144,8 +148,8 @@ go/
         │   └── index.js           # 路由配置 + 路由守卫
         │
         ├── stores/                # Pinia 状态：auth / host / cloudResource / stats / business
-        ├── api/                   # API 封装：index / auth / host / csv / cloud_resource / person / stats / subnet
-        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement
+        ├── api/                   # API 封装：index / auth / host / csv / cloud_resource / person / zero_trust / stats / subnet
+        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / ZeroTrustLedger
         ├── components/            # 组件：工具栏/表格/各类弹窗
         │
         ├── utils/
@@ -159,7 +163,7 @@ go/
 
 ## 数据模型
 
-数据库共 6 张表：
+数据库共 7 张表：
 
 | 表 | 模型 | 说明 |
 |----|------|------|
@@ -169,6 +173,7 @@ go/
 | `host_applications` | `models/host_application.go` | 主机申请信息（与 hosts 一对一） |
 | `cloud_resources` | `models/cloud_resource.go` | 云资源总览（按区域） |
 | `ip_subnets` | `models/ip_subnet.go` | IP 网段管理 |
+| `zero_trusts` | `models/zero_trust.go` | 零信任接入申请台账 |
 
 ### users 表
 
@@ -257,6 +262,20 @@ go/
 | 网段 | `cidr` | VARCHAR(32) | NOT NULL, UNIQUE |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 
+### zero_trusts 表（零信任台账）
+
+| 字段 | 列名 | 类型 | 约束 |
+|------|------|------|------|
+| ID | `id` | SERIAL | PRIMARY KEY |
+| 申请单位 | `apply_unit` | VARCHAR(128) | NOT NULL |
+| 账户名 | `account_name` | VARCHAR(64) | NOT NULL |
+| 申请人联系方式 | `contact` | VARCHAR(64) | |
+| 申请主机 | `host_id` | INTEGER | NOT NULL, FK → hosts(id)，应用层禁止删除被引用主机 |
+| 申请端口 | `port` | INTEGER | NOT NULL, 1-65535 |
+| 申请时间 | `apply_time` | TIMESTAMPTZ | NOT NULL |
+| 备注 | `remark` | TEXT | |
+| 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
+
 ### 字段约束说明
 
 - `private_ip` 唯一约束，防止重复内网 IP
@@ -267,4 +286,5 @@ go/
 - `persons.name` 必填，姓名 + 联系方式 + 单位完全重复视为同一人员
 - `ip_subnets.cidr` 仅允许 `/24` IPv4 网段，写入时自动规范化为网络地址（末位归 0）
 - 系统**不预置默认网段**，由用户在「IP统计 → 管理网段」中维护
+- `zero_trusts.host_id` 外键关联 `hosts.id`；主机被零信任台账引用时禁止删除（应用层校验，返回 `40901`）
 - **GORM 列名陷阱**：`CIDR` 字段默认会被命名为 `c_id_r`，模型已显式指定 `gorm:"column:cidr"`

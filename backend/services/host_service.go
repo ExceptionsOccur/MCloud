@@ -458,6 +458,14 @@ func (s *HostService) Delete(id uint) error {
 		return err
 	}
 
+	refCount, err := HostReferencedByZeroTrust(id)
+	if err != nil {
+		return err
+	}
+	if refCount > 0 {
+		return fmt.Errorf("%w，%d 条零信任台账记录正在使用", ErrHostReferenced, refCount)
+	}
+
 	tx := database.DB.Begin()
 	tx.Where("host_id = ?", id).Delete(&models.HostApplication{})
 	tx.Delete(&host)

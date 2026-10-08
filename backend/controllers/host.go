@@ -104,6 +104,10 @@ func (ctrl *HostController) Delete(c *gin.Context) {
 	}
 
 	if err := ctrl.service.Delete(uint(id)); err != nil {
+		if errors.Is(err, services.ErrHostReferenced) {
+			Error(c, 40901, err.Error())
+			return
+		}
 		Error(c, 40401, "主机不存在")
 		return
 	}

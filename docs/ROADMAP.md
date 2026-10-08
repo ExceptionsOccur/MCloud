@@ -72,18 +72,12 @@
 - [ ] **T-012** 文档一致性巡检 ｜ P2 ｜ 负责: — ｜ 备注: 适合小型会话
   - 定位：`docs/*.md`、`README.md`、`AGENTS.md`（协议条文部分需人类授权，见红线 7）；校验器 `scripts/check_docs.sh`（T-021 已交付）
   - 验收标准：`bash scripts/check_docs.sh` 退出码 0（links/tree/snapshot/counts/shas 全绿）；warn 一并处理；发现的错误全部修复
-- [ ] **T-013** 零信任台账 ｜ P2 ｜ 负责: — ｜ 备注: 字段清单已由人类确认
-  - 内容：新增零信任接入申请台账，字段：**申请单位、账户名、申请人联系方式、申请主机、申请端口、申请时间、密码（可选）、备注**；后端 models + 迁移 SQL + CRUD API + 前端管理页
-  - 定位：后端新建 `models/zero_trust.go`、`services/zero_trust_service.go`、`controllers/zero_trust.go`，注册 `routes/routes.go`，迁移 SQL 入 `migrations/`；前端新建 `views/ZeroTrustLedger.vue`、`api/zero_trust.js`、`router/index.js` 加路由（入口模式参照 `CloudResourceDialog` 或顶部 Tab 二选一，实现时定）
-  - 验收标准：8 个字段齐全可增删改查；`go build` + `golangci-lint` + 前端 `npm run lint:check` 通过；表结构记入 `docs/ARCHITECTURE.md`、接口记入 `docs/API.md`
-  - 进入条件（实现前须人类确认）：① 密码字段的存储方式（敏感数据，建议加密/哈希，不落明文）② 「申请主机」是否为 `hosts.id` 外键
-  - 回写：ARCHITECTURE.md、API.md、CODE_INDEX.md、PROJECT_STATUS 完成度
-  - 分支：`feat/zero-trust-ledger`
-- [ ] **T-014** 域名台账 ｜ P2 ｜ 负责: — ｜ 备注: **字段需求待人类细化**
-  - 内容：新增域名台账（字段清单未定；参考项：域名、解析公网 IP、服务商、到期时间、备注）
-  - 定位：与 T-013 同构 —— 后端 `models/domain.go`、`services/domain_service.go`、`controllers/domain.go` + `routes/routes.go`；前端 `views/DomainLedger.vue`、`api/domain.js`、`router/index.js`
-  - 验收标准：字段清单经人类确认后方可进入 `in_progress`；其余同 T-013
-  - 回写：ARCHITECTURE.md、API.md、CODE_INDEX.md、PROJECT_STATUS 完成度
+- [ ] **T-014** 域名台账 ｜ P2 ｜ 负责: — ｜ 备注: 2026-10-08 人类确认采用参考项 5 字段
+  - 内容：新增域名台账，字段：**域名、解析公网 IP、服务商、到期时间、备注**
+  - 定位：与 T-013 同构 —— 后端 `models/domain.go`、`services/domain_service.go`、`controllers/domain.go` + `routes/routes.go`、`database/postgres.go` AutoMigrate，迁移 SQL 入 `migrations/`；前端 `views/DomainLedger.vue`、`api/domain.js`、`router/index.js` 加路由 `/domain-ledger`
+  - 验收标准：5 个字段齐全可增删改查；`go build` + `golangci-lint` + 前端 `npm run lint:check` 通过；表结构记入 `docs/ARCHITECTURE.md`、接口记入 `docs/API.md`
+  - 进入条件（2026-10-08 人类确认）：字段清单 = 参考项 5 字段
+  - 回写：ARCHITECTURE.md、API.md、CODE_INDEX.md、README.md、PROJECT_STATUS 完成度
   - 分支：`feat/domain-ledger`
 - [ ] **T-015** 公网 IP 字段改造 + 双台账关联 ｜ P2 ｜ 依赖: T-013、T-014 ｜ 负责: —
   - 内容：按人类指定方案，`hosts.public_ip`（`varchar(45)`）改为**布尔值「是否做了映射」**；主机记录展示与零信任台账、域名台账的关联状态
@@ -93,8 +87,8 @@
   - 回写：ARCHITECTURE.md、API.md、BUSINESS_LOGIC.md（如涉及统计口径）、PROJECT_STATUS 变更记录
   - 分支：`feat/host-ip-mapping-flag`
 - [ ] **T-016** Goose 迁移执行器实装 ｜ P2 ｜ 负责: — ｜ 备注: 2026-10-06 人类确认**暂不实装，仅入队**；现状为归档-only 口径
-  - 内容：引入 `github.com/pressly/goose/v3`，启动 `Migrate()` 时执行 `migrations/*.sql`（`goose.Up`），`AutoMigrate` 降级为兜底或移除；存量 7 个 SQL 与现有库结构一致性验证
-  - 定位：`backend/go.mod`（当前无 goose 依赖）、`backend/database/postgres.go` → `Migrate()`（L39-54，现仅 AutoMigrate+seedAdmin）、`backend/migrations/`（7 个 `-- +goose` SQL，**从未执行过**）、如用 CLI 则涉 `backend/run.sh` / `Dockerfile`
+  - 内容：引入 `github.com/pressly/goose/v3`，启动 `Migrate()` 时执行 `migrations/*.sql`（`goose.Up`），`AutoMigrate` 降级为兜底或移除；存量 8 个 SQL 与现有库结构一致性验证
+  - 定位：`backend/go.mod`（当前无 goose 依赖）、`backend/database/postgres.go` → `Migrate()`（L39-54，现仅 AutoMigrate+seedAdmin）、`backend/migrations/`（8 个 `-- +goose` SQL，**从未执行过**）、如用 CLI 则涉 `backend/run.sh` / `Dockerfile`
   - 进入条件（实现前须人类确认）：① 存量 dev/prod 库结构与 SQL 文件是否一致（不一致需先补差量 SQL）② AutoMigrate 的去留 ③ seed_admin.sql 与 `seedAdmin()` 的职责划分
   - 验收标准：新库从零启动仅靠 SQL 建表成功；重复启动幂等；`go build` + lint 通过
   - 回写（口径反转，必做）：DEVELOPMENT.md 迁移规范口径表、AGENTS.md 红线 9、PROJECT_STATUS 注意事项 8、ARCHITECTURE 目录树注释——改回"运行时执行 SQL"
@@ -129,6 +123,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-013 | 零信任台账 | 2026-10-08 | `-` | 验收：7 字段 CRUD + 主机 FK 校验；前后端验证通过；提交号待人类确认后回填 |
 | T-025 | 协议补强：临时任务入队 + 提交权限时序 + 分支/接管规则 | 2026-10-06 | `1837874` | 验收：A.0/A.4/D 与红线 5 例外落地；提交号时序兼容 shas；check_docs.sh 0 errors |
 | T-024 | 文档回写文风上限（防膨胀） | 2026-10-06 | `bcfb410` | 验收：`check_docs.sh` 0 errors；三处口径一致；超长条目已压缩 |
 | T-023 | 文档卫生清理 + 移除 CI/CD 规划内容 | 2026-10-06 | `42d4c10` | 验收：`check_docs.sh` 0 errors；规划语境无 T-007/CI 残留；协议改动经人类授权 |

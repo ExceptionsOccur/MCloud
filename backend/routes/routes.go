@@ -99,6 +99,17 @@ func SetupRoutes(r *gin.Engine) {
 		personGroup.DELETE("/:id", person.Delete)
 	}
 
+	// Zero Trust Ledger - protected
+	zeroTrust := controllers.NewZeroTrustController()
+	zeroTrustGroup := api.Group("/zero-trusts")
+	zeroTrustGroup.Use(middleware.JWTAuth())
+	{
+		zeroTrustGroup.GET("", zeroTrust.List)
+		zeroTrustGroup.POST("", zeroTrust.Create)
+		zeroTrustGroup.PUT("/:id", zeroTrust.Update)
+		zeroTrustGroup.DELETE("/:id", zeroTrust.Delete)
+	}
+
 	// WebSocket - token via query param
 	api.GET("/ws/probe", func(c *gin.Context) {
 		token := c.Query("token")

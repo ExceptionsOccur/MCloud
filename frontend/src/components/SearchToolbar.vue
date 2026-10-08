@@ -117,14 +117,18 @@ async function handleExport() {
   try {
     const res = await exportCSV()
     downloadBlob(res, 'hosts_export.csv')
-  } catch {}
+  } catch {
+    // 错误提示由 axios 拦截器统一弹出
+  }
 }
 
 async function handleDownloadTemplate() {
   try {
     const res = await downloadTemplate()
     downloadBlob(res, 'import_template.csv')
-  } catch {}
+  } catch {
+    // 错误提示由 axios 拦截器统一弹出
+  }
 }
 
 import { onMounted, onUnmounted } from 'vue'

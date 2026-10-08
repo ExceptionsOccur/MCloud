@@ -10,6 +10,7 @@
         <router-link to="/statistics" class="nav-tab" :class="{ active: $route.path === '/statistics' }">资源统计</router-link>
         <router-link to="/ip-statistics" class="nav-tab" :class="{ active: $route.path === '/ip-statistics' }">IP统计</router-link>
         <router-link to="/business-statistics" class="nav-tab" :class="{ active: $route.path === '/business-statistics' }">业务统计</router-link>
+        <router-link to="/zero-trust" class="nav-tab" :class="{ active: $route.path === '/zero-trust' }">零信任</router-link>
       </div>
       <div class="header-right">
         <span v-if="authStore.user" class="user-info">{{ authStore.user.username }}</span>
@@ -21,6 +22,7 @@
             <el-dropdown-menu>
               <el-dropdown-item command="cloudResource">云资源录入</el-dropdown-item>
               <el-dropdown-item command="personnel">人员录入</el-dropdown-item>
+              <el-dropdown-item command="zeroTrust">零信任台账</el-dropdown-item>
               <el-dropdown-item command="changePassword">修改密码</el-dropdown-item>
               <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
             </el-dropdown-menu>
@@ -86,6 +88,8 @@ function handleCommand(command) {
     cloudResourceDialog.value?.open()
   } else if (command === 'personnel') {
     router.push('/personnel')
+  } else if (command === 'zeroTrust') {
+    router.push('/zero-trust')
   }
 }
 </script>

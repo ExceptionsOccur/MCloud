@@ -50,10 +50,6 @@ function emptyForm() {
   return f
 }
 
-function resetForms() {
-  cloudStore.allRegions.forEach(r => { forms[r] = emptyForm() })
-}
-
 function onInput(region, key, value) {
   forms[region][key] = String(value).replace(/\D/g, '')
 }

@@ -15,14 +15,16 @@ function sumStorage(hosts) {
 
 async function fetchAllHostsByRegion(region) {
   const allHosts = []
-  let page = 1
   const pageSize = 100
-  while (true) {
+  let page = 1
+  let total = Number.POSITIVE_INFINITY
+  while (allHosts.length < total) {
     const res = await getHosts({ region, page, page_size: pageSize })
     if (res.code !== 0) break
     const hosts = res.data.hosts || []
+    total = res.data.total ?? allHosts.length + hosts.length
     allHosts.push(...hosts)
-    if (allHosts.length >= res.data.total || hosts.length < pageSize) break
+    if (hosts.length < pageSize) break
     page++
   }
   return allHosts

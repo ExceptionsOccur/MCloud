@@ -7,6 +7,7 @@ import ResourceStatistics from '../views/ResourceStatistics.vue'
 import IpStatistics from '../views/IpStatistics.vue'
 import BusinessStatistics from '../views/BusinessStatistics.vue'
 import PersonnelManagement from '../views/PersonnelManagement.vue'
+import ZeroTrustLedger from '../views/ZeroTrustLedger.vue'
 
 const routes = [
   {
@@ -43,6 +44,12 @@ const routes = [
     path: '/personnel',
     name: 'PersonnelManagement',
     component: PersonnelManagement,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/zero-trust',
+    name: 'ZeroTrustLedger',
+    component: ZeroTrustLedger,
     meta: { requiresAuth: true }
   }
 ]

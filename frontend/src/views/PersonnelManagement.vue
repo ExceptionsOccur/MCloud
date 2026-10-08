@@ -34,6 +34,13 @@
         >
           业务统计
         </router-link>
+        <router-link
+          to="/zero-trust"
+          class="nav-tab"
+          :class="{ active: $route.path === '/zero-trust' }"
+        >
+          零信任
+        </router-link>
       </div>
       <div class="header-right">
         <span
@@ -55,6 +62,7 @@
               >
                 人员录入
               </el-dropdown-item>
+              <el-dropdown-item command="zeroTrust">零信任台账</el-dropdown-item>
               <el-dropdown-item command="changePassword">
                 修改密码
               </el-dropdown-item>
@@ -353,6 +361,8 @@ function handleCommand(command) {
     cloudResourceDialog.value?.open()
   } else if (command === 'personnel') {
     router.push('/personnel')
+  } else if (command === 'zeroTrust') {
+    router.push('/zero-trust')
   }
 }
 </script>
