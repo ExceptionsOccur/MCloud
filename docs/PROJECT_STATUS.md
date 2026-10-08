@@ -34,7 +34,7 @@
 
 ### 2026-10-08
 
-- `—` `feat:` **T-031** 公网 IP 资源录入（`public_ips` 表 + `/public-ip` 页 + 设置菜单；IP 唯一/格式校验；表数 8→9）
+- `e0d84ac` `feat:` **T-031** 公网 IP 资源录入（`public_ips` 表 + `/public-ip` 页 + 设置菜单；IP 唯一/格式校验；表数 8→9）
 - `130388a` `feat:` **T-015** 公网 IP 字段改映射布尔 + 主机详情展示双台账关联（`ip_mapped`；CSV/表单/筛选同步；迁移 DROP public_ip）
 - `e83db90` `feat:` **T-030** 域名台账字段改造（`isp`/`host_id`/`host_port`；移除 `provider`/`expires_at`；主机删除前校验域名引用）
 - `1f70851` `feat:` **T-029** 零信任台账新增系统名称字段（`system_name` 选填；列表列/表单位于申请端口后；迁移 SQL + API/ARCHITECTURE 同步）
