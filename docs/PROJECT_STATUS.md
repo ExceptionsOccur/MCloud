@@ -35,7 +35,7 @@
 
 ### 2026-10-09
 
-- `-` `fix:` **T-039** 空库启动迁移失败修复（4 表内联 UNIQUE 约束转 GORM 期望 `idx_` 索引；修 050001 Down 块；public_ips 索引 / port_mappings 外键去重；补 ip_subnets 迁移）
+- `c196f37` `fix:` **T-039** 空库启动迁移失败修复（4 表内联 UNIQUE 约束转 GORM 期望 `idx_` 索引；修 050001 Down 块；public_ips 索引 / port_mappings 外键去重；补 ip_subnets 迁移）
 - `6644d5a` `feat:` **T-038** 数据备份：8 个业务 sheet 单文件 xlsx 导出/导入（自然键 upsert 仅增改不删、单事务回滚逐行明细；`/data-backup` 页 + 8 视图设置菜单入口）
 
 ### 2026-10-08
