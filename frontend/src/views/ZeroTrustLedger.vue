@@ -157,41 +157,28 @@
           </template>
         </el-table-column>
         <el-table-column
-          label="申请主机"
-          min-width="180"
+          label="申请资源"
+          min-width="220"
           show-overflow-tooltip
         >
           <template #default="{ row }">
-            <div v-if="row.targets?.length">
-              <div
-                v-for="(t, ti) in row.targets"
+            <div
+              v-if="row.targets?.length"
+              class="target-tags"
+            >
+              <el-tag
+                v-for="(t, ti) in sortTargets(row.targets)"
                 :key="ti"
+                size="small"
+                class="target-tag"
               >
-                {{ t.host_name || `#${t.host_id}` }}
-                <span
+                {{ t.host_name || `#${t.host_id}` }}<span
                   v-if="t.private_ip"
                   class="host-ip"
-                >({{ t.private_ip }})</span>
-              </div>
+                >({{ t.private_ip }}:{{ t.port }})</span>
+              </el-tag>
             </div>
             <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="申请端口"
-          min-width="110"
-          align="center"
-        >
-          <template #default="{ row }">
-            <el-tag
-              v-for="(t, ti) in row.targets || []"
-              :key="'p' + ti"
-              size="small"
-              class="port-tag"
-            >
-              {{ t.port }}
-            </el-tag>
-            <span v-if="!row.targets?.length">-</span>
           </template>
         </el-table-column>
         <el-table-column
@@ -560,6 +547,17 @@ function addTargetRow() {
   form.targets.push({ host_id: null, port: 22 })
 }
 
+function sortTargets(targets) {
+  return [...targets].sort((a, b) => {
+    const an = a.host_name || `#${a.host_id}`
+    const bn = b.host_name || `#${b.host_id}`
+    return (
+      an.localeCompare(bn, 'zh-CN', { numeric: true, sensitivity: 'base' }) ||
+      a.port - b.port
+    )
+  })
+}
+
 function openDialog(row) {
   editId.value = row?.id || null
   form.apply_unit = row?.apply_unit || ''
@@ -734,8 +732,14 @@ function handleCommand(command) {
   font-size: 12px;
 }
 
-.port-tag {
-  margin-right: 4px;
+.target-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.target-tag {
+  max-width: 100%;
 }
 
 .target-rows {

@@ -145,7 +145,7 @@
 | `views/BusinessStatistics.vue` | `/business-statistics` | 业务统计（概览 + 柱状图 + 表格 + 下钻弹窗） |
 | `views/PersonnelManagement.vue` | `/personnel` | 人员管理（搜索 + 新增/编辑/删除，含关联主机数校验） |
 | `views/PublicIPManagement.vue` | `/public-ip` | 公网IP资源台账（搜索 + 新增/编辑/删除，设置菜单入口） |
-| `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 配对行表单 + 公网IP资源池带出接入地区 + 批量添加） |
+| `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 「申请资源」标签列 `主机名(ip:port)` 按主机名排序 + 配对行表单 + 公网IP资源池带出接入地区 + 批量添加） |
 | `views/MappingLedger.vue` | `/mapping-ledger` | 端口映射台账（多端口标签 + 批量添加） |
 | `views/DataBackup.vue` | `/data-backup` | 数据备份（8 表 xlsx 导出/导入 + 导入报告展示，设置菜单入口） |
 
