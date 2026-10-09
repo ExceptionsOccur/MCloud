@@ -95,6 +95,10 @@ var CSVHeaders = []string{
 
 导出 CSV 需带 BOM（`\ufeff`）以便 Excel 正确识别 UTF-8。
 
+### 申请时间列校验
+
+`申请时间` 列为纯日期，严格 `YYYY-MM-DD`（空值合法）。非法值该行导入失败：CSV 文件导入计入 `errors` 且不入库，纯文本批量返回行级 `line_errors`，错误信息含 `YYYY-MM-DD`（接口与校验规则见 [API.md · 日期时间格式](./API.md#日期时间格式)）。
+
 ## 数据备份 xlsx 导出/导入
 
 与「CSV 导入导出」（仅主机单表）互补，设置菜单「数据备份」进入 `/data-backup`，提供 8 个业务 sheet 的整库备份。
@@ -108,7 +112,7 @@ var CSVHeaders = []string{
 ### 导入（upsert）
 
 - 结构校验先行：非 `.xlsx`、缺 sheet、缺列、表头重复直接返回结构错误（`40001`），不进入事务
-- 逐行解析复用既有规范化：`normalizeCIDR`（/24）、`parsePortList`（端口列表等长校验）、`normalizeTargetPairs`（配对去重）；人员按姓名(+联系方式)解析 `person_id`、主机按内网IP解析 `host_id`、公网IP须在 `public_ips` 资源池
+- 逐行解析复用既有规范化：`normalizeCIDR`（/24）、`parsePortList`（端口列表等长校验）、`normalizeTargetPairs`（配对去重）、`ValidateDateOnly`（申请时间严格 `YYYY-MM-DD`）；人员按姓名(+联系方式)解析 `person_id`、主机按内网IP解析 `host_id`、公网IP须在 `public_ips` 资源池
 - 每个 sheet 按复合自然键定位已有记录：值一致 → `skipped`，不一致 → `updated`，不存在 → `created`；**仅新增与更新，不执行删除**
 - 单事务：任一行错误累计到 `errors` 并回滚（`errImportRolledBack`），返回 `committed=false` 与逐行明细，库数据不变；全部通过后重算 `hosts.ip_mapped`
 - 详见 [API.md · 数据备份 xlsx 导出/导入](./API.md#数据备份-xlsx-导出导入)

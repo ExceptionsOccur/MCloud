@@ -52,12 +52,6 @@
   - 内容：后端 `services` 表驱动单测（先覆盖主机 CRUD、登录）+ 前端 Vitest 冒烟
   - 定位：新建 `backend/services/*_test.go`；前端 `frontend/package.json`（加 vitest 依赖与 script）+ `src/**/__tests__/`
   - 验收标准：`cd backend && go test ./...` 有用例非零且通过；`npm run test` 可运行
-- [ ] **T-037** 零信任 `apply_time` 无时区格式解析失败 ｜ P1 ｜ 负责: — ｜ 备注: T-036 冒烟发现的既有缺陷（改动前即存在，非 T-036 引入）
-  - 内容：`apply_time` 传 `2026-10-08T12:00:00`（无时区）被 RFC3339 解析拒绝返回 `40001`；前端 date-picker `value-format="YYYY-MM-DDTHH:mm:ss"` 正是该格式 → 带时间的新增/编辑实际失败
-  - 定位：`backend/services/zero_trust_service.go`（`ZeroTrustRequest.ApplyTime *time.Time`）、`backend/controllers/zero_trust.go`（Create/Update `ShouldBindJSON`）、`frontend/src/views/ZeroTrustLedger.vue`（date-picker `value-format`、payload `apply_time`）
-  - 验收标准：前端带时间的新增与编辑提交返回 `code 0`，无时区时间按服务器本地时区解释；`go build`+`golangci-lint`+`lint:check`+`build` 全绿
-  - 分支：`fix/zero-trust-apply-time`
-  - 回写：API.md `apply_time` 格式口径
 - [ ] **T-008** 数据导出报表（Excel/CSV） ｜ P2 ｜ 负责: — ｜ 备注: T-038 后收窄（2026-10-09）
   - 内容：全量导出已覆盖——主机 CSV（`GET /api/export`，BOM）+ 8 表 xlsx 备份（T-038 `/api/export/all`）；剩余缺口 = **按筛选条件导出**：`csv.Export` 裸 `Find(&hosts)` 不带筛选、前端 `exportCSV()` 无参，导出与列表所见不一致；补齐筛选参数透传（接口复用列表筛选 + SearchToolbar 传参），原「新建 report_service.go」定位作废
   - 定位：`backend/controllers/csv.go`（`Export` 裸查全表）、`backend/services/host_service.go`（列表筛选逻辑复用）、`frontend/src/api/csv.js`（`exportCSV()` 无参）、`frontend/src/components/SearchToolbar.vue`（`handleExport`）
@@ -103,12 +97,14 @@
 
 | ID | 任务 | 取消时间 | 原因 |
 |----|------|----------|------|
+| T-037 | 零信任 `apply_time` 无时区格式解析失败 | 2026-10-09 | 人类裁定并入 T-040（全仓日期格式统一）一次执行 |
 | T-007 | CI 流水线落地 | 2026-10-06 | 项目暂不引入 CI/CD；所有集成与检验由 agent 完成任务后本地执行「验证命令」（见 [AGENTS.md](../AGENTS.md#验证命令门禁)） |
 
 ## done
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-040 | 全仓日期时间格式统一（吸收 T-037） | 2026-10-09 | `9522789` | 验收：零信任 RFC3339 主+无时区兼容，回填/展示时区安全往返一致；主机申请时间全链路严格 `YYYY-MM-DD`（单条/批量/xlsx 行级错误含格式，CSV 计入 errors 不入库）；展示与备份文件名统一 `YYYY-MM-DD`；门禁全绿 |
 | T-039 | 空库启动迁移失败修复（UNIQUE 约束对齐 GORM uniqueIndex 口径） | 2026-10-09 | `c196f37` | 验收：空库启动+登录通过；4 表 `*_key` 转 `idx_`；外键/重复索引去重；dev 迁移 no-op；门禁全绿 |
 | T-038 | 数据备份：8 个业务 sheet 统一导出(xlsx)/导入(upsert) | 2026-10-09 | `6644d5a` | 验收：8 sheet 列=设计清单；空库回灌关联完整重建；重复导入 0 增删；行级错误回滚库不变；门禁全绿 |
 | T-036 | 零信任台账多组主机:端口配对 + 公网IP带出地区 | 2026-10-08 | `ab7e3d0` | 验收：targets 配对 CRUD+迁移；公网IP池校验带出地区；批量等长配对；引用40901；门禁+冒烟全绿 |

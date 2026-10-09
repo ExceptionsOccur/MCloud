@@ -87,9 +87,13 @@
           <el-row :gutter="16">
             <el-col :span="12">
               <el-form-item label="申请时间">
-                <el-input
+                <el-date-picker
                   v-model="form.apply_time"
-                  placeholder="如: 2025-01-01"
+                  type="date"
+                  format="YYYY-MM-DD"
+                  value-format="YYYY-MM-DD"
+                  placeholder="----/--/--"
+                  style="width: 100%"
                 />
               </el-form-item>
             </el-col>
@@ -618,7 +622,7 @@ function fillFormFromHost(h) {
     form.project = h.application.project || ''
     form.apply_reason = h.application.apply_reason || ''
     form.apply_config = h.application.apply_config || ''
-    form.apply_time = h.application.apply_time || ''
+    form.apply_time = (h.application.apply_time || '').slice(0, 10)
     form.object_storage_size = h.application.object_storage_size || ''
     form.remark = h.application.remark || ''
   }

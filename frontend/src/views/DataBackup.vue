@@ -243,7 +243,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { exportAll, importAll } from '../api/dataExchange'
-import { downloadBlob } from '../utils'
+import { downloadBlob, formatDate } from '../utils'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 
 const router = useRouter()
@@ -279,7 +279,7 @@ async function handleExport() {
   exporting.value = true
   try {
     const blob = await exportAll()
-    downloadBlob(blob, `mcloud_backup_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    downloadBlob(blob, `mcloud_backup_${formatDate()}.xlsx`)
     ElMessage.success('导出成功')
   } finally {
     exporting.value = false

@@ -11,6 +11,7 @@ import (
 
 	"mcloud/database"
 	"mcloud/models"
+	"mcloud/utils"
 
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
@@ -661,6 +662,11 @@ func (s *DataExchangeService) applyHostApplications(tx *gorm.DB, sh *importSheet
 		vals := make([]string, len(strCols))
 		for i, col := range strCols {
 			vals[i] = c.get(col)
+		}
+		vals[6] = strings.TrimSpace(vals[6])
+		if err := utils.ValidateDateOnly("申请时间", vals[6]); err != nil {
+			fail(report, c, err)
+			return
 		}
 		updates := map[string]interface{}{
 			"apply_unit": vals[0], "applicant": vals[1], "applicant_contact": vals[2],
