@@ -16,12 +16,12 @@
 
 然后按下列步骤执行：
 
-1. 读本文件的「状态快照」与「核心约定（红线）」，并与 [docs/ROADMAP.md](./docs/ROADMAP.md) 比对（`last_updated` / todo 队列 / `next_task`）——不一致时**先修快照**（以 ROADMAP 为准）
-2. 读 [docs/ROADMAP.md](./docs/ROADMAP.md)（任务状态的**唯一事实来源**），认领 1 条优先级最高的 `todo` 任务（A.0 入队的临时任务即为该条）。**人类一次指定多条任务时，仍一次只认领 1 条**；上一条必须完成串行合并（见下方 A.4 与「分支与提交协议」）后才可认领下一条。**认领前检查**：ROADMAP `done` 自「回顾锚点」起 ≥ 5 条时，先执行会话协议 E 的周期回顾
-3. **认领 = 先改文件再写代码**：把该任务移到 `in_progress`，填写负责标识与日期
-4. **创建分支**（认领后、写代码前）：`git checkout main && git pull && git checkout -b <分支名>`；分支名取任务「分支」字段，未写则按红线 8 推导（`feat/fix/docs/refactor/<简短描述>`）；一个分支只对应 1 条任务，**禁止直接 push `main`**。**基线约束**：多任务会话中，任务 N+1 的分支必须从**已合并任务 N 后的 `main`** 拉出；禁止在未合并的任务分支上并行开出下一条任务分支
-5. **定位代码**：查 [docs/CODE_INDEX.md](./docs/CODE_INDEX.md) 的「功能→代码映射」「请求链路」与 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) 目录结构，把涉及文件写进该任务的「定位」字段——任务已带「定位」则核对并以其为起点，没有则必须补齐；**补不出（找不到实现位置）时先在输出中声明，不得盲写代码**
-6. 按任务的「验收标准」倒推实现方案；涉及公共文件（`routes/`、`models/`、本文件）时先在输出中声明影响范围
+1. **A.1** 读本文件的「状态快照」与「核心约定（红线）」，并与 [docs/ROADMAP.md](./docs/ROADMAP.md) 比对（todo 队列 / `in_progress` / `next_task` / 回顾锚点）——不一致时**先修快照**（以 ROADMAP 为准）
+2. **A.2** 读 [docs/ROADMAP.md](./docs/ROADMAP.md)（任务状态的**唯一事实来源**），认领 1 条优先级最高的 `todo` 任务（A.0 入队的临时任务即为该条）。**人类一次指定多条任务时，仍一次只认领 1 条**；上一条必须完成串行合并（见下方 A.4 与「分支与提交协议」）后才可认领下一条。**认领前检查**：ROADMAP `done` 自「回顾锚点」起 ≥ 5 条时，先执行会话协议 E 的周期回顾
+3. **A.3** **认领 = 先改文件再写代码**：把该任务移到 `in_progress`，填写负责标识与日期
+4. **A.4** **创建分支**（认领后、写代码前）：`git checkout main && git pull && git checkout -b <分支名>`；分支名取任务「分支」字段，未写则按红线 8 推导（`feat/fix/docs/refactor/<简短描述>`）；一个分支只对应 1 条任务，**禁止直接 push `main`**。**基线约束**：多任务会话中，任务 N+1 的分支必须从**已合并任务 N 后的 `main`** 拉出；禁止在未合并的任务分支上并行开出下一条任务分支
+5. **A.5** **定位代码**：查 [docs/CODE_INDEX.md](./docs/CODE_INDEX.md) 的「功能→代码映射」「请求链路」与 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) 目录结构，把涉及文件写进该任务的「定位」字段——任务已带「定位」则核对并以其为起点，没有则必须补齐；**补不出（找不到实现位置）时先在输出中声明，不得盲写代码**
+6. **A.6** 按任务的「验收标准」倒推实现方案；涉及公共文件（`routes/`、`models/`、本文件）时先在输出中声明影响范围
 
 ### B. 结束前（回写协议，未回写视为任务未完成）
 
@@ -74,14 +74,14 @@
 | last_updated | 2026-10-09 |
 | in_progress | 无 |
 | next_task | `T-002` 后端 `host_service.go` 拆分（= ROADMAP todo 首条，P1 最高优先级） |
-| todo（P1） | `T-002` host_service 拆分 → `T-003` csv controller 下沉 → `T-004` composables 抽取 → `T-005` IpStatistics 拆分 → `T-006` 测试骨架 |
-| todo（P2） | `T-008` 报表导出、`T-009` bcrypt 升级、`T-010` 路由拆分、`T-011` ping 解耦、`T-012` 文档巡检、`T-019` 抽 Layout/AppNav、`T-020` config ServerPort 硬编码（暂不执行）、`T-022` WS probe token 校验 |
+| todo（P1） | `T-002` host_service 拆分 → `T-003` csv controller 下沉 → `T-004` composables 抽取 → `T-005` IpStatistics 拆分 → `T-006` 测试骨架 → `T-042` 批量日期错误码修复 |
+| todo（P2） | `T-008` 报表导出、`T-009` bcrypt 升级、`T-010` 路由拆分、`T-011` ping 解耦、`T-012` 文档巡检、`T-019` 抽 Layout/AppNav、`T-020` config ServerPort 硬编码、`T-022` WS probe token 校验、`T-043` CORS 白名单、`T-044` CSV 上传限制 |
 | blocked | 无 |
-| 回顾锚点 | 上次回顾至 `T-040`（`done` 自此起满 5 条触发周期回顾，见会话协议 E） |
-| 功能完成度 | 核心功能 12/12 完成；待开发 2 项 + 技术债 10 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
-| 已知风险 | 无测试、`host_service.go` 待拆分、`csv.go` 违反红线 1、密码为 SHA-256（详见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
+| 回顾锚点 | 上次回顾至 `T-041`（`done` 自此起满 5 条触发周期回顾，见会话协议 E） |
+| 功能完成度 | 功能模块 18 项：16 完成 / 2 待开发；技术债 9 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
+| 已知风险 | 无测试、`host_service.go` 待拆分、`csv.go` 违反红线 1、密码为 SHA-256、WS 探测仅校验 token 非空（`T-022`）（详见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
 
-> T-036 零信任多组配对+公网IP带出地区已合并 main（提交号见 ROADMAP）；T-035/T-034/T-033/T-032 已合并 main。多任务串行合并协议已生效。
+> T-036~T-041 各批次均已合并 main（提交号见 ROADMAP done 表）；全量回顾偏差修复与锚点推进见 ROADMAP「回顾锚点」。
 
 ## 项目速览
 
@@ -95,7 +95,7 @@ MCloud 是云平台主机资产信息管理系统：**Go (Gin) 后端 + Vue 3 SP
 
 **分层（红线 1，不可破坏）**：`routes`（注册+JWT）→ `controllers`（仅绑定参数、调 service、`Success/Error` 响应）→ `services`（全部业务逻辑）→ `models`（GORM）。
 
-**前端结构**：`api/`（Axios 封装）→ `stores/`（Pinia）→ `views/`（4 个页面 Tab）→ `components/`。
+**前端结构**：`api/`（Axios 封装）→ `stores/`（Pinia）→ `views/`（9 个功能页：6 顶部 Tab + 3 设置菜单页）→ `components/`。
 
 | 关键事实 | 值 |
 |----------|-----|
@@ -114,7 +114,7 @@ MCloud 是云平台主机资产信息管理系统：**Go (Gin) 后端 + Vue 3 SP
 4. **GORM 列名**：缩写字段（如 `CIDR`）必须显式 `gorm:"column:xxx"`，否则生成 `c_id_r` 错误列名
 5. **提交**：Conventional Commits（`feat:` / `fix:` / `docs:` …）；**未经明确要求不主动 commit / push**
    - 例外：人类会话指令中明确要求提交（如「完成后提交」）时，agent 在验证命令全绿后可执行 `git commit`；`git push` 仍须人类明说
-   - 未提提交时：验证通过后停在「待提交」，在输出中说明，由人类决定；提交号回写步骤见「回写协议」
+   - 未提提交时：验证通过后停在「待提交」，在输出中说明，由人类决定；提交号回写步骤见「提交号回写时序」
 6. **敏感信息**：`.env`、密钥、密码、Token **不入库**
 7. **改动聚焦 + 修改权限**：只改当前任务验收标准内的代码，**不顺手重构**。可改范围按文件类别判定：
    - **状态与同步类**（`docs/ROADMAP.md`、`docs/PROJECT_STATUS.md`、责任矩阵指定的同步文档）→ **必须**随任务回写，这是义务，不算违规
@@ -125,7 +125,7 @@ MCloud 是云平台主机资产信息管理系统：**Go (Gin) 后端 + Vue 3 SP
 9. **迁移**：模型变更必须随附迁移 SQL（`backend/migrations/`，`-- +goose` 格式）；运行时由启动时 `Migrate()` 先执行 goose（embed FS 打包进二进制），`AutoMigrate` 仅兜底；**SQL 必须与模型定义一致**（统一口径见 [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) 数据库迁移规范）
 10. **门禁**：提交前「验证命令」必须全绿
 11. **环境一致**：数据库只用 docker-compose 启动，禁止手动安装
-12. **文档同步**：代码改完必须按下表回写文档；**未回写 = 任务未完成**
+12. **文档同步**：代码改完必须按「文档更新责任矩阵」回写文档；**未回写 = 任务未完成**
 
 ## 分支与提交协议
 

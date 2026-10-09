@@ -28,14 +28,15 @@
 
 - `code = 0` 表示成功
 - `code != 0` 表示失败，`message` 包含错误描述
+- `data` 为空时字段省略（`omitempty`）
+- 导出/模板类接口（`GET /api/export`、`GET /api/template`、`GET /api/export/all`）返回二进制附件（CSV / xlsx），非 JSON
 
 ### 错误码规范
 
 | 错误码 | 含义 | HTTP 状态 |
 |--------|------|-----------|
 | `40001` | 参数校验失败 | 400 |
-| `40101` | 未登录 / Token 无效 | 401 |
-| `40102` | 账户已锁定 | 401 |
+| `40101` | 未登录 / Token 无效 / 账户已锁定 | 401 |
 | `40401` | 资源不存在 | 404 |
 | `40901` | 数据冲突（如 IP 重复） | 409 |
 | `50001` | 服务器内部错误 | 500 |
@@ -45,8 +46,10 @@
 ## 日期时间格式
 
 - **JSON 时间字段**（如零信任 `apply_time`）以 **RFC3339 带时区**为主格式（`2026-10-08T10:00:00+08:00`），兼容无时区 `YYYY-MM-DDTHH:mm:ss` 与 `YYYY-MM-DD HH:mm:ss`（按**服务器本地时区**解释）
-- **主机申请时间** `host_applications.apply_time` 为纯日期：严格 `YYYY-MM-DD`（空值合法）；经 API（创建/更新/批量）、CSV 与 xlsx 导入提交非空非法值一律拒绝（`40001` 或行级错误，错误信息含 `YYYY-MM-DD`）
-- **展示与导出**统一 `YYYY-MM-DD HH:mm:ss`；备份文件名日期统一 `YYYY-MM-DD`
+- **主机申请时间** `host_applications.apply_time` 为纯日期：严格 `YYYY-MM-DD`（空值合法）；经 API（创建/更新/批量创建）提交非空非法值一律拒绝（单条 `40001`，批量为行级错误，错误信息含 `YYYY-MM-DD`）
+- **批量编辑**（`PUT /api/batch/hosts`）的 `apply_time` 必须为字符串 `YYYY-MM-DD`（空串合法）或省略该字段：字符串但非 `YYYY-MM-DD` 返回 `40001`，`null` / 非字符串当前返回 `50001`
+- **导入**：xlsx 导入在报告 `errors[]` 中返回含 `YYYY-MM-DD` 的行级错误（存在行级错误时整体回滚）；CSV 导入只累计 `errors` 计数、不返回行级消息，坏行不入库
+- **展示与导出**：展示统一 `YYYY-MM-DD HH:mm:ss`；日期字段（主机申请时间）导出为 `YYYY-MM-DD`（CSV 与 xlsx 备份），零信任申请时间导出为 `YYYY-MM-DD HH:mm:ss`；备份文件名日期统一 `YYYY-MM-DD`
 
 ---
 
@@ -71,6 +74,7 @@
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
 | GET | `/api/hosts` | `host.Filter` | 分页 + 搜索 + 筛选列表 |
+| GET | `/api/hosts/regions` | `host.ListRegions` | 区域列表（hosts 中非空 region 去重） |
 | GET | `/api/hosts/:id` | `host.Get` | 单条详情 |
 | POST | `/api/hosts` | `host.Create` | 新增主机 |
 | PUT | `/api/hosts/:id` | `host.Update` | 编辑主机 |
@@ -113,7 +117,9 @@
 | GET | `/api/stats/ip-usage` | `stats.IPUsage` | IP 使用情况（按网段返回已用/空记录 IP） |
 | POST | `/api/stats/probe` | `stats.Probe` | 探测单个 IP 连通性（ICMP + TCP 22/3389） |
 | GET | `/api/stats/business` | `stats.BusinessStats` | 业务统计（按项目/公司/人员聚合资源用量） |
-| GET | `/api/ws/probe` | `HandleProbeWS` | WebSocket 探测通道（token 通过 query 传递） |
+| GET | `/api/ws/probe` | `HandleProbeWS` | WebSocket 探测通道（token 通过 query 传递）† |
+
+† 该路由未挂 JWT 中间件，仅校验 `token` 非空、不校验 JWT 有效性，详见[WebSocket 探测帧协议](#websocket-探测帧协议)。
 
 ### IP 网段管理（需 JWT）
 
@@ -146,7 +152,7 @@
 
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
-| GET | `/api/zero-trusts` | `zeroTrust.List` | 零信任申请列表，`keyword` 模糊匹配申请单位/账户名/联系方式/系统名称/备注/公网IP/出口位置/主机名/IP |
+| GET | `/api/zero-trusts` | `zeroTrust.List` | 零信任申请列表，`keyword` 模糊匹配申请单位/账户名/联系方式/系统名称/备注/公网IP/出口位置/运营商/主机名/IP |
 | POST | `/api/zero-trusts` | `zeroTrust.Create` | 新增申请（申请单位、账户名、`targets` 配对接入目标必填；申请时间、`system_name`、`public_ip` 选填，时间格式见[日期时间格式](#日期时间格式)） |
 | POST | `/api/zero-trusts/batch` | `zeroTrust.BatchCreateText` | 批量添加（文本粘贴，内网IP与申请端口两列等长位置配对；合法行全部插入） |
 | PUT | `/api/zero-trusts/:id` | `zeroTrust.Update` | 修改申请记录 |
@@ -156,7 +162,7 @@
 
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
-| GET | `/api/port-mappings` | `portMapping.List` | 映射列表，`keyword` 模糊匹配公网IP/域名/端口/主机名/IP，以及资源池运营商/出口位置；ISP/出口位置优先映射表、为空时从 `public_ips` 带出 |
+| GET | `/api/port-mappings` | `portMapping.List` | 映射列表，`keyword` 模糊匹配公网IP/域名/端口/备注/主机名/IP，以及资源池运营商/出口位置；ISP/出口位置优先映射表、为空时从 `public_ips` 带出 |
 | POST | `/api/port-mappings` | `portMapping.Create` | 新增映射（公网IP须在资源池、内网主机、外网/内网端口必填；端口列表等长；域名可选） |
 | POST | `/api/port-mappings/batch` | `portMapping.BatchCreateText` | 批量添加（文本粘贴；列：公网IP,内网IP,外网端口,内网端口,域名,备注） |
 | PUT | `/api/port-mappings/:id` | `portMapping.Update` | 修改映射记录 |
@@ -198,8 +204,8 @@
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | `page` | int | 页码，默认 1 |
-| `page_size` | int | 每页条数，默认 20，最大 100 |
-| `keyword` | string | 模糊搜索（跨 12 个字段） |
+| `page_size` | int | 每页条数，默认 20；>100 时回退默认 20 |
+| `keyword` | string | 模糊搜索（跨 11 个字段） |
 | `env_type` | string | 环境类型筛选（测试/生产） |
 | `asset_type` | string | 资产类型筛选（虚拟机/裸金属服务器） |
 | `cpu_arch` | string | CPU架构筛选（C86/X86/ARM） |
@@ -245,7 +251,7 @@ POST /api/batch/hosts
 }
 ```
 
-跳过 `private_ip` 已存在的条目，返回成功/跳过/错误数量。
+跳过 `private_ip` 已存在的条目，返回 `{ "success": n, "skipped": n, "errors": n, "line_errors": ["第1条: ..."] }`，`line_errors` 为行级错误消息数组，最多 10 条
 
 ### 纯文本批量添加
 
@@ -257,7 +263,7 @@ POST /api/batch/hosts/text
 ```
 
 - 每行一条记录，字段以逗号分隔，列顺序与 CSV 模板一致（`区域,实例ID,主机名称,内网IP,是否映射公网,资产类型,操作系统,CPU核数,CPU架构,内存(GB),系统盘(GB),数据盘(GB),环境类型,是否数据库服务器,状态,开放端口,标签,申请单位,申请人,申请人联系方式,所属项目,申请理由,申请配置,申请时间,对象存储大小,备注`）
-- 至少需要前 3 列（区域、主机名称、内网IP），尾部列可省略（自动补空）
+- 至少需要前 3 列（区域、实例ID、主机名称），尾部列可省略（自动补空）
 - 支持双引号包裹含逗号的字段；空行与 `#` 开头的注释行跳过；首行为表头时自动跳过
 - 列数超过 26 或不足 3 列的行计入 `errors`
 - 返回 `{ "success": n, "skipped": n, "errors": n, "line_errors": ["第5行: ..."] }`，`line_errors` 最多 10 条
@@ -348,7 +354,7 @@ POST /api/zero-trusts
 ```
 
 - `apply_unit` / `account_name` / `targets` 必填；`targets` 为「主机:端口」**配对**数组（一次申请聚合多组，可表达 A:22、B:3389 等任意组合，存储为 `host_id:port` 逗号串），各端口范围 1-65535，重复配对自动去重
-- `targets[].host_id` 对应 `hosts.id`，任一主机不存在返回 `40001`
+- `targets[].host_id` 对应 `hosts.id`，任一主机不存在：`POST /api/zero-trusts` 返回 `40001`，`PUT /api/zero-trusts/:id` 返回 `40401`
 - `public_ip` 选填，须在公网IP资源池中（否则 `40001`）；**接入地区**（`exit_location`）由资源池读时带出，不单独存列
 - `system_name` 选填（VARCHAR 128），列表列与表单位于「申请端口」之后
 - `apply_time` 选填，缺省为服务端当前时间；接受 RFC3339 带时区（主格式）与无时区 `YYYY-MM-DDTHH:mm:ss` / `YYYY-MM-DD HH:mm:ss`（按服务器本地时区解释），见[日期时间格式](#日期时间格式)

@@ -9,6 +9,9 @@
 - [Go 代码规范](#go-代码规范)
 - [前端代码规范](#前端代码规范)
 - [提交规范](#提交规范)
+- [Linter 与验证门禁](#linter-与验证门禁)
+- [环境一致性](#环境一致性)
+- [任务协调与变更可见性](#任务协调与变更可见性)
 - [测试规范](#测试规范)
 - [安全准则](#安全准则)
 
@@ -118,13 +121,13 @@ c.JSON(400, gin.H{"error": "..."})
 | 运行时 | `backend/migrations/*.sql`（embed FS）+ `github.com/pressly/goose/v3` | 启动时 `Migrate()` 先 `goose.Up` 执行 `migrations/*.sql`（SQL 打包进二进制） |
 | 兜底 | `database/postgres.go` → `AutoMigrate()` + `seedAdmin()` | goose 之后仍执行 AutoMigrate 补齐 SQL 未覆盖的模型变更；种子管理员留在代码 |
 
-> 一句话：**SQL 是运行时迁移的唯一事实来源（goose 执行），AutoMigrate 仅兜底，两者不冲突**。SQL 必须与模型定义一致；已执行的迁移文件禁止修改。
+> 一句话：**SQL 是运行时迁移的唯一事实来源（goose 执行），AutoMigrate 仅兜底，两者不冲突**。SQL 必须与模型定义一致；已执行迁移的 **Up 块**禁止修改（Down 块缺陷勘误例外，见下）。
 
 **迁移文件规则**：
 
 1. 迁移文件存放在 `backend/migrations/`，命名格式：`YYYYMMDDHHMMSS_<描述>.sql`
 2. 每次模型变更（新增字段、改类型、加索引、加约束）必须写对应的 SQL 迁移文件（`-- +goose Up` / `-- +goose Down`）
-3. 迁移文件一旦提交，**禁止修改或删除**（已执行的迁移不可变）
+3. 迁移文件一旦提交，**禁止删除**；已执行迁移的 **Up 块不可变**，**Down 块缺陷勘误允许**（须在任务中说明改了什么、为什么，参照 T-039 对已入库迁移 `20261008050001` Down 块非法 `ADD CONSTRAINT IF NOT EXISTS` 的修复）
 4. 运行时**先**执行 goose（`Migrate()` 内 `goose.Up`），**再** `AutoMigrate()` 兜底——**SQL 内容必须与模型定义保持一致**，否则 goose 落地结构与 GORM 模型会漂移
 
 **多人协作流程**：
@@ -241,7 +244,7 @@ docs: AGENTS.md 补充IP网段管理API
 2. **可编译**：提交前确保 `go build ./...` 通过、前端无语法错误
 3. **不提交敏感信息**：`.env`、密钥、密码、Token 一律不入库
 4. **不提交产物**：`dist/`、编译二进制、`node_modules/` 通过 `.gitignore` 排除
-5. **只在需要时提交**：未经明确要求不主动 commit / push；例外条款与提交号回写时序以 [AGENTS.md](../AGENTS.md) 红线 5 与「回写协议」为准（人类明确要求提交时，验证全绿后可 commit，禁止 push 除非明说）
+5. **只在需要时提交**：未经明确要求不主动 commit / push；例外条款与提交号回写时序以 [AGENTS.md](../AGENTS.md) 红线 5 与「提交号回写时序」为准（人类明确要求提交时，验证全绿后可 commit，禁止 push 除非明说）
 6. **先看后提**：提交前 `git status` + `git diff` 确认改动范围
 
 ### 文档回写文风（防膨胀）
@@ -262,10 +265,12 @@ docs: AGENTS.md 补充IP网段管理API
 - [ ] 后端 `go build ./...` 是否通过
 - [ ] 后端 `golangci-lint run ./...` 是否通过
 - [ ] 前端 `npm run lint:check` 是否通过（门禁用 `lint:check`；`npm run lint` 带 `--fix` 会改写文件，仅用于本地修复）
+- [ ] 前端 `npm run build` 是否通过
 - [ ] 是否引入硬编码配置/密钥
 - [ ] 数据库模型变更是否已写迁移 SQL
 - [ ] API 约定（响应格式、错误码）是否一致
 - [ ] 文档（API/数据模型/变更记录）是否同步更新
+- [ ] 文档改动 `bash scripts/check_docs.sh` 是否退出码 0（与 AGENTS 门禁一致）
 
 ---
 
@@ -373,10 +378,11 @@ docker-compose -f docker-compose.prod.yml up -d --build
 
 1. **同步最新代码**：`git checkout main && git pull`
 2. **临时需求先入队**：需求不在 ROADMAP 队列时，先按 [AGENTS.md · 会话协议 A.0](../AGENTS.md#会话协议) 的「临时任务入队」新建任务条目并确认验收标准，再继续
-3. **创建功能分支**：`git checkout -b feat/<简短描述>` 或 `fix/<简短描述>`（分支步骤细则见 AGENTS.md 协议 A 第 4 步）
-4. **确认影响范围**：阅读任务需求，判断涉及哪些模块（后端/前端/数据库），列出可能改动的文件
-5. **如有数据模型变更**：先说明新字段/新表的设计，获得确认后再动手
-6. **同步环境**：`cd docker && docker-compose -f docker-compose.dev.yml up -d` 确保数据库可用
+3. **认领任务**：把任务移入 `in_progress` 并填写负责标识（认领细则见 AGENTS.md 协议 A 第 3 步）
+4. **创建功能分支**：`git checkout -b feat/<简短描述>` 或 `fix/<简短描述>`、`docs/<简短描述>`、`refactor/<简短描述>`（分支步骤细则见 AGENTS.md 协议 A 第 4 步）
+5. **确认影响范围**：阅读任务需求，判断涉及哪些模块（后端/前端/数据库），列出可能改动的文件
+6. **如有数据模型变更**：先说明新字段/新表的设计，获得确认后再动手
+7. **同步环境**：`cd docker && docker-compose -f docker-compose.dev.yml up -d` 确保数据库可用
 
 ### 任务进行中
 
@@ -442,5 +448,5 @@ docker-compose -f docker-compose.prod.yml up -d --build
 - JWT 密钥从环境变量读取，禁止硬编码
 - `.env` 不提交到 Git
 - API 输入必须校验，SQL 通过 GORM 参数化查询防注入
-- CORS：开发允许 `localhost:5678`，生产限制具体域名
-- 文件上传限制：最大 16MB，仅允许 `.csv` 后缀
+- CORS：现状为对任意 `Origin` 回显 `Access-Control-Allow-Origin`（`backend/middleware/jwt.go` `CORSMiddleware`，同时下发 `Access-Control-Allow-Credentials: true`），**无白名单**、开发与生产无差别；按环境白名单收紧的任务已入队 `T-043`
+- 文件上传限制：CSV 导入（`backend/controllers/csv.go`）后端仅校验 `.csv` 后缀、**无大小限制**（16MB 只是前端 `ImportDialog` 的提示文案）；数据备份 xlsx 导入（`backend/controllers/data_exchange.go`）由 `MaxBytesReader` 强制 ≤20MB 且仅接受 `.xlsx`；CSV 后端大小限制的任务已入队 `T-044`

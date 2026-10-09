@@ -160,8 +160,10 @@
 | `BatchEditDialog.vue` | 批量编辑弹窗（含人员选择/手输自动建人员） | HostManagement |
 | `ImportDialog.vue` | CSV 导入弹窗 | HostManagement |
 | `ChangePasswordDialog.vue` | 修改密码弹窗 | 全部页面 |
-| `CloudResourceDialog.vue` | 云资源录入弹窗 | 全部页面（设置菜单） |
+| `CloudResourceDialog.vue` | 云资源录入弹窗 | 除 DataBackup 外的设置菜单页面 |
 | `SubnetManageDialog.vue` | IP 网段管理弹窗 | IpStatistics |
+| `ZeroTrustBatchAddDialog.vue` | 零信任批量添加弹窗（文本粘贴，9 列） | ZeroTrustLedger |
+| `MappingBatchAddDialog.vue` | 端口映射批量添加弹窗（文本粘贴，6 列） | MappingLedger |
 
 ### 工具与样式
 
@@ -213,7 +215,7 @@
 GET /api/hosts
   → routes/routes.go（JWT 鉴权）
   → controllers/host.go           Filter()
-  → services/host_service.go      Filter()（动态 WHERE + Preload Application + 分页）
+  → services/host_service.go      Filter()（动态 WHERE + applicant_empty 分支 + Preload Application/Person + 分页）
   → models/host.go                返回 []Host
 ```
 
@@ -245,6 +247,33 @@ GET /api/stats/business
 PUT /api/cloud-resources
   → controllers/cloud_resource.go     Update()
   → services/cloud_resource_service.go Update()（按 region 查询，存在则更新，否则创建）
+```
+
+### CSV 导入导出
+
+```
+POST /api/import（multipart file）
+  → routes/routes.go（JWT 鉴权）
+  → controllers/csv.go               Import()（utils.DetectAndDecode 识别编码 + utils.ParseCSV）
+  → services/host_service.go         ParseCSVRowToCreateHost() → Create()（成功/跳过/错误计数）
+
+GET /api/export
+  → routes/routes.go（JWT 鉴权）
+  → controllers/csv.go               Export()（Preload Application 读全表）
+  → services/host_service.go         ExportToCSVRows()
+  → utils/csv.go                     BuildCSVOutput()（BOM + CSVHeaders 表头）
+```
+
+### 零信任台账 CRUD
+
+```
+GET/POST /api/zero-trusts、PUT/DELETE /api/zero-trusts/:id、POST /api/zero-trusts/batch
+  → routes/routes.go（JWT 鉴权）
+  → controllers/zero_trust.go        List()/Create()/Update()/Delete()/BatchCreateText()
+  → services/zero_trust_service.go
+       ├─ List()（keyword 模糊 + parseStoredTargets 回填主机简要 + 公网IP资源池带出接入地区）
+       ├─ Create()/Update()（normalizeTargetPairs 配对校验 + 主机存在校验 + 公网IP须在资源池）
+       └─ BatchCreateText()（逐行 9 列：内网IP 定位主机、IP 与端口等长配对、合法行全量插入）
 ```
 
 ---

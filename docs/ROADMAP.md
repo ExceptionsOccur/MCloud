@@ -11,14 +11,16 @@
 | 状态 | 仅允许 `todo` / `in_progress` / `blocked` / `done` 四个值，状态变化只在本文件发生 |
 | 负责 | 进入 `in_progress` 时必须填执行者标识（AI 会话名或人名）+ 认领日期 |
 | 优先级 | `P0` 阻塞他人 > `P1` 当前迭代 > `P2` 可延后；同级按 ID 顺序 |
+| 内容 | 任务目标与做法概述（一段式，可带子项） |
 | 验收标准 | 客观可判定（命令通过 / 文件存在 / 行为可复现），禁止主观描述 |
 | 定位 | 涉及文件清单，来源 `docs/CODE_INDEX.md`「功能→代码映射」；**领任务后必须核对/补齐**。优先写**函数名/路由路径**等稳定锚点；行号仅为快照（以 grep 复核为准，可省略），补不出先声明、不盲写 |
 | 回写 | 完成后必须更新的文档（通常由 AGENTS.md 责任矩阵推导，此处列出例外） |
+| 分支 | 功能分支名（`feat/fix/docs/refactor/<描述>`）；未写则按 AGENTS 红线 8 推导 |
 | 文风 | done 备注只写验收结论（≤ 80 字）；PROJECT_STATUS 变更记录每条一行摘要（≤ 120 字），**禁止** ①②③ 枚举子改动与粘贴验收全文（细则见 [DEVELOPMENT.md](./DEVELOPMENT.md) 文档回写文风） |
 
-**认领规则**：一次只领 **1 条** `P0/P1` 任务；领用 = 把该条移到 `in_progress` 并填写负责字段（在写任何代码之前先改本文件）。
+**认领规则**：一次只领 **1 条**优先级最高（`P0` > `P1` > `P2`）的任务；领用 = 把该条移到 `in_progress` 并填写负责字段（在写任何代码之前先改本文件）。
 
-**回顾锚点**：`上次回顾至 T-040`。`done` 表自该锚点起新增 ≥ 5 条时，须先执行 [AGENTS.md · 会话协议 E](../AGENTS.md#会话协议) 的周期回顾（按各任务「回写」字段定向核查文档↔代码符合度、补回填写漏，偏差先报告人类再修），回顾完成并经人类确认后把锚点推进至该批最后一条 `done` ID。
+**回顾锚点**：`上次回顾至 T-041`。`done` 表自该锚点起新增 ≥ 5 条时，须先执行 [AGENTS.md · 会话协议 E](../AGENTS.md#会话协议) 的周期回顾（按各任务「回写」字段定向核查文档↔代码符合度、补回填写漏，偏差先报告人类再修），回顾完成并经人类确认后把锚点推进至该批最后一条 `done` ID。
 
 ---
 
@@ -45,15 +47,20 @@
   - 内容：新建 `frontend/src/composables/`，抽 `useProbeWebSocket` / `useChartOption` / `usePagedTable`
   - 定位：抽取源 —— `views/IpStatistics.vue`（WebSocket+探测）、`views/ResourceStatistics.vue` / `views/BusinessStatistics.vue`（ECharts 配置）、`views/HostManagement.vue` + `stores/host.js`（分页）
   - 验收标准：`cd frontend && npm run lint:check && npm run build` 通过；抽离后各页面行为不变
-- [ ] **T-005** `IpStatistics.vue`（746 行）拆分 ｜ P1 ｜ 负责: —
+- [ ] **T-005** `IpStatistics.vue`（835 行）拆分 ｜ P1 ｜ 负责: —
   - 依赖：T-004
   - 内容：拆出 `components/ip/`（网格局部、探测面板、网段管理），单文件 ≤ 400 行
-  - 定位：`frontend/src/views/IpStatistics.vue`（全文 746 行）→ 新建 `frontend/src/components/ip/`
-  - 验收标准：无单个 `.vue` 超过 500 行；`npm run lint:check && npm run build` 通过；功能无回归
+  - 定位：`frontend/src/views/IpStatistics.vue`（全文 835 行）→ 新建 `frontend/src/components/ip/`
+  - 验收标准：拆分后 `IpStatistics.vue` ≤ 400 行；`npm run lint:check && npm run build` 通过；功能无回归
 - [ ] **T-006** 测试骨架 ｜ P1 ｜ 负责: —
   - 内容：后端 `services` 表驱动单测（先覆盖主机 CRUD、登录）+ 前端 Vitest 冒烟
   - 定位：新建 `backend/services/*_test.go`；前端 `frontend/package.json`（加 vitest 依赖与 script）+ `src/**/__tests__/`
   - 验收标准：`cd backend && go test ./...` 有用例非零且通过；`npm run test` 可运行
+- [ ] **T-042** 批量编辑 `apply_time` 错误码与空值语义修复 ｜ P1 ｜ 负责: — ｜ 备注: 全量回顾 J1（2026-10-09）
+  - 内容：`PUT /api/batch/hosts` 对 `apply_time=null`/非字符串返回裸 error → 50001 且 null 被拒；改为 null 与省略同义放行、非法值统一 40001（与单条口径一致）
+  - 定位：`backend/services/host_service.go`（批量编辑 `isStr` 分支 ~L704）、`backend/controllers/batch.go`（L63 错误映射）、`docs/API.md` 日期时间格式章节（现按 50001 如实描述，修复后同步）
+  - 验收标准：`apply_time=null` 不再 50001；非字符串/非法日期返回 40001；`go build` + `golangci-lint run ./...` 通过；`docs/API.md` 同步
+  - 分支：`fix/batch-apply-time-code`
 - [ ] **T-008** 数据导出报表（Excel/CSV） ｜ P2 ｜ 负责: — ｜ 备注: T-038 后收窄（2026-10-09）
   - 内容：全量导出已覆盖——主机 CSV（`GET /api/export`，BOM）+ 8 表 xlsx 备份（T-038 `/api/export/all`）；剩余缺口 = **按筛选条件导出**：`csv.Export` 裸 `Find(&hosts)` 不带筛选、前端 `exportCSV()` 无参，导出与列表所见不一致；补齐筛选参数透传（接口复用列表筛选 + SearchToolbar 传参），原「新建 report_service.go」定位作废
   - 定位：`backend/controllers/csv.go`（`Export` 裸查全表）、`backend/services/host_service.go`（列表筛选逻辑复用）、`frontend/src/api/csv.js`（`exportCSV()` 无参）、`frontend/src/components/SearchToolbar.vue`（`handleExport`）
@@ -69,15 +76,15 @@
   - 验收标准：路由按域拆为多文件；`docs/CODE_INDEX.md` 请求链路同步
 - [ ] **T-011** IP 探测去宿主机 `ping` 依赖 ｜ P2 ｜ 负责: —
   - 内容：评估纯 Go ICMP/TCP 方案，消除平台差异
-  - 定位：`backend/services/stats_service.go` L100（`exec.CommandContext(ctx, "ping", ...)`）、`pingICMP`/`probeTCP`；调用链 `controllers/stats.go` → `Probe`、`controllers/websocket.go`
+  - 定位：`backend/services/stats_service.go` L101（`exec.CommandContext(ctx, "ping", ...)`）、`pingICMP`/`probeTCP`；调用链 `controllers/stats.go` → `Probe`、`controllers/websocket.go`
   - 验收标准：探测颜色状态机行为与 `docs/BUSINESS_LOGIC.md` 描述一致
   - 回写：BUSINESS_LOGIC「探测方式」
 - [ ] **T-012** 文档一致性巡检 ｜ P2 ｜ 负责: — ｜ 备注: 适合小型会话
   - 定位：`docs/*.md`、`README.md`、`AGENTS.md`（协议条文部分需人类授权，见红线 7）；校验器 `scripts/check_docs.sh`（T-021 已交付）
   - 验收标准：`bash scripts/check_docs.sh` 退出码 0（links/tree/snapshot/counts/shas 全绿）；warn 一并处理；发现的错误全部修复
-- [ ] **T-019** 前端抽 Layout/AppNav ｜ P2 ｜ 负责: — ｜ 备注: 定位已实测（2026-10-06）
-  - 内容：5 个页面 Tab 各自内嵌同一段 `nav-tab` 导航结构（各 7 处 `nav-tab` 引用），抽为共享 `components/AppNav.vue` 或 Layout（`App.vue` 根布局），消除重复粘贴
-  - 定位：`frontend/src/views/HostManagement.vue`、`ResourceStatistics.vue`、`IpStatistics.vue`、`BusinessStatistics.vue`、`PersonnelManagement.vue`（`Login.vue` 不涉及）
+- [ ] **T-019** 前端抽 Layout/AppNav ｜ P2 ｜ 负责: — ｜ 备注: 定位已实测（2026-10-09）
+  - 内容：各页内嵌同一段 `nav-tab` 导航结构（9 个功能页、每文件 8-9 处 `nav-tab` 引用），抽为共享 `components/AppNav.vue` 或 Layout（`App.vue` 根布局），消除重复粘贴
+  - 定位：`frontend/src/views/` 下 9 个功能页（HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / ZeroTrustLedger / MappingLedger / PublicIPManagement / DataBackup；`Login.vue` 不涉及）
   - 验收标准：`npm run lint:check && npm run build` 通过；导航与视觉零变化；重复结构只剩一处
   - 分支：`refactor/extract-layout`
 - [ ] **T-020** 消除 `config.go` `ServerPort` 硬编码 ｜ P2 ｜ 负责: — ｜ 备注: 违反红线 3（配置外置）
@@ -90,6 +97,16 @@
   - 定位：`backend/routes/routes.go`（`/api/ws/probe` 处仅 `c.Query("token") != ""` 判断）、`backend/controllers/websocket.go`（`HandleProbeWS`；`upgrader.CheckOrigin` 恒 `true`，同链路可一并评估是否收紧）、`backend/middleware/jwt.go`（`JWTAuth()` 校验逻辑参考）、`docs/API.md`「WebSocket 探测帧协议」章节（同步改）
   - 验收标准：无效/过期/伪造 token 无法建立连接（`40101`）；有效 token 行为与现网一致；`go build` + `golangci-lint run ./...` 通过；API.md 与 BUSINESS_LOGIC 相关描述同步
   - 分支：`fix/ws-probe-jwt`
+- [ ] **T-043** CORS Origin 白名单收紧 ｜ P2 ｜ 负责: — ｜ 备注: 全量回顾 J2（安全类，2026-10-09，与 T-022 同批后置）
+  - 内容：`middleware/jwt.go` 当前对任意 Origin 回显 `Access-Control-Allow-Origin` + `credentials=true`，无白名单；改为环境变量可配的 Origin 白名单，非白名单不回显 CORS 头
+  - 定位：`backend/middleware/jwt.go`（CORS 段 ~L57-72）、`docker/.env.example`、`docs/DEVELOPMENT.md` 安全准则 CORS 行
+  - 验收标准：非白名单 Origin 不回显 CORS 头；白名单内预检/带凭证请求行为正常；`go build` + `golangci-lint run ./...` 通过；DEVELOPMENT 同步
+  - 分支：`fix/cors-origin-whitelist`
+- [ ] **T-044** 后端 CSV 上传大小限制 ｜ P2 ｜ 负责: — ｜ 备注: 全量回顾 J3（2026-10-09）
+  - 内容：`controllers/csv.go` 导入无大小限制（16MB 仅为前端提示）；后端加限制（`http.MaxBytesReader`，上限对齐前端 16MB），超限返回 40001
+  - 定位：`backend/controllers/csv.go`（Import/Export）、`frontend/src/components/ImportDialog.vue`（16MB 提示）、`docs/DEVELOPMENT.md` 安全准则上传行
+  - 验收标准：超限导入返回 40001 且信息可读；正常导入不受影响；`go build` + `golangci-lint run ./...` 通过；DEVELOPMENT 同步
+  - 分支：`fix/csv-upload-limit`
 
 ## blocked
 
@@ -106,8 +123,8 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
-| T-041 | 协议补强：每完成 5 条任务的周期回顾 | 2026-10-09 | `4ccd241` | 验收：AGENTS 会话协议 E（触发/范围/处理）落地；ROADMAP+快照锚点 T-040 一致；DEVELOPMENT 同步；check_docs 0 errors |
-| T-040 | 全仓日期时间格式统一（吸收 T-037） | 2026-10-09 | `9522789` | 验收：零信任 RFC3339 主+无时区兼容，回填/展示时区安全往返一致；主机申请时间全链路严格 `YYYY-MM-DD`（单条/批量/xlsx 行级错误含格式，CSV 计入 errors 不入库）；展示与备份文件名统一 `YYYY-MM-DD`；门禁全绿 |
+| T-041 | 协议补强：每完成 5 条任务的周期回顾 | 2026-10-09 | `4ccd241` | 验收：协议 E 触发/范围/处理三要素落地；锚点 T-040 两处一致；DEVELOPMENT 同步；check_docs 0 errors |
+| T-040 | 全仓日期时间格式统一（吸收 T-037） | 2026-10-09 | `9522789` | 验收：零信任时间双格式兼容；主机申请时间全链路严格 `YYYY-MM-DD`；展示与文件名口径回写 API.md；门禁全绿 |
 | T-039 | 空库启动迁移失败修复（UNIQUE 约束对齐 GORM uniqueIndex 口径） | 2026-10-09 | `c196f37` | 验收：空库启动+登录通过；4 表 `*_key` 转 `idx_`；外键/重复索引去重；dev 迁移 no-op；门禁全绿 |
 | T-038 | 数据备份：8 个业务 sheet 统一导出(xlsx)/导入(upsert) | 2026-10-09 | `6644d5a` | 验收：8 sheet 列=设计清单；空库回灌关联完整重建；重复导入 0 增删；行级错误回滚库不变；门禁全绿 |
 | T-036 | 零信任台账多组主机:端口配对 + 公网IP带出地区 | 2026-10-08 | `ab7e3d0` | 验收：targets 配对 CRUD+迁移；公网IP池校验带出地区；批量等长配对；引用40901；门禁+冒烟全绿 |

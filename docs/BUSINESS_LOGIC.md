@@ -24,7 +24,7 @@
 2. 后端验证用户名存在 → 检查是否锁定 → 验证密码
 3. 密码验证成功：重置 `failed_attempts`，更新 `last_login`，签发 JWT
 4. 密码验证失败：`failed_attempts++`，达到 5 次锁定 15 分钟
-5. 返回 `{ code: 0, data: { access_token, expires_in } }`
+5. 返回 `{ code: 0, data: { access_token, expires_in, user: { id, username } } }`
 
 密码存储格式为 `salt$hash`，其中 `hash = SHA-256(salt + password)`。
 
@@ -33,7 +33,7 @@
 ```go
 // Authorization: Bearer <token>
 // 验证通过 → c.Set("user_id", userID)
-// 验证失败 → c.AbortWithStatusJSON(401, ...)
+// 验证失败 → controllers.Error(c, 40101, ...)（HTTP 映射 401 统一响应）+ c.Abort()
 func JWTAuth() gin.HandlerFunc { ... }
 ```
 
@@ -72,12 +72,18 @@ db.Preload("Application").Offset(offset).Limit(pageSize).Order("id ASC").Find(&h
 依次尝试 UTF-8 → GBK → GB18030 解码：
 
 ```go
-func detectAndDecode(data []byte) (string, error) {
-    encodings := []encoding.Encoding{
-        unicode.UTF8, charmap.Windows1252,
-        simplifiedchinese.GBK, simplifiedchinese.GB18030,
+// utils/csv.go
+func DetectAndDecode(data []byte) (string, error) {
+    if utf8Valid(data) {
+        return string(data), nil
     }
-    // ...
+    if decoded, err := decodeWith(data, simplifiedchinese.GBK.NewDecoder()); err == nil {
+        return decoded, nil
+    }
+    if decoded, err := decodeWith(data, simplifiedchinese.GB18030.NewDecoder()); err == nil {
+        return decoded, nil
+    }
+    return string(data), fmt.Errorf("unable to detect encoding")
 }
 ```
 
@@ -112,7 +118,8 @@ var CSVHeaders = []string{
 ### 导入（upsert）
 
 - 结构校验先行：非 `.xlsx`、缺 sheet、缺列、表头重复直接返回结构错误（`40001`），不进入事务
-- 逐行解析复用既有规范化：`normalizeCIDR`（/24）、`parsePortList`（端口列表等长校验）、`normalizeTargetPairs`（配对去重）、`ValidateDateOnly`（申请时间严格 `YYYY-MM-DD`）；人员按姓名(+联系方式)解析 `person_id`、主机按内网IP解析 `host_id`、公网IP须在 `public_ips` 资源池
+- 逐行解析复用既有规范化：`normalizeCIDR`（/24）、`parsePortList`（单端口 1-65535 校验，不做等长校验；端口列表等长校验在 `applyPortMappings` 与 `normalizePortMapping`）、`normalizeTargetPairs`（配对去重）、`ValidateDateOnly`（`host_applications.申请时间` 严格 `YYYY-MM-DD`）；人员按姓名(+联系方式)解析 `person_id`、主机按内网IP解析 `host_id`、填写公网IP时必须在 `public_ips` 资源池（空值合法放行）
+- 申请时间两套口径：`host_applications` 走严格 `YYYY-MM-DD`（`utils.ValidateDateOnly`）；`zero_trusts` 走宽松 `parseTimeCell`（依次尝试 `YYYY-MM-DD HH:MM:SS` / `YYYY-MM-DDTHH:MM:SS` / RFC3339 / `YYYY-MM-DD HH:MM` / `YYYY-MM-DD` / `YYYY/MM/DD HH:MM:SS` / `YYYY/MM/DD`，空值保持零值）
 - 每个 sheet 按复合自然键定位已有记录：值一致 → `skipped`，不一致 → `updated`，不存在 → `created`；**仅新增与更新，不执行删除**
 - 单事务：任一行错误累计到 `errors` 并回滚（`errImportRolledBack`），返回 `committed=false` 与逐行明细，库数据不变；全部通过后重算 `hosts.ip_mapped`
 - 详见 [API.md · 数据备份 xlsx 导出/导入](./API.md#数据备份-xlsx-导出导入)
