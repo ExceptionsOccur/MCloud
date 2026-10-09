@@ -5,6 +5,7 @@
 ## 目录
 
 - [统一响应格式](#统一响应格式)
+- [日期时间格式](#日期时间格式)
 - [路由总览](#路由总览)
 - [WebSocket 探测帧协议](#websocket-探测帧协议)
 - [筛选参数说明](#筛选参数说明)
@@ -38,6 +39,14 @@
 | `40401` | 资源不存在 | 404 |
 | `40901` | 数据冲突（如 IP 重复） | 409 |
 | `50001` | 服务器内部错误 | 500 |
+
+---
+
+## 日期时间格式
+
+- **JSON 时间字段**（如零信任 `apply_time`）以 **RFC3339 带时区**为主格式（`2026-10-08T10:00:00+08:00`），兼容无时区 `YYYY-MM-DDTHH:mm:ss` 与 `YYYY-MM-DD HH:mm:ss`（按**服务器本地时区**解释）
+- **主机申请时间** `host_applications.apply_time` 为纯日期：严格 `YYYY-MM-DD`（空值合法）；经 API（创建/更新/批量）、CSV 与 xlsx 导入提交非空非法值一律拒绝（`40001` 或行级错误，错误信息含 `YYYY-MM-DD`）
+- **展示与导出**统一 `YYYY-MM-DD HH:mm:ss`；备份文件名日期统一 `YYYY-MM-DD`
 
 ---
 
@@ -138,7 +147,7 @@
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
 | GET | `/api/zero-trusts` | `zeroTrust.List` | 零信任申请列表，`keyword` 模糊匹配申请单位/账户名/联系方式/系统名称/备注/公网IP/出口位置/主机名/IP |
-| POST | `/api/zero-trusts` | `zeroTrust.Create` | 新增申请（申请单位、账户名、`targets` 配对接入目标、申请时间必填；`system_name`/`public_ip` 选填） |
+| POST | `/api/zero-trusts` | `zeroTrust.Create` | 新增申请（申请单位、账户名、`targets` 配对接入目标必填；申请时间、`system_name`、`public_ip` 选填，时间格式见[日期时间格式](#日期时间格式)） |
 | POST | `/api/zero-trusts/batch` | `zeroTrust.BatchCreateText` | 批量添加（文本粘贴，内网IP与申请端口两列等长位置配对；合法行全部插入） |
 | PUT | `/api/zero-trusts/:id` | `zeroTrust.Update` | 修改申请记录 |
 | DELETE | `/api/zero-trusts/:id` | `zeroTrust.Delete` | 删除申请记录 |
@@ -333,7 +342,7 @@ POST /api/zero-trusts
   ],
   "public_ip": "203.0.113.50",
   "system_name": "统一门户",
-  "apply_time": "2026-10-08T10:00:00",
+  "apply_time": "2026-10-08T10:00:00+08:00",
   "remark": "临时开通"
 }
 ```
@@ -342,7 +351,7 @@ POST /api/zero-trusts
 - `targets[].host_id` 对应 `hosts.id`，任一主机不存在返回 `40001`
 - `public_ip` 选填，须在公网IP资源池中（否则 `40001`）；**接入地区**（`exit_location`）由资源池读时带出，不单独存列
 - `system_name` 选填（VARCHAR 128），列表列与表单位于「申请端口」之后
-- `apply_time` 可选，缺省为服务端当前时间
+- `apply_time` 选填，缺省为服务端当前时间；接受 RFC3339 带时区（主格式）与无时区 `YYYY-MM-DDTHH:mm:ss` / `YYYY-MM-DD HH:mm:ss`（按服务器本地时区解释），见[日期时间格式](#日期时间格式)
 - 列表 `targets` 返回配对数组并解析 `host_name`/`private_ip`，附 `exit_location`；删除主机时若被台账引用返回 `40901`
 
 ### 台账批量添加请求体
@@ -357,7 +366,7 @@ POST /api/port-mappings/batch
 { "text": "公网IP,内网IP,外网端口,内网端口,域名,备注\n203.0.113.10,192.168.1.10,80,8080,www.example.com,业务" }
 ```
 
-- 零信任列顺序：`申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注,公网IP`（至少前 4 列，公网IP 第 9 列选填）；内网IP与申请端口两列**数量必须一致、按位置配对**，主机按内网IP定位，不存在则该行失败；公网IP须在资源池；合法行全部插入
+- 零信任列顺序：`申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注,公网IP`（至少前 4 列，公网IP 第 9 列选填）；内网IP与申请端口两列**数量必须一致、按位置配对**，主机按内网IP定位，不存在则该行失败；公网IP须在资源池；申请时间列接受 RFC3339 带时区/无时区格式；合法行全部插入
 - 映射列顺序：`公网IP,内网IP,外网端口,内网端口,域名,备注`（至少前 4 列）；公网IP须在资源池；端口数量不一致该行失败
 - 映射的运营商/出口位置由公网IP资源池带出，不在批量行填写；零信任的接入地区同理由公网IP带出
 - 返回 `{success, skipped, errors, line_errors[]}`，与主机批量接口同结构
@@ -377,7 +386,7 @@ POST /api/port-mappings/batch
 
 ## 数据备份 xlsx 导出/导入
 
-`GET /api/export/all` 返回附件（`Content-Disposition: attachment`，文件名 `mcloud_backup_YYYYMMDD.xlsx`），单文件含 8 个工作表，顺序即导入依赖顺序：
+`GET /api/export/all` 返回附件（`Content-Disposition: attachment`，文件名 `mcloud_backup_YYYY-MM-DD.xlsx`），单文件含 8 个工作表，顺序即导入依赖顺序：
 
 `persons` → `public_ips` → `cloud_resources` → `ip_subnets` → `hosts` → `host_applications` → `zero_trusts` → `port_mappings`
 

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"mcloud/services"
+	"mcloud/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -44,7 +45,7 @@ func (ctrl *HostController) Create(c *gin.Context) {
 
 	id, err := ctrl.service.Create(req)
 	if err != nil {
-		if errors.Is(err, services.ErrPersonNotFound) {
+		if errors.Is(err, services.ErrPersonNotFound) || errors.Is(err, utils.ErrInvalidDate) {
 			Error(c, 40001, err.Error())
 			return
 		}
@@ -69,7 +70,7 @@ func (ctrl *HostController) Update(c *gin.Context) {
 	}
 
 	if err := ctrl.service.Update(uint(id), req); err != nil {
-		if errors.Is(err, services.ErrPersonNotFound) {
+		if errors.Is(err, services.ErrPersonNotFound) || errors.Is(err, utils.ErrInvalidDate) {
 			Error(c, 40001, err.Error())
 			return
 		}

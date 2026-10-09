@@ -453,7 +453,7 @@ import { useAuthStore } from '../stores/auth'
 import { getZeroTrusts, createZeroTrust, updateZeroTrust, deleteZeroTrust } from '../api/zero_trust'
 import { getHosts } from '../api/host'
 import { getPublicIPs } from '../api/public_ip'
-import { formatTime } from '../utils'
+import { formatTime, toLocalPickerValue, toRFC3339 } from '../utils'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
 import ZeroTrustBatchAddDialog from '../components/ZeroTrustBatchAddDialog.vue'
@@ -569,7 +569,7 @@ function openDialog(row) {
   if (!form.targets.length) form.targets = [{ host_id: null, port: 22 }]
   form.system_name = row?.system_name || ''
   form.public_ip = row?.public_ip || ''
-  form.apply_time = row?.apply_time ? row.apply_time.slice(0, 19) : ''
+  form.apply_time = row?.apply_time ? toLocalPickerValue(row.apply_time) : ''
   form.remark = row?.remark || ''
   dialogVisible.value = true
   formRef.value?.clearValidate()
@@ -600,7 +600,7 @@ async function handleSubmit() {
       targets: form.targets.map(t => ({ host_id: t.host_id, port: t.port })),
       system_name: form.system_name.trim(),
       public_ip: form.public_ip || '',
-      apply_time: form.apply_time || undefined,
+      apply_time: toRFC3339(form.apply_time),
       remark: form.remark.trim()
     }
     const res = editId.value

@@ -25,14 +25,14 @@ type ZeroTrustTarget struct {
 }
 
 type ZeroTrustRequest struct {
-	ApplyUnit   string            `json:"apply_unit" binding:"required"`
-	AccountName string            `json:"account_name" binding:"required"`
-	Contact     string            `json:"contact"`
-	PublicIP    string            `json:"public_ip"`
-	Targets     []ZeroTrustTarget `json:"targets" binding:"required"`
-	SystemName  string            `json:"system_name"`
-	ApplyTime   *time.Time        `json:"apply_time"`
-	Remark      string            `json:"remark"`
+	ApplyUnit   string              `json:"apply_unit" binding:"required"`
+	AccountName string              `json:"account_name" binding:"required"`
+	Contact     string              `json:"contact"`
+	PublicIP    string              `json:"public_ip"`
+	Targets     []ZeroTrustTarget   `json:"targets" binding:"required"`
+	SystemName  string              `json:"system_name"`
+	ApplyTime   *utils.FlexibleTime `json:"apply_time"`
+	Remark      string              `json:"remark"`
 }
 
 // ZeroTrustTargetView 配对 + 主机简要信息（列表展示用）
@@ -215,8 +215,7 @@ func normalizeZeroTrust(req ZeroTrustRequest) (ZeroTrustRequest, []ZeroTrustTarg
 	}
 	req.Targets = pairs
 	if req.ApplyTime == nil {
-		now := time.Now()
-		req.ApplyTime = &now
+		req.ApplyTime = &utils.FlexibleTime{Time: time.Now()}
 	}
 	return req, pairs, nil
 }
@@ -309,7 +308,7 @@ func (s *ZeroTrustService) Create(req ZeroTrustRequest) (uint, error) {
 		PublicIP:    req.PublicIP,
 		Targets:     joinTargetPairs(pairs),
 		SystemName:  req.SystemName,
-		ApplyTime:   *req.ApplyTime,
+		ApplyTime:   req.ApplyTime.Time,
 		Remark:      req.Remark,
 	}
 	if err := database.DB.Create(&record).Error; err != nil {
@@ -341,7 +340,7 @@ func (s *ZeroTrustService) Update(id uint, req ZeroTrustRequest) error {
 	record.PublicIP = req.PublicIP
 	record.Targets = joinTargetPairs(pairs)
 	record.SystemName = req.SystemName
-	record.ApplyTime = *req.ApplyTime
+	record.ApplyTime = req.ApplyTime.Time
 	record.Remark = req.Remark
 	return database.DB.Save(&record).Error
 }
@@ -475,13 +474,13 @@ func (s *ZeroTrustService) BatchCreateText(text string) (*BatchCreateResponse, e
 			Remark:      strings.TrimSpace(row[7]),
 		}
 		if t := strings.TrimSpace(row[6]); t != "" {
-			parsed, err := time.ParseInLocation("2006-01-02T15:04:05", t, time.Local)
+			parsed, err := utils.ParseFlexibleTime(t)
 			if err != nil {
 				resp.Errors++
-				resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 申请时间格式应为 YYYY-MM-DDTHH:mm:ss", lineNo))
+				resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 申请时间无效: %v", lineNo, err))
 				continue
 			}
-			req.ApplyTime = &parsed
+			req.ApplyTime = &utils.FlexibleTime{Time: parsed}
 		}
 
 		if _, err := s.Create(req); err != nil {

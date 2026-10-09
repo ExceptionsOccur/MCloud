@@ -86,6 +86,7 @@
 | `middleware/jwt.go` | `JWTAuth()` JWT 鉴权、`CORSMiddleware()` 跨域 |
 | `utils/password.go` | 密码哈希：`HashPassword`、`FormatPasswordHash`、`VerifyPassword` |
 | `utils/csv.go` | CSV 解析/生成、多编码检测 |
+| `utils/datetime.go` | 日期时间统一口径：`ValidateDateOnly`（严格 `YYYY-MM-DD`）、`ParseFlexibleTime`/`FlexibleTime`（RFC3339 为主 + 无时区兼容）、展示常量 `DateTimeLayout` |
 
 ### 命令工具（cmd/）
 

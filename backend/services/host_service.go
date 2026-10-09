@@ -235,6 +235,11 @@ type CreateHostRequest struct {
 }
 
 func (s *HostService) Create(req CreateHostRequest) (uint, error) {
+	req.ApplyTime = strings.TrimSpace(req.ApplyTime)
+	if err := utils.ValidateDateOnly("申请时间", req.ApplyTime); err != nil {
+		return 0, err
+	}
+
 	// Check unique private_ip
 	var count int64
 	database.DB.Model(&models.Host{}).Where("private_ip = ?", req.PrivateIP).Count(&count)
@@ -345,6 +350,14 @@ func (s *HostService) Update(id uint, req UpdateHostRequest) error {
 		if count > 0 {
 			return errors.New("内网IP已存在")
 		}
+	}
+
+	if req.ApplyTime != nil {
+		v := strings.TrimSpace(*req.ApplyTime)
+		if err := utils.ValidateDateOnly("申请时间", v); err != nil {
+			return err
+		}
+		*req.ApplyTime = v
 	}
 
 	tx := database.DB.Begin()
@@ -610,7 +623,7 @@ func (s *HostService) BatchCreateFromText(text string) (*BatchCreateResponse, er
 func (s *HostService) BatchCreate(req BatchCreateRequest) (*BatchCreateResponse, error) {
 	resp := &BatchCreateResponse{}
 
-	for _, item := range req.Hosts {
+	for i, item := range req.Hosts {
 		var count int64
 		database.DB.Model(&models.Host{}).Where("private_ip = ?", item.PrivateIP).Count(&count)
 		if count > 0 {
@@ -650,6 +663,7 @@ func (s *HostService) BatchCreate(req BatchCreateRequest) (*BatchCreateResponse,
 		_, err := s.Create(req2)
 		if err != nil {
 			resp.Errors++
+			resp.LineErrors = appendLineError(resp.LineErrors, fmt.Sprintf("第%d条: %v", i+1, err))
 		} else {
 			resp.Success++
 		}
@@ -684,6 +698,19 @@ func (s *HostService) BatchUpdate(req BatchUpdateRequest) error {
 		} else {
 			hostUpdates[k] = v
 		}
+	}
+
+	// 申请时间严格 YYYY-MM-DD（空串合法），错误信息含格式提示
+	if v, ok := appUpdates["apply_time"]; ok {
+		sv, isStr := v.(string)
+		if !isStr {
+			return errors.New("申请时间格式应为 YYYY-MM-DD")
+		}
+		sv = strings.TrimSpace(sv)
+		if err := utils.ValidateDateOnly("申请时间", sv); err != nil {
+			return err
+		}
+		appUpdates["apply_time"] = sv
 	}
 
 	// person_id 归一化为 *uint（nil 表示解除关联），并校验人员存在

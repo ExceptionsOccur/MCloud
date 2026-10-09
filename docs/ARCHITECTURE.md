@@ -138,7 +138,8 @@ go/
 │   │
 │   ├── utils/
 │   │   ├── password.go            # 密码哈希工具（SHA-256 + 盐）
-│   │   └── csv.go                 # CSV 解析/生成
+│   │   ├── csv.go                 # CSV 解析/生成
+│   │   └── datetime.go            # 日期时间统一口径（解析/校验/格式化，T-040）
 │   │
 │   └── migrations/                # 迁移 SQL（启动时 goose 执行，embed 进二进制；AutoMigrate 兜底）
 │

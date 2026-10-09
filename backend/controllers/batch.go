@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"mcloud/services"
+	"mcloud/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -59,7 +60,7 @@ func (ctrl *BatchController) BatchUpdate(c *gin.Context) {
 	}
 
 	if err := ctrl.service.BatchUpdate(req); err != nil {
-		if errors.Is(err, services.ErrPersonNotFound) {
+		if errors.Is(err, services.ErrPersonNotFound) || errors.Is(err, utils.ErrInvalidDate) {
 			Error(c, 40001, err.Error())
 			return
 		}

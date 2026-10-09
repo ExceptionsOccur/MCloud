@@ -35,6 +35,7 @@
 
 ### 2026-10-09
 
+- `-` `fix:` **T-040** 全仓日期时间格式统一（RFC3339 主+无时区兼容修零信任 T-037；主机申请时间全链路严格 `YYYY-MM-DD`；展示与备份文件名统一 `YYYY-MM-DD`；新增 `utils/datetime.go`；提交号待回填）
 - `c196f37` `fix:` **T-039** 空库启动迁移失败修复（4 表内联 UNIQUE 约束转 GORM 期望 `idx_` 索引；修 050001 Down 块；public_ips 索引 / port_mappings 外键去重；补 ip_subnets 迁移）
 - `6644d5a` `feat:` **T-038** 数据备份：8 个业务 sheet 单文件 xlsx 导出/导入（自然键 upsert 仅增改不删、单事务回滚逐行明细；`/data-backup` 页 + 8 视图设置菜单入口）
 

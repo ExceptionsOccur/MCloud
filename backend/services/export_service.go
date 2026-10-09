@@ -7,6 +7,7 @@ import (
 
 	"mcloud/database"
 	"mcloud/models"
+	"mcloud/utils"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -153,7 +154,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 		ztRows = append(ztRows, []interface{}{
 			z.ApplyUnit, z.AccountName, z.Contact, z.PublicIP,
 			strings.Join(parts, ","), z.SystemName,
-			z.ApplyTime.Format("2006-01-02 15:04:05"), z.Remark,
+			z.ApplyTime.Format(utils.DateTimeLayout), z.Remark,
 		})
 	}
 	if err := writeSheetRows(f, "zero_trusts", ztRows); err != nil {
@@ -217,7 +218,7 @@ func sheetSpecFor(name string) sheetSpec {
 	return sheetSpec{}
 }
 
-// ExportFilename 导出文件名 mcloud_backup_YYYYMMDD.xlsx
+// ExportFilename 导出文件名 mcloud_backup_YYYY-MM-DD.xlsx（日期统一 YYYY-MM-DD）
 func ExportFilename() string {
-	return "mcloud_backup_" + time.Now().Format("20060102") + ".xlsx"
+	return "mcloud_backup_" + time.Now().Format("2006-01-02") + ".xlsx"
 }
