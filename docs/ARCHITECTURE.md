@@ -46,12 +46,13 @@
 
 ## 目录结构
 
-> 快照日期：2026-10-06（由 `scripts/check_docs.sh` 的 tree 检查守护：树中文件必须存在、已跟踪文件必须登记）
+> 快照日期：2026-10-09（由 `scripts/check_docs.sh` 的 tree 检查守护：树中文件必须存在、已跟踪文件必须登记）
 
 ```
 go/
 ├── README.md                      # 功能特性与使用说明
 ├── AGENTS.md                      # 项目总纲（统一入口）
+├── .gitignore                     # Git 忽略规则（.env、dist/、node_modules、IDE/OS 文件）
 ├── scripts/                       # 仓库自动化脚本
 │   └── check_docs.sh              # 文档一致性校验（链接/目录树/状态快照/计数/提交号）
 │
@@ -170,6 +171,8 @@ go/
             └── global.css         # 全局样式
 ```
 
+> **迁移索引口径（T-039）**：唯一索引统一采用 GORM 期望的 `idx_` 前缀命名（`idx_<表>_<列>`），历史 `*_key` / `uni_` 重复约束由迁移收敛（`backend/migrations/20261009000001_align_unique_indexes_and_fks.sql`）。
+
 ---
 
 ## 数据模型
@@ -187,6 +190,8 @@ go/
 | `zero_trusts` | `models/zero_trust.go` | 零信任接入申请台账 |
 | `port_mappings` | `models/port_mapping.go` | 端口映射台账（公网IP↔内网主机多端口；域名可选） |
 | `public_ips` | `models/public_ip.go` | 公网IP资源台账（IP/运营商/出口位置/备注） |
+
+> 库中另有 goose 运行时表 `goose_db_version`（记录迁移版本，由 goose 维护），不计入业务表。
 
 ### users 表
 
@@ -219,7 +224,7 @@ go/
 | 实例ID | `instance_id` | VARCHAR(128) | |
 | 主机名称 | `name` | VARCHAR(128) | NOT NULL |
 | 内网IP | `private_ip` | VARCHAR(45) | NOT NULL, UNIQUE |
-| 是否映射公网 | `ip_mapped` | BOOLEAN | DEFAULT FALSE |
+| 是否映射公网 | `ip_mapped` | BOOLEAN | NOT NULL, DEFAULT FALSE |
 | 资产类型 | `asset_type` | VARCHAR(32) | 可选值：虚拟机、裸金属服务器 |
 | 操作系统 | `os` | VARCHAR(64) | |
 | CPU核数 | `cpu` | INTEGER | |
@@ -241,7 +246,7 @@ go/
 | 字段 | 列名 | 类型 | 约束 |
 |------|------|------|------|
 | ID | `id` | SERIAL | PRIMARY KEY |
-| 主机ID | `host_id` | INTEGER | NOT NULL, UNIQUE, FK → hosts(id) ON DELETE CASCADE |
+| 主机ID | `host_id` | INTEGER | NOT NULL, UNIQUE, FK → hosts(id)（**无 ON DELETE 动作**，不级联） |
 | 申请单位 | `apply_unit` | VARCHAR(128) | |
 | 申请人 | `applicant` | VARCHAR(64) | |
 | 申请人联系方式 | `applicant_contact` | VARCHAR(64) | |
@@ -297,8 +302,8 @@ go/
 | ID | `id` | SERIAL | PRIMARY KEY |
 | 公网IP | `public_ip` | VARCHAR(45) | NOT NULL |
 | 内网主机 | `host_id` | BIGINT | NOT NULL, FK → hosts(id) |
-| 外网端口 | `external_ports` | TEXT | 逗号分隔多端口 |
-| 内网端口 | `internal_ports` | TEXT | 与外网端口数量/顺序一一对应 |
+| 外网端口 | `external_ports` | TEXT | NOT NULL（默认 `''`），逗号分隔多端口 |
+| 内网端口 | `internal_ports` | TEXT | NOT NULL（默认 `''`），与外网端口数量/顺序一一对应 |
 | 域名 | `domain` | VARCHAR(255) | 可选；非空时唯一 |
 | 运营商 | `isp` | VARCHAR(128) | |
 | 出口位置 | `exit_location` | VARCHAR(128) | IP 所在地，选填 |
@@ -322,7 +327,7 @@ go/
 - `private_ip` 唯一约束，防止重复内网 IP
 - `instance_id` 可选，用于关联云平台实例
 - `is_db_server` 使用 PostgreSQL 原生 BOOLEAN
-- `host_applications.host_id` 外键关联 `hosts.id`，级联删除
+- `host_applications.host_id` 外键关联 `hosts.id`（约束 `fk_hosts_application`），**无 ON DELETE 动作、不级联**；删除主机由应用层在事务内先删申请信息再删主机（`services/host_service.go` 的 `Delete`）
 - `hosts.person_id` 外键关联 `persons(id)`，可空；人员被主机引用时禁止删除（应用层校验，返回 `40901`）
 - `persons.name` 必填，姓名 + 联系方式 + 单位完全重复视为同一人员
 - `ip_subnets.cidr` 仅允许 `/24` IPv4 网段，写入时自动规范化为网络地址（末位归 0）

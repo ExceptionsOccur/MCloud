@@ -6,7 +6,7 @@
 
 ## 功能完成度
 
-> 计数（2026-10-09）：核心功能 **12/12** 完成；待开发 **2** 项；技术债 **10** 项。
+> 计数（2026-10-09）：功能模块 **18** 项（**16** 完成 / **2** 待开发）；技术债 **9** 项。
 
 | 模块 | 状态 | 说明 |
 |------|------|------|
@@ -35,9 +35,10 @@
 
 ### 2026-10-09
 
-- `4ccd241` `docs:` **T-041** 协议补强：每完成 5 条任务的周期回顾（AGENTS 会话协议 E 触发/范围/处理 + ROADMAP 回顾锚点 T-040 + 状态快照/DEVELOPMENT 同步；偏差先报告人类再修）
-- `9522789` `fix:` **T-040** 全仓日期时间格式统一（RFC3339 主+无时区兼容修零信任 T-037；主机申请时间全链路严格 `YYYY-MM-DD`；展示与备份文件名统一 `YYYY-MM-DD`；新增 `utils/datetime.go`）
-- `c196f37` `fix:` **T-039** 空库启动迁移失败修复（4 表内联 UNIQUE 约束转 GORM 期望 `idx_` 索引；修 050001 Down 块；public_ips 索引 / port_mappings 外键去重；补 ip_subnets 迁移）
+- `f9314e0` `docs:` 全量回顾偏差修复（T-036~T-041 回写缺口与工作流/业务文档语义偏差 40+ 项；计数重算 16/2、技术债 10→9、锚点推进 T-041；入队 T-042~044）
+- `4ccd241` `docs:` **T-041** 周期回顾协议：AGENTS 会话协议 E（触发/范围/处理）+ ROADMAP 回顾锚点 T-040 + 快照/DEVELOPMENT 同步；偏差先报告人类再修
+- `9522789` `fix:` **T-040** 全仓日期时间格式统一（RFC3339 主+无时区兼容修 T-037；主机申请时间严格 `YYYY-MM-DD`；新增 `utils/datetime.go`；口径回写 API）
+- `c196f37` `fix:` **T-039** 空库启动迁移失败修复（4 表内联 UNIQUE 转 GORM `idx_` 口径；修 050001 Down 块；索引/外键去重；补 ip_subnets 迁移）
 - `6644d5a` `feat:` **T-038** 数据备份：8 个业务 sheet 单文件 xlsx 导出/导入（自然键 upsert 仅增改不删、单事务回滚逐行明细；`/data-backup` 页 + 8 视图设置菜单入口）
 
 ### 2026-10-08
@@ -51,12 +52,12 @@
 - `130388a` `feat:` **T-015** 公网 IP 字段改映射布尔 + 主机详情展示双台账关联（`ip_mapped`；CSV/表单/筛选同步；迁移 DROP public_ip）
 - `e83db90` `feat:` **T-030** 域名台账字段改造（`isp`/`host_id`/`host_port`；移除 `provider`/`expires_at`；主机删除前校验域名引用）
 - `1f70851` `feat:` **T-029** 零信任台账新增系统名称字段（`system_name` 选填；列表列/表单位于申请端口后；迁移 SQL + API/ARCHITECTURE 同步）
-- `82e0e07` `feat:` **T-016** Goose 迁移执行器实装（`goose/v3` + embed 执行 `migrations/*.sql`，AutoMigrate 兜底；修复 cloud_resources 幂等；口径反转回写）
+- `82e0e07` `feat:` **T-016** Goose 迁移执行器实装（`goose/v3` + embed 执行迁移 SQL，AutoMigrate 兜底；修复 cloud_resources 幂等；口径反转回写）
 - `2e32a5b` `fix:` **T-028** 前端导航修正（设置菜单去掉台账入口；ZeroTrustLedger 补域名 Tab）
 - `ebb52de` `fix:` **T-027** 前端 ESLint 警告清零（~724→0；`defineExpose` 修复改密弹窗；移除 IpStatistics console）
 - `c5208c6` `docs:` **T-026** 协议补强：多任务会话串行合并（AGENTS A.2/A.4 + 分支协议 + DEVELOPMENT 协作流程）
 - `4e0190c` `feat:` **T-014** 域名台账上线（models/services/controllers/routes + 迁移 SQL + 前端 `/domain-ledger` 页；域名唯一约束）
-- `6a6e760` `feat:` **T-013** 零信任台账上线（models/services/controllers/routes + 迁移 SQL + 前端 `/zero-trust` 页；申请主机 FK 级联校验；顺带修前端 lint 既有 error 并加 `.eslintignore`）
+- `6a6e760` `feat:` **T-013** 零信任台账上线（models/services/controllers/routes + 迁移 + `/zero-trust` 页；引用主机校验；修前端 lint error）
 
 ### 2026-10-06
 
@@ -69,8 +70,8 @@
 
 > 本日文档改造整体提交于 `0237d40`（T-001 协作文档体系 + 红线 7 按文件类别授权 + 入队 T-013/T-014/T-015；细分见该提交 message）。
 - `docs:` 会话协议新增第 4 步「定位代码」（读 CODE_INDEX 补齐任务「定位」字段，补不出先声明不盲写）；ROADMAP 字段约定新增「定位」，14 条 todo 任务已回填涉及文件清单
-- `docs:` 补齐 CODE_INDEX 缺失的**人员管理模块**（models/controllers/services/api/views/功能映射/`persons` 表 共 8 处）；修正 README「4 个功能页面」为 5 个并补 `/personnel` 与设置菜单入口
-- `docs:` **统一迁移口径**（消除红线 9 与运行时的矛盾）：迁移 SQL = 归档/评审要求（不被执行），运行时由启动时 `AutoMigrate` 兜底——DEVELOPMENT.md 迁移规范加口径表、AGENTS 红线 9 改写、PROJECT_STATUS 注意事项 8 与 ARCHITECTURE 目录树同步（代码事实：`go.mod` 无 goose，`Migrate()` 仅 AutoMigrate+seedAdmin）
+- `docs:` 补齐 CODE_INDEX 缺失的**人员管理模块**（功能映射/`persons` 等共 8 处）；修正 README 页面数与 `/personnel` 入口
+- `docs:` **统一迁移口径**：迁移 SQL 归档口径（不执行）确立、运行时 AutoMigrate 兜底——后经 T-016 反转为 goose 主路径（红线 9 / DEVELOPMENT / 注意事项 8 同步）
 - `docs:` 排查确认 **goose 从未实装**（存量 `-- +goose` SQL 从未执行、`go.mod`/`go.sum` 无依赖、全仓库无调用）；按人类决定暂不实装，新增 `T-016` 入队并标注"口径反转回写"要求
 
 ### 2026-09-30
@@ -110,8 +111,7 @@
 | 无自动化测试 | 现有测试约定为规划，尚无实际测试代码 |
 | 后端单文件过大 | `services/host_service.go` 22KB 混杂 CRUD/批量/CSV，待拆分 |
 | controller 混入业务逻辑 | `controllers/csv.go` 含行校验/去重，违反红线 1，待下沉 |
-| 前端大组件 | `IpStatistics.vue` 746 行等，待抽 composables |
-| 数据库端口映射 | 数据库容器若未映射 5432 端口，后端会连不上（需 `-p 5432:5432`） |
+| 前端大组件 | `IpStatistics.vue` 835 行等，待抽 composables |
 | GORM 列名 | 缩写字段（如 `CIDR`）默认命名异常（`c_id_r`），须显式 `gorm:"column:xxx"` |
 | 探测依赖 ping | 依赖宿主机 `ping` 命令；Linux `-W` 单位为秒，已改用 context 控制 100ms 超时 |
 | 密码哈希强度 | SHA-256 + 盐，非慢哈希，生产环境建议升级 bcrypt |
