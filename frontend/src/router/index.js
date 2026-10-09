@@ -10,6 +10,7 @@ import PersonnelManagement from '../views/PersonnelManagement.vue'
 import PublicIPManagement from '../views/PublicIPManagement.vue'
 import ZeroTrustLedger from '../views/ZeroTrustLedger.vue'
 import MappingLedger from '../views/MappingLedger.vue'
+import DataBackup from '../views/DataBackup.vue'
 
 const routes = [
   {
@@ -64,6 +65,12 @@ const routes = [
     path: '/mapping-ledger',
     name: 'MappingLedger',
     component: MappingLedger,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/data-backup',
+    name: 'DataBackup',
+    component: DataBackup,
     meta: { requiresAuth: true }
   }
 ]

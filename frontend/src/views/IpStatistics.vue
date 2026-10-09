@@ -66,6 +66,9 @@
               >
                 公网IP录入
               </el-dropdown-item>
+              <el-dropdown-item command="dataBackup">
+                数据备份
+              </el-dropdown-item>
               <el-dropdown-item command="changePassword">
                 修改密码
               </el-dropdown-item>
@@ -348,6 +351,8 @@ function handleCommand(command) {
     router.push('/login')
   } else if (command === 'changePassword') {
     changePasswordDialog.value?.open()
+  } else if (command === 'dataBackup') {
+    router.push('/data-backup')
   } else if (command === 'cloudResource') {
     cloudResourceDialog.value?.open()
   } else if (command === 'personnel') {

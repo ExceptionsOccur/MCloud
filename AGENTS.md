@@ -2,7 +2,7 @@
 
 > **本文件是所有 AI 协作会话的唯一必读入口**，核心状态与执行协议已内联，读完本文件即可开工，无需先读其他文档。
 > 人类可读的项目介绍见 [README.md](./README.md)；需要细节时按「文档地图」跳转。
-> **最后更新：2026-10-08**
+> **最后更新：2026-10-09**
 
 ## 会话协议
 
@@ -63,14 +63,14 @@
 
 | 字段 | 值 |
 |------|-----|
-| last_updated | 2026-10-08 |
+| last_updated | 2026-10-09 |
 | in_progress | 无 |
 | next_task | `T-002` 后端 `host_service.go` 拆分（= ROADMAP todo 首条，P1 最高优先级） |
 | todo（P1） | `T-002` host_service 拆分 → `T-003` csv controller 下沉 → `T-004` composables 抽取 → `T-005` IpStatistics 拆分 → `T-006` 测试骨架 → `T-037` 零信任 apply_time 解析 |
 | todo（P2） | `T-008` 报表导出、`T-009` bcrypt 升级、`T-010` 路由拆分、`T-011` ping 解耦、`T-012` 文档巡检、`T-019` 抽 Layout/AppNav、`T-020` config ServerPort 硬编码（暂不执行）、`T-022` WS probe token 校验 |
 | blocked | 无 |
-| 功能完成度 | 核心功能 12/12 完成；待开发 2 项 + 技术债 10 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
-| 已知风险 | 无测试、`host_service.go` 待拆分、`csv.go` 违反红线 1、密码为 SHA-256（详见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
+| 功能完成度 | 核心功能 12/12 完成；待开发 2 项 + 技术债 11 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
+| 已知风险 | 无测试、`host_service.go` 待拆分、`csv.go` 违反红线 1、密码为 SHA-256、空库 `Migrate()` 失败（详见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
 
 > T-036 零信任多组配对+公网IP带出地区已合并 main（提交号见 ROADMAP）；T-035/T-034/T-033/T-032 已合并 main。多任务串行合并协议已生效。
 

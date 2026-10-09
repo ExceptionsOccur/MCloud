@@ -58,6 +58,15 @@ func SetupRoutes(r *gin.Engine) {
 		csvGroup.GET("/template", csv.Template)
 	}
 
+	// Data Exchange (T-038) - protected
+	dataExchange := controllers.NewDataExchangeController()
+	deGroup := api.Group("")
+	deGroup.Use(middleware.JWTAuth())
+	{
+		deGroup.GET("/export/all", dataExchange.Export)
+		deGroup.POST("/import/all", dataExchange.Import)
+	}
+
 	// Cloud Resources - protected
 	cloudResource := controllers.NewCloudResourceController()
 	crGroup := api.Group("/cloud-resources")
