@@ -58,10 +58,11 @@
   - 验收标准：前端带时间的新增与编辑提交返回 `code 0`，无时区时间按服务器本地时区解释；`go build`+`golangci-lint`+`lint:check`+`build` 全绿
   - 分支：`fix/zero-trust-apply-time`
   - 回写：API.md `apply_time` 格式口径
-- [ ] **T-008** 数据导出报表（Excel/CSV） ｜ P2 ｜ 负责: —
-  - 内容：报表导出接口与前端入口
-  - 定位：新建 `backend/services/report_service.go` + `controllers/report.go`，注册于 `routes/routes.go`；前端入口 `components/SearchToolbar.vue` / `views/HostManagement.vue`；CSV 工具复用 `utils/csv.go`（BOM 红线）
-  - 验收标准：新 API 记入 `docs/API.md`；导出文件带 BOM 可被 Excel 正确打开
+- [ ] **T-008** 数据导出报表（Excel/CSV） ｜ P2 ｜ 负责: — ｜ 备注: T-038 后收窄（2026-10-09）
+  - 内容：全量导出已覆盖——主机 CSV（`GET /api/export`，BOM）+ 8 表 xlsx 备份（T-038 `/api/export/all`）；剩余缺口 = **按筛选条件导出**：`csv.Export` 裸 `Find(&hosts)` 不带筛选、前端 `exportCSV()` 无参，导出与列表所见不一致；补齐筛选参数透传（接口复用列表筛选 + SearchToolbar 传参），原「新建 report_service.go」定位作废
+  - 定位：`backend/controllers/csv.go`（`Export` 裸查全表）、`backend/services/host_service.go`（列表筛选逻辑复用）、`frontend/src/api/csv.js`（`exportCSV()` 无参）、`frontend/src/components/SearchToolbar.vue`（`handleExport`）
+  - 验收标准：带筛选导出的行数与列表一致；`go build` + `golangci-lint` + `lint:check` + `build` 通过；`docs/API.md` 同步参数
+  - 回写：API.md `GET /api/export` 查询参数
 - [ ] **T-009** 密码哈希升级 bcrypt ｜ P2 ｜ 负责: —
   - 内容：慢哈希替换 SHA-256，登录支持 `salt$hash` 旧格式平滑迁移
   - 定位：`backend/utils/password.go`（`HashPassword`/`VerifyPassword`）、`services/auth_service.go`、`database/postgres.go`（`seedAdmin`）+ 迁移 SQL
