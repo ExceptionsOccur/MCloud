@@ -5,4 +5,4 @@ CREATE UNIQUE INDEX IF NOT EXISTS uni_public_ips_ip ON public_ips (ip);
 
 -- +goose Down
 DROP INDEX IF EXISTS uni_public_ips_ip;
-ALTER TABLE public_ips ADD CONSTRAINT IF NOT EXISTS public_ips_ip_key UNIQUE (ip);
+ALTER TABLE public_ips ADD CONSTRAINT public_ips_ip_key UNIQUE (ip);
