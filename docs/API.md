@@ -9,6 +9,7 @@
 - [WebSocket 探测帧协议](#websocket-探测帧协议)
 - [筛选参数说明](#筛选参数说明)
 - [批量操作请求体](#批量操作请求体)
+- [数据备份 xlsx 导出/导入](#数据备份-xlsx-导出导入)
 
 ---
 
@@ -81,6 +82,13 @@
 | POST | `/api/import` | `csv.Import` | 上传 CSV 批量导入 |
 | GET | `/api/export` | `csv.Export` | 导出 CSV |
 | GET | `/api/template` | `csv.Template` | 下载导入模板 |
+
+### 数据备份（需 JWT）
+
+| 方法 | 路由 | Controller | 说明 |
+|------|------|-----------|------|
+| GET | `/api/export/all` | `dataExchange.Export` | 导出 8 个业务 sheet 为单个 xlsx（附件下载） |
+| POST | `/api/import/all` | `dataExchange.Import` | 上传 xlsx 整体导入（multipart 字段 `file`，upsert + 单事务回滚） |
 
 ### 云资源总览（需 JWT）
 
@@ -366,3 +374,29 @@ POST /api/port-mappings/batch
 - 指定的人员不存在时返回 `40001`
 - 列表与详情接口返回 `person` 对象（已关联时）
 - 前端「申请人」为下拉 + 手输：选择已有人员直接带出联系方式/单位；手输新人员时前端先调用 `POST /api/persons` 写入人员库，再用返回的 `id` 作为 `person_id`
+
+## 数据备份 xlsx 导出/导入
+
+`GET /api/export/all` 返回附件（`Content-Disposition: attachment`，文件名 `mcloud_backup_YYYYMMDD.xlsx`），单文件含 8 个工作表，顺序即导入依赖顺序：
+
+`persons` → `public_ips` → `cloud_resources` → `ip_subnets` → `hosts` → `host_applications` → `zero_trusts` → `port_mappings`
+
+- 不含 `users`，不含自增 id/时间戳列；关联一律用自然键表达：`hosts` 用「人员姓名/人员联系方式」列、`host_applications` 与 `port_mappings` 用宿主「内网IP」、`zero_trusts` 的「接入目标」为 `内网IP:端口`（多组逗号分隔）
+- `hosts.ip_mapped`、`port_mappings` 的运营商/出口位置为派生列，不导出（导入后由后端重算/从资源池带出）
+- 导入按各表复合自然键 upsert：`persons`=姓名+联系方式、`public_ips`=公网IP、`cloud_resources`=区域、`ip_subnets`=网段CIDR、`hosts`=内网IP、`host_applications`=宿主内网IP、`zero_trusts`=申请单位+账户名+系统名称、`port_mappings`=公网IP+宿主内网IP+外网端口
+- 语义：**仅新增与更新，不删除**已有数据；sheet 与列头按名匹配（列顺序可变），全空行跳过
+- `POST /api/import/all`：`multipart/form-data`，字段 `file`，仅 `.xlsx`，≤ 20MB
+
+导入响应 `data`（导入报告）：
+
+```json
+{
+  "committed": true,
+  "sheets": [{ "sheet": "persons", "rows": 29, "created": 0, "updated": 0, "skipped": 29 }],
+  "errors": []
+}
+```
+
+- `sheets[]` 各表统计：`rows` 为数据行数，`created + updated + skipped = rows`
+- `committed=false`：存在行级错误，**单事务已整体回滚、库数据不变**；`errors[]` 逐行给出 `sheet`（工作表名）、`row`（Excel 行号，表头为第 1 行）、`message`；此时 `sheets[]` 仅为事务内已执行但未落库的统计
+- 错误码：非 `.xlsx` / 缺工作表 / 缺列 / 表头重复 / 超限 → `40001`；导入执行失败 → `50001`；未认证 → `40101`

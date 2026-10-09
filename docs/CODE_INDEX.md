@@ -51,6 +51,7 @@
 | `controllers/host.go` | 主机 CRUD（`Filter`/`Get`/`Create`/`Update`/`Delete`） |
 | `controllers/batch.go` | 批量添加、批量编辑 |
 | `controllers/csv.go` | CSV 导入、导出、下载模板 |
+| `controllers/data_exchange.go` | 数据备份：8 表 xlsx 导出（`Export`）、导入（`Import`，20MB 限制 + 错误码映射） |
 | `controllers/cloud_resource.go` | 云资源列表、按区域更新 |
 | `controllers/stats.go` | IP 使用情况、单点探测、业务统计 |
 | `controllers/subnet.go` | IP 网段 CRUD |
@@ -74,6 +75,9 @@
 | `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`normalizeTargetPairs`（配对校验）；`HostReferencedByZeroTrust`/`ZeroTrustsByHost` |
 | `services/port_mapping_service.go` | 端口映射台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`refreshHostIPMapped` |
 | `services/public_ip_service.go` | 公网IP资源台账 | `List`/`Create`/`Update`/`Delete`、`normalizePublicIP`（IP 唯一/格式校验） |
+| `services/data_exchange.go` | 数据备份公共定义 | `dataExchangeSheets`（8 sheet + 中文列头）、`ImportReport`/`SheetStat`/`RowError` |
+| `services/export_service.go` | 数据备份导出 | `Export`（8 sheet 依赖序写入）、`ExportFilename` |
+| `services/import_service.go` | 数据备份导入 | `Import`（单事务 + 回滚）、`parseWorkbook`（结构校验）、`apply*`（按自然键 upsert） |
 
 ### 中间件与工具
 
@@ -110,6 +114,7 @@
 | `api/auth.js` | `/auth/login`、`/auth/me`、`/auth/password` |
 | `api/host.js` | `/hosts/*`、`/batch/hosts` |
 | `api/csv.js` | `/import`、`/export`、`/template` |
+| `api/dataExchange.js` | `/export/all`、`/import/all` |
 | `api/cloud_resource.js` | `/cloud-resources` |
 | `api/stats.js` | `/stats/ip-usage`、`/stats/probe`、`/stats/business` |
 | `api/subnet.js` | `/ip-subnets` |
@@ -141,6 +146,7 @@
 | `views/PublicIPManagement.vue` | `/public-ip` | 公网IP资源台账（搜索 + 新增/编辑/删除，设置菜单入口） |
 | `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 配对行表单 + 公网IP资源池带出接入地区 + 批量添加） |
 | `views/MappingLedger.vue` | `/mapping-ledger` | 端口映射台账（多端口标签 + 批量添加） |
+| `views/DataBackup.vue` | `/data-backup` | 数据备份（8 表 xlsx 导出/导入 + 导入报告展示，设置菜单入口） |
 
 ### 组件（components/）
 
@@ -182,6 +188,7 @@
 | **主机筛选/搜索** | `services/host_service.go` → `Filter` | `components/SearchToolbar.vue` |
 | **批量增改** | `controllers/batch.go` `services/host_service.go` → `BatchCreate`/`BatchUpdate` | `components/BatchAddDialog.vue` `components/BatchEditDialog.vue` |
 | **CSV 导入导出** | `controllers/csv.go` `services/host_service.go` `utils/csv.go` | `components/ImportDialog.vue` `api/csv.js` |
+| **数据备份 xlsx 导出/导入** | `controllers/data_exchange.go` `services/export_service.go` `services/import_service.go` | `views/DataBackup.vue` `api/dataExchange.js` |
 | **云资源录入** | `controllers/cloud_resource.go` `services/cloud_resource_service.go` | `components/CloudResourceDialog.vue` `stores/cloudResource.js` |
 | **资源统计** | `controllers/cloud_resource.go` + `GET /api/hosts` | `views/ResourceStatistics.vue` `stores/cloudResource.js` |
 | **IP 使用位图** | `controllers/stats.go` → `IPUsage` `services/stats_service.go` → `GetIPUsage` | `views/IpStatistics.vue` `stores/stats.js` |

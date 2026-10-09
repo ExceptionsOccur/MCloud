@@ -6,7 +6,7 @@
 
 ## 功能完成度
 
-> 计数（2026-10-08）：核心功能 **12/12** 完成；待开发 **2** 项；技术债 **10** 项。
+> 计数（2026-10-09）：核心功能 **12/12** 完成；待开发 **2** 项；技术债 **11** 项。
 
 | 模块 | 状态 | 说明 |
 |------|------|------|
@@ -27,10 +27,15 @@
 | 自动化测试 | ⏳ 待开发 | 后端 Service/Controller、前端组件测试均未编写 |
 | Goose 迁移执行器 | ✅ 完成 | `T-016` 启动时 goose 执行 `migrations/*.sql`（embed），AutoMigrate 兜底；存量 dev 库首跑+幂等已实测 |
 | 公网 IP 资源录入 | ✅ 完成 | `T-031` `public_ips` 资源池（IP/运营商/备注），设置菜单 + `/public-ip` 独立页 |
+| 数据备份 | ✅ 完成 | `T-038` 8 个业务 sheet 导出为单个 xlsx / 导入自然键 upsert（单事务失败整体回滚），`/data-backup` 页 + 设置菜单入口 |
 
 ## 近期变更记录
 
 > 按日期倒序，保留最近 3 个月；每条注明提交号，完整历史用 `git log --oneline`。文风：每条 ≤ 120 字一行摘要，禁止枚举（见 [DEVELOPMENT.md](./DEVELOPMENT.md) 文档回写文风）。
+
+### 2026-10-09
+
+- `-` `feat:` **T-038** 数据备份：8 个业务 sheet 单文件 xlsx 导出/导入（自然键 upsert 仅增改不删、单事务回滚逐行明细；`/data-backup` 页 + 8 视图设置菜单入口）
 
 ### 2026-10-08
 
@@ -109,6 +114,7 @@
 | 密码哈希强度 | SHA-256 + 盐，非慢哈希，生产环境建议升级 bcrypt |
 | ServerPort 硬编码 | `config.go:43` 默认值 `"5677"` 违反红线 3（配置外置），待改环境变量，`T-020` 已入队 |
 | WS 通道无 JWT 校验 | `/api/ws/probe` 仅校验 `token` 非空（`routes.go`），任意非空字符串即可建连并发起探测；`T-022` 已入队 |
+| 空库启动迁移失败 | 空库上 goose 内联 UNIQUE 建出 `*_key` 约束（`users`/`hosts`/`host_applications`/`cloud_resources`），gorm `ColumnTypes.Unique()` 只认约束而模型标签是 `uniqueIndex`（只建 `idx_` 索引），`MigrateColumnUnique` 按约定名 `uni_*` DROP，`DropConstraint` 无存在性守卫 → 42704 → `Migrate()` `log.Fatalf` 退出（全新部署启动即 crash-loop；`HostApplication`/`PortMapping` 因 schema 反向关系被 `ReorderModels` 连带迁到 `hosts` 而同炸；dev 库应用表零 UNIQUE 约束故不触发）。修复先例 `20261008050001`（`public_ips` 转 `uni_` 索引，但其 Down 块 `ADD CONSTRAINT IF NOT EXISTS` 语法非法，且与 AutoMigrate 叠出重复唯一索引）；`ip_subnets` 无迁移 SQL 仅靠 AutoMigrate |
 
 ## 注意事项
 

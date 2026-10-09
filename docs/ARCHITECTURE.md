@@ -102,6 +102,7 @@ go/
 │   │   ├── host.go                # 主机 CRUD
 │   │   ├── batch.go               # 批量添加/编辑
 │   │   ├── csv.go                 # CSV 导入/导出/模板
+│   │   ├── data_exchange.go       # 数据备份 xlsx 导出/导入（T-038）
 │   │   ├── cloud_resource.go      # 云资源总览
 │   │   ├── person.go              # 人员 CRUD
 │   │   ├── zero_trust.go          # 零信任台账 CRUD
@@ -124,7 +125,10 @@ go/
 │   │   ├── public_ip_service.go   # 公网IP资源台账业务逻辑
 │   │   ├── stats_service.go       # IP 使用统计 + 连通性探测
 │   │   ├── business_stats.go      # 业务统计聚合（项目/公司/人员）
-│   │   └── subnet_service.go      # IP 网段业务逻辑（/24 校验）
+│   │   ├── subnet_service.go      # IP 网段业务逻辑（/24 校验）
+│   │   ├── data_exchange.go       # 数据备份公共定义（8 sheet 规格 + 导入报告）
+│   │   ├── export_service.go      # 数据备份导出（8 sheet xlsx）
+│   │   └── import_service.go      # 数据备份导入（自然键 upsert + 单事务回滚）
 │   │
 │   ├── routes/
 │   │   └── routes.go              # 路由注册（公开 + 鉴权 + WebSocket）
@@ -154,8 +158,8 @@ go/
         │   └── index.js           # 路由配置 + 路由守卫
         │
         ├── stores/                # Pinia 状态：auth / host / cloudResource / stats / business
-        ├── api/                   # API 封装：index / auth / host / csv / cloud_resource / person / zero_trust / domain / stats / subnet
-        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / PublicIPManagement / ZeroTrustLedger / MappingLedger
+        ├── api/                   # API 封装：index / auth / host / csv / dataExchange / cloud_resource / person / zero_trust / port_mapping / public_ip / stats / subnet
+        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / PublicIPManagement / ZeroTrustLedger / MappingLedger / DataBackup
         ├── components/            # 组件：工具栏/表格/各类弹窗
         │
         ├── utils/

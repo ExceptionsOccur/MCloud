@@ -8,6 +8,7 @@
 - [JWT 中间件](#jwt-中间件)
 - [主机搜索/筛选](#主机搜索筛选)
 - [CSV 导入导出](#csv-导入导出)
+- [数据备份 xlsx 导出/导入](#数据备份-xlsx-导出导入)
 - [IP 连通性探测（颜色状态机）](#ip-连通性探测颜色状态机)
 - [资源统计（区分运行状态）](#资源统计区分运行状态)
 - [业务统计聚合](#业务统计聚合)
@@ -93,6 +94,24 @@ var CSVHeaders = []string{
 ```
 
 导出 CSV 需带 BOM（`\ufeff`）以便 Excel 正确识别 UTF-8。
+
+## 数据备份 xlsx 导出/导入
+
+与「CSV 导入导出」（仅主机单表）互补，设置菜单「数据备份」进入 `/data-backup`，提供 8 个业务 sheet 的整库备份。
+
+### 导出
+
+- `GET /api/export/all` 返回单个 `.xlsx`（excelize），8 个 sheet 按导入依赖序排列：`persons` → `public_ips` → `cloud_resources` → `ip_subnets` → `hosts` → `host_applications` → `zero_trusts` → `port_mappings`
+- 列头为中文、按名匹配；不导出 `users`、自增 id 与时间戳；关联用自然键表达：`hosts` 人员列（姓名+联系方式，由 `person_id` 解析）、宿主一律用「内网IP」、零信任「接入目标」由存储值 `host_id:port` 解析为 `内网IP:端口`
+- 派生列不导出：`hosts.ip_mapped`、`port_mappings` 的运营商/出口位置（由公网IP资源池带出）
+
+### 导入（upsert）
+
+- 结构校验先行：非 `.xlsx`、缺 sheet、缺列、表头重复直接返回结构错误（`40001`），不进入事务
+- 逐行解析复用既有规范化：`normalizeCIDR`（/24）、`parsePortList`（端口列表等长校验）、`normalizeTargetPairs`（配对去重）；人员按姓名(+联系方式)解析 `person_id`、主机按内网IP解析 `host_id`、公网IP须在 `public_ips` 资源池
+- 每个 sheet 按复合自然键定位已有记录：值一致 → `skipped`，不一致 → `updated`，不存在 → `created`；**仅新增与更新，不执行删除**
+- 单事务：任一行错误累计到 `errors` 并回滚（`errImportRolledBack`），返回 `committed=false` 与逐行明细，库数据不变；全部通过后重算 `hosts.ip_mapped`
+- 详见 [API.md · 数据备份 xlsx 导出/导入](./API.md#数据备份-xlsx-导出导入)
 
 ## IP 连通性探测（颜色状态机）
 
