@@ -36,6 +36,8 @@
 
 ### 2026-10-10
 
+- `aba8246` `docs:` **T-012** 文档一致性巡检：路由/错误码/CSV 列/筛选参数/T-id/页面路由等全量对照通过，修复位图术语与 T-019 定位处数 2 处口径偏差，check_docs 0/0
+
 - `dfd2ac7` `feat:` **T-011** 探测去宿主机 ping 依赖：纯 Go ICMP（`x/net/icmp`，udp4→raw socket→TCP 22/3389 兜底）替代 `exec ping`，状态机单测覆盖，技术债「探测依赖 ping」关闭
 - `c27e306` `feat:` **T-009** 密码哈希升级 bcrypt：旧 `salt$hash` 登录兼容并自动升级（cost 10），`seedAdmin`/`resetpw` 统一新格式，无需迁移 SQL（VARCHAR(256) 兼容），技术债「密码哈希强度」关闭
 - `c71d422` `feat:` **T-008** 主机 CSV 按筛选条件导出：`ExportCSV` 复用列表筛选（抽 `applyHostFilter` 共享），前端导出传当前 filters，导出与列表所见一致（API.md 同步）
