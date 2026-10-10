@@ -26,13 +26,7 @@
 
 ## in_progress
 
-- [ ] **T-049** 删除 `port_mappings` 冗余列 `isp`/`exit_location` ｜ P1 ｜ 负责: opencode mimo-v2.6-flash-free 2026-10-10 ｜ 备注: 人类 2026-10-09 确认删列（分析修订版结论）
-  - 依赖：T-048 合并后（同为 `migrations/` 改动，串行）——已满足
-  - 内容：两列系历史遗留的传递依赖（全项目唯一 3NF/BCNF 违反），且前端表单/批量文本/xlsx 导入导出均不写入，仅裸 API 可写，实测已与 `public_ips` 值漂移。删除两列，读取统一从 `public_ips` JOIN 带出（对齐 `zero_trusts` 的正确做法）；移除 `List` 内存回填与双表 LIKE 搜索；`PortMappingRequest` 删对应字段。口径变更：映射台账 API 的运营商/出口位置恒为派生字段。新增 goose 迁移 `DROP COLUMN`（Up 块不可变）
-  - 定位：`backend/migrations/`（新增对齐迁移）、`backend/models/port_mapping.go`、`backend/services/port_mapping_service.go`（回填/搜索/请求结构）、`docs/API.md`（映射台账响应口径 ~:165）、`docs/ARCHITECTURE.md`（port_mappings 字段表+约束说明）
-  - 验收标准：API 响应仍含 `isp`/`exit_location` 且值恒等于资源池；库中两列已删；回填补丁与双表 LIKE 已移除；`go build` + `golangci-lint run ./...` + `check_docs.sh` 全绿
-  - 回写：API.md、ARCHITECTURE.md
-  - 分支：`refactor/drop-port-mapping-derivative-cols`
+无
 
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
 - [ ] **T-051** 公网 IP 引用保护 + 端口映射防重 ｜ P1 ｜ 负责: — ｜ 备注: 人类 2026-10-09 立队（数据量增长后孤儿/重复风险放大）
@@ -126,6 +120,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-049 | 删除 `port_mappings` 冗余列 `isp`/`exit_location` | 2026-10-10 | `f325d4d` | 验收：dev 库 DROP COLUMN 重跑幂等实测；List 响应 isp/exit_location 恒等于资源池；模型 gorm:"-" 派生字段；回填与双表 LIKE 已移除；门禁全绿 |
 | T-048 | 数据库迁移 SQL ↔ 实际库漂移修复 | 2026-10-10 | `266bf66` | 验收：对齐迁移 dev 库执行+重跑幂等实测；主键全 bigint、created_at 全有默认、唯一索引全 idx_ 前缀、FK 全 NO ACTION；模型/ARCHITECTURE 口径同步；门禁全绿 |
 | T-047 | 全资源增删改审计日志 | 2026-10-10 | `76d4e8a` | 验收：audit_logs 只增不删（普通索引、无 UNIQUE/users 外键）；26 个 CUD 方法经 operator+request_id 写入、detail 前后 diff 无敏感明文；GET /api/audit-logs 分页筛选 + /audit-logs 页；门禁全绿 |
 | T-042 | 批量编辑 `apply_time` 错误码与空值语义修复 | 2026-10-10 | `8a3940e` | 验收：null 与省略同义放行；非字符串/非法日期统一 40001；API.md 同步；门禁全绿 |
