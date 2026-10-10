@@ -233,17 +233,21 @@ func (s *HostService) BatchUpdate(req BatchUpdateRequest) error {
 		}
 	}
 
-	// 申请时间严格 YYYY-MM-DD（空串合法），错误信息含格式提示
+	// 申请时间严格 YYYY-MM-DD（空串合法），null 与省略同义；错误信息含格式提示
 	if v, ok := appUpdates["apply_time"]; ok {
-		sv, isStr := v.(string)
-		if !isStr {
-			return errors.New("申请时间格式应为 YYYY-MM-DD")
+		if v == nil {
+			delete(appUpdates, "apply_time")
+		} else {
+			sv, isStr := v.(string)
+			if !isStr {
+				return fmt.Errorf("%w: 申请时间格式应为 YYYY-MM-DD", utils.ErrInvalidDate)
+			}
+			sv = strings.TrimSpace(sv)
+			if err := utils.ValidateDateOnly("申请时间", sv); err != nil {
+				return err
+			}
+			appUpdates["apply_time"] = sv
 		}
-		sv = strings.TrimSpace(sv)
-		if err := utils.ValidateDateOnly("申请时间", sv); err != nil {
-			return err
-		}
-		appUpdates["apply_time"] = sv
 	}
 
 	// person_id 归一化为 *uint（nil 表示解除关联），并校验人员存在
