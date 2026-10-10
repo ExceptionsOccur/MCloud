@@ -36,6 +36,8 @@
 
 ### 2026-10-10
 
+- `d487b0b` `fix:` **T-054** docker-compose dev/prod backend 透传 `CORS_ALLOWED_ORIGINS`，容器内可配 CORS 白名单（T-043 收尾缺口）
+
 - `176563c` `fix:` **T-044** CSV 导入加后端 16MB 上限（`MaxBytesReader`，对齐前端提示），超限返回 40001，未超限行为不变（3 例单测）
 
 - `63bda34` `fix:` **T-043** CORS 改 Origin 白名单（`CORS_ALLOWED_ORIGINS` 精确匹配、默认空不下发），关闭非白名单回显任意 Origin + credentials 漏洞
