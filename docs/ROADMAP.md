@@ -135,7 +135,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
-| T-047 | 全资源增删改审计日志 | 2026-10-10 | `-` | 验收：audit_logs 只增不删（普通索引、无 UNIQUE/users 外键）；26 个 CUD 方法经 operator+request_id 写入、detail 前后 diff 无敏感明文；GET /api/audit-logs 分页筛选 + /audit-logs 页；门禁全绿 |
+| T-047 | 全资源增删改审计日志 | 2026-10-10 | `76d4e8a` | 验收：audit_logs 只增不删（普通索引、无 UNIQUE/users 外键）；26 个 CUD 方法经 operator+request_id 写入、detail 前后 diff 无敏感明文；GET /api/audit-logs 分页筛选 + /audit-logs 页；门禁全绿 |
 | T-042 | 批量编辑 `apply_time` 错误码与空值语义修复 | 2026-10-10 | `8a3940e` | 验收：null 与省略同义放行；非字符串/非法日期统一 40001；API.md 同步；门禁全绿 |
 | T-010 | `routes/routes.go` 按域拆分 | 2026-10-10 | `1f0b6a3` | 验收：12 文件域拆分、JWT 收口受保护组；路由全表 A/B 67/67 一致；ARCHITECTURE/CODE_INDEX/T-022 定位已回写 |
 | T-003 | `controllers/csv.go` 业务逻辑下沉 | 2026-10-10 | `f0643f8` | 验收：后缀/解析/行循环/去重/裸查全下沉 service，controller 仅绑定+错误码映射；A/B 8 场景字节一致；门禁全绿 |
