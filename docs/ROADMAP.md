@@ -28,11 +28,12 @@
 
 （无）
 
+## in_progress
+
+（无）
+
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
 
-- [ ] **T-010** `routes/routes.go` 按域拆分 ｜ P1 ｜ 负责: — ｜ 备注: 2026-10-09 由 P2 升 P1，作为 T-047 前置（先拆路由再落审计组，避免二次返工）
-  - 定位：`backend/routes/routes.go`（单文件 100+ 行，JWT 逐组挂载）→ 按域拆 `routes/*.go`，JWT 挂载收口
-  - 验收标准：路由按域拆为多文件；`docs/CODE_INDEX.md` 请求链路同步
 - [ ] **T-042** 批量编辑 `apply_time` 错误码与空值语义修复 ｜ P1 ｜ 负责: — ｜ 备注: 全量回顾 J1（2026-10-09）；T-047 前置（共享 `host_service.go` 批量分支 + `batch.go`）
   - 内容：`PUT /api/batch/hosts` 对 `apply_time=null`/非字符串返回裸 error → 50001 且 null 被拒；改为 null 与省略同义放行、非法值统一 40001（与单条口径一致）
   - 定位：`backend/services/host_service.go`（批量编辑 `isStr` 分支 ~L704）、`backend/controllers/batch.go`（L63 错误映射）、`docs/API.md` 日期时间格式章节（现按 50001 如实描述，修复后同步）
@@ -114,7 +115,7 @@
   - 分支：`fix/config-server-port`
 - [ ] **T-022** WS 探测通道 token 有效性校验 ｜ P2 ｜ 负责: — ｜ 备注: 2026-10-06 人类立队（安全问题，后面处理）
   - 内容：`/api/ws/probe` 当前**只校验 `token` query 参数非空**（空则 `40101`），不校验 JWT 有效性——任何非空字符串即可建立 WebSocket 连接并发起探测；需复用 `middleware/jwt.go` 的校验逻辑，无效/过期/伪造 token 拒绝升级
-  - 定位：`backend/routes/routes.go`（`/api/ws/probe` 处仅 `c.Query("token") != ""` 判断）、`backend/controllers/websocket.go`（`HandleProbeWS`；`upgrader.CheckOrigin` 恒 `true`，同链路可一并评估是否收紧）、`backend/middleware/jwt.go`（`JWTAuth()` 校验逻辑参考）、`docs/API.md`「WebSocket 探测帧协议」章节（同步改）
+  - 定位：`backend/routes/websocket.go`（`registerWS` 内仅 `c.Query("token") != ""` 判断；T-010 拆分前在 `routes.go`）、`backend/controllers/websocket.go`（`HandleProbeWS`；`upgrader.CheckOrigin` 恒 `true`，同链路可一并评估是否收紧）、`backend/middleware/jwt.go`（`JWTAuth()` 校验逻辑参考）、`docs/API.md`「WebSocket 探测帧协议」章节（同步改）
   - 验收标准：无效/过期/伪造 token 无法建立连接（`40101`）；有效 token 行为与现网一致；`go build` + `golangci-lint run ./...` 通过；API.md 与 BUSINESS_LOGIC 相关描述同步
   - 分支：`fix/ws-probe-jwt`
 - [ ] **T-043** CORS Origin 白名单收紧 ｜ P2 ｜ 负责: — ｜ 备注: 全量回顾 J2（安全类，2026-10-09，与 T-022 同批后置）
@@ -150,6 +151,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-010 | `routes/routes.go` 按域拆分 | 2026-10-10 | `-` | 验收：12 文件域拆分、JWT 收口受保护组；路由全表 A/B 67/67 一致；ARCHITECTURE/CODE_INDEX/T-022 定位已回写 |
 | T-003 | `controllers/csv.go` 业务逻辑下沉 | 2026-10-10 | `f0643f8` | 验收：后缀/解析/行循环/去重/裸查全下沉 service，controller 仅绑定+错误码映射；A/B 8 场景字节一致；门禁全绿 |
 | T-002 | 后端 `services/host_service.go` 拆分 | 2026-10-10 | `e039190` | 验收：拆为 CRUD/批量/CSV 三文件（9/5/4 函数）；签名零变化、API 行为不变；build+lint+check_docs 全绿 |
 | T-046 | 零信任列表「申请主机+申请端口」合并为「申请资源」标签列 | 2026-10-09 | `9c1cbfa` | 验收：两列并一列标签 `主机名(ip:port)` 按主机名排序；前端门禁+check_docs 全绿；API/DB 零改动 |

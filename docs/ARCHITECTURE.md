@@ -134,7 +134,18 @@ go/
 │   │   └── import_service.go      # 数据备份导入（自然键 upsert + 单事务回滚）
 │   │
 │   ├── routes/
-│   │   └── routes.go              # 路由注册（公开 + 鉴权 + WebSocket）
+│   │   ├── routes.go              # 路由协调：CORS + JWT 受保护组收口 + 分发各域
+│   │   ├── auth.go                # 认证域（登录/登出公开，me/改密鉴权）
+│   │   ├── host.go                # 主机域（CRUD/批量/CSV 导入导出）
+│   │   ├── data_exchange.go       # 数据备份域（xlsx 整体导出/导入）
+│   │   ├── cloud_resource.go      # 云资源域
+│   │   ├── stats.go               # 统计域（IP/业务统计、探测）
+│   │   ├── subnet.go              # IP 网段域
+│   │   ├── person.go              # 人员域
+│   │   ├── public_ip.go           # 公网IP域
+│   │   ├── zero_trust.go          # 零信任台账域
+│   │   ├── port_mapping.go        # 端口映射台账域
+│   │   └── websocket.go           # WS 探测通道（query token 非空校验）
 │   │
 │   ├── cmd/
 │   │   └── resetpw/main.go        # 密码重置工具（随机/指定密码）
