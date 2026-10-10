@@ -135,7 +135,10 @@ go/
 │   │   ├── audit_service.go       # 审计日志（Record/List，操作人快照 + request_id 聚合）
 │   │   ├── data_exchange.go       # 数据备份公共定义（8 sheet 规格 + 导入报告）
 │   │   ├── export_service.go      # 数据备份导出（8 sheet xlsx）
-│   │   └── import_service.go      # 数据备份导入（自然键 upsert + 单事务回滚）
+│   │   ├── import_service.go      # 数据备份导入（自然键 upsert + 单事务回滚）
+│   │   ├── testdb_test.go         # 测试基建：sqlite 内存库注入 database.DB（T-006）
+│   │   ├── host_service_test.go   # 主机 CRUD/筛选表驱动单测（T-006）
+│   │   └── auth_service_test.go   # 登录/锁定表驱动单测（T-006）
 │   │
 │   ├── routes/
 │   │   ├── routes.go              # 路由协调：CORS + JWT 受保护组收口 + 分发各域
@@ -158,7 +161,8 @@ go/
 │   ├── utils/
 │   │   ├── password.go            # 密码哈希工具（SHA-256 + 盐）
 │   │   ├── csv.go                 # CSV 解析/生成
-│   │   └── datetime.go            # 日期时间统一口径（解析/校验/格式化，T-040）
+│   │   ├── datetime.go            # 日期时间统一口径（解析/校验/格式化，T-040）
+│   │   └── password_test.go       # 密码哈希单测（T-006）
 │   │
 │   └── migrations/                # 迁移 SQL（启动时 goose 执行，embed 进二进制；AutoMigrate 兜底）
 │
@@ -184,7 +188,8 @@ go/
         ├── components/            # 组件：工具栏/表格/各类弹窗（ip/：网段管理/探测面板/网段卡片）
         │
         ├── utils/
-        │   └── index.js           # 通用工具函数
+        │   ├── index.js           # 通用工具函数
+        │   └── __tests__/         # Vitest 冒烟单测（T-006，npm run test）
         │
         └── styles/
             └── global.css         # 全局样式
