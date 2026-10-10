@@ -59,8 +59,8 @@
 | `controllers/subnet.go` | IP 网段 CRUD |
 | `controllers/person.go` | 人员 CRUD（`List`/`Create`/`Update`/`Delete`） |
 | `controllers/zero_trust.go` | 零信任台账 CRUD |
-| `controllers/port_mapping.go` | 端口映射台账 CRUD |
-| `controllers/public_ip.go` | 公网IP资源台账 CRUD |
+| `controllers/port_mapping.go` | 端口映射台账 CRUD + 整组防重判定（`ErrPortMappingExists` → `40901`） |
+| `controllers/public_ip.go` | 公网IP资源台账 CRUD + 被引用校验（改IP/删除被映射/零信任引用 → `40901`） |
 | `controllers/audit_log.go` | 审计日志查询（分页筛选） |
 | `controllers/audit_context.go` | 审计上下文：`auditContext(c)` 取 operator + request_id |
 | `controllers/websocket.go` | WebSocket 探测通道（并发处理探测请求） |
@@ -79,8 +79,8 @@
 | `services/subnet_service.go` | IP 网段管理 | `List`/`Create`/`Update`/`Delete`、`normalizeCIDR`（/24 校验） |
 | `services/person_service.go` | 人员管理 | `List`/`Create`/`Update`/`Delete`、`normalizePerson`；删除时校验关联主机数 |
 | `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`normalizeTargetPairs`（配对校验）；`HostReferencedByZeroTrust`/`ZeroTrustsByHost` |
-| `services/port_mapping_service.go` | 端口映射台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`refreshHostIPMapped` |
-| `services/public_ip_service.go` | 公网IP资源台账 | `List`/`Create`/`Update`/`Delete`、`normalizePublicIP`（IP 唯一/格式校验） |
+| `services/port_mapping_service.go` | 端口映射台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`ErrPortMappingExists` 整组判重（`host_id+public_ip+external_ports`）；`refreshHostIPMapped` |
+| `services/public_ip_service.go` | 公网IP资源台账 | `List`/`Create`/`Update`/`Delete`、`normalizePublicIP`（IP 唯一/格式校验）、`countPublicIPRefs`/`ErrPublicIPReferenced` 引用保护 |
 | `services/audit_service.go` | 审计日志 | `Record`（写入，失败不阻断业务）、`List`（分页筛选）、`GetOperator`、`NewRequestID` |
 | `services/data_exchange.go` | 数据备份公共定义 | `dataExchangeSheets`（8 sheet + 中文列头）、`ImportReport`/`SheetStat`/`RowError` |
 | `services/export_service.go` | 数据备份导出 | `Export`（8 sheet 依赖序写入）、`ExportFilename` |
@@ -209,6 +209,7 @@
 | **IP 网段管理** | `controllers/subnet.go` `services/subnet_service.go` `models/ip_subnet.go` | `components/SubnetManageDialog.vue` `api/subnet.js` |
 | **人员管理** | `controllers/person.go` `services/person_service.go` `models/person.go` | `views/PersonnelManagement.vue` `api/person.js` |
 | **公网IP资源录入** | `controllers/public_ip.go` `services/public_ip_service.go` `models/public_ip.go` | `views/PublicIPManagement.vue` `api/public_ip.js` |
+| **公网IP引用保护 + 映射整组防重** | `services/public_ip_service.go` → `countPublicIPRefs`/`ErrPublicIPReferenced`（`40901`）、`services/port_mapping_service.go` → `ErrPortMappingExists`（`40901`）、`migrations/20261010000004` 唯一索引 | `api/public_ip.js` `api/port_mapping.js`（错误码提示） |
 | **零信任台账** | `controllers/zero_trust.go` `services/zero_trust_service.go` `models/zero_trust.go` | `views/ZeroTrustLedger.vue` `api/zero_trust.js` `components/ZeroTrustBatchAddDialog.vue` |
 | **端口映射台账** | `controllers/port_mapping.go` `services/port_mapping_service.go` `models/port_mapping.go` | `views/MappingLedger.vue` `api/port_mapping.js` `components/MappingBatchAddDialog.vue` |
 | **主机关联人员** | `services/host_service.go`（`person_id` 事务写入） | `components/HostFormDialog.vue` `components/BatchEditDialog.vue`（选择/手输自动新增） |

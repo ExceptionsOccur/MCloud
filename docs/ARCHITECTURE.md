@@ -46,7 +46,7 @@
 
 ## 目录结构
 
-> 快照日期：2026-10-09（由 `scripts/check_docs.sh` 的 tree 检查守护：树中文件必须存在、已跟踪文件必须登记）
+> 快照日期：2026-10-10（由 `scripts/check_docs.sh` 的 tree 检查守护：树中文件必须存在、已跟踪文件必须登记）
 
 ```
 go/
@@ -178,8 +178,8 @@ go/
         │   └── index.js           # 路由配置 + 路由守卫
         │
         ├── stores/                # Pinia 状态：auth / host / cloudResource / stats / business
-        ├── api/                   # API 封装：index / auth / host / csv / dataExchange / cloud_resource / person / zero_trust / port_mapping / public_ip / stats / subnet
-        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / PublicIPManagement / ZeroTrustLedger / MappingLedger / DataBackup
+        ├── api/                   # API 封装：index / auth / host / csv / dataExchange / cloud_resource / person / zero_trust / port_mapping / public_ip / stats / subnet / audit
+        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / PublicIPManagement / ZeroTrustLedger / MappingLedger / DataBackup / AuditLog
         ├── components/            # 组件：工具栏/表格/各类弹窗
         │
         ├── utils/

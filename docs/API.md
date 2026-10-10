@@ -35,10 +35,10 @@
 
 | 错误码 | 含义 | HTTP 状态 |
 |--------|------|-----------|
-| `40001` | 参数校验失败 | 400 |
+| `40001` | 参数与业务校验失败（含部分唯一冲突，如公网IP/人员/网段重复、日期格式） | 400 |
 | `40101` | 未登录 / Token 无效 / 账户已锁定 | 401 |
 | `40401` | 资源不存在 | 404 |
-| `40901` | 数据冲突（如 IP 重复） | 409 |
+| `40901` | 数据冲突与引用保护（如内网IP重复、被引用实体禁删改、映射整组重复） | 409 |
 | `50001` | 服务器内部错误 | 500 |
 
 ---
@@ -107,9 +107,10 @@
 
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
-| GET | `/api/audit-logs` | `auditLog.List` | 分页查询审计日志；查询参数 `page`/`page_size`/`operator_name`/`action`/`resource_type`/`request_id`/`keyword` |
+| GET | `/api/audit-logs` | `audit.List` | 分页查询审计日志；查询参数 `page`（默认 1）/`page_size`（默认 20，`>100` 回退 20）/`operator_name`/`action`/`resource_type`/`request_id`/`keyword` |
 
 - CUD/导入/批量操作自动写入 `audit_logs`（操作人快照 + 动作 + 资源 + 前后值 diff + 同请求共用 `request_id`）
+- `action` 枚举：`create`/`update`/`delete`/`batch_update`/`import_csv`/`import_xlsx`；`resource_type` 枚举：`host`/`person`/`public_ip`/`zero_trust`/`port_mapping`/`cloud_resource`/`ip_subnet`/`data_exchange`
 - `detail` 不含 password_hash 等敏感明文；只增不删；无 UNIQUE 约束、不设 users 外键
 - 不覆盖：登录/改密事件、级联写（`refreshHostIPMapped`/登录计数）、WS 探测
 

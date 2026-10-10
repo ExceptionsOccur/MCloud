@@ -20,7 +20,7 @@
 
 **认领规则**：一次只领 **1 条**优先级最高（`P0` > `P1` > `P2`）的任务；领用 = 把该条移到 `in_progress` 并填写负责字段（在写任何代码之前先改本文件）。
 
-**回顾锚点**：`上次回顾至 T-010`。`done` 表自该锚点起新增 ≥ 5 条时，须先执行 [AGENTS.md · 会话协议 E](../AGENTS.md#会话协议) 的周期回顾（按各任务「回写」字段定向核查文档↔代码符合度、补回填写漏，纯文档类任务跳过，偏差先报告人类再修），回顾完成并经人类确认后把锚点推进至该批最后一条 `done` ID。
+**回顾锚点**：`上次回顾至 T-051`。`done` 表自该锚点起新增 ≥ 5 条时，须先执行 [AGENTS.md · 会话协议 E](../AGENTS.md#会话协议) 的周期回顾（按各任务「回写」字段定向核查文档↔代码符合度、补回填写漏，纯文档类任务跳过，偏差先报告人类再修），回顾完成并经人类确认后把锚点推进至该批最后一条 `done` ID。
 
 ---
 
@@ -67,8 +67,8 @@
   - 定位：`docs/*.md`、`README.md`、`AGENTS.md`（协议条文部分需人类授权，见红线 7）；校验器 `scripts/check_docs.sh`（T-021 已交付）
   - 验收标准：`bash scripts/check_docs.sh` 退出码 0（links/tree/snapshot/counts/shas 全绿）；warn 一并处理；发现的错误全部修复
 - [ ] **T-019** 前端抽 Layout/AppNav ｜ P2 ｜ 负责: — ｜ 备注: 定位已实测（2026-10-09）；功能页已 9→10（T-047），本任务定位与验收按 10 页
-  - 内容：各页内嵌同一段 `nav-tab` 导航结构（9 个功能页、每文件 8-9 处 `nav-tab` 引用），抽为共享 `components/AppNav.vue` 或 Layout（`App.vue` 根布局），消除重复粘贴
-  - 定位：`frontend/src/views/` 下 9 个功能页（HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / ZeroTrustLedger / MappingLedger / PublicIPManagement / DataBackup；`Login.vue` 不涉及）
+  - 内容：各页内嵌同一段 `nav-tab` 导航结构（10 个功能页、每文件 8-9 处 `nav-tab` 引用），抽为共享 `components/AppNav.vue` 或 Layout（`App.vue` 根布局），消除重复粘贴
+  - 定位：`frontend/src/views/` 下 10 个功能页（HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / ZeroTrustLedger / MappingLedger / PublicIPManagement / DataBackup / AuditLog；`Login.vue` 不涉及）
   - 验收标准：`npm run lint:check && npm run build` 通过；导航与视觉零变化；重复结构只剩一处
   - 分支：`refactor/extract-layout`
 - [ ] **T-020** 消除 `config.go` `ServerPort` 硬编码 ｜ P2 ｜ 负责: — ｜ 备注: 违反红线 3（配置外置）
@@ -98,6 +98,12 @@
   - 验收标准：API 请求/响应结构零变化；删除被引用主机仍 40901；按主机搜索正确；空库 xlsx 回灌通过；`go build` + `golangci-lint` + `lint:check` + `build` + `check_docs.sh` 全绿
   - 回写：ARCHITECTURE（新增表+表数）、API.md、CODE_INDEX、BUSINESS_LOGIC
   - 分支：`refactor/zero-trust-targets-table`
+- [ ] **T-053** `models/audit_log.go` NOT NULL 口径对齐 ｜ P2 ｜ 负责: — ｜ 备注: 2026-10-10 周期回顾发现（红线 9「SQL≡模型」）
+  - 内容：`operator_id`/`operator_name`/`action`/`resource_type`/`request_id`/`created_at` 六字段补 `not null` gorm tag，与迁移 `20261010000001_create_audit_logs.sql` 的 NOT NULL 口径一致（goose 主路径无运行时影响，修的是 AutoMigrate 兜底会建可空列的漂移）；`resource_id`/`detail` 保持可空
+  - 定位：`backend/models/audit_log.go`、`backend/migrations/20261010000001_create_audit_logs.sql`（对照）、`docs/ARCHITECTURE.md`（audit_logs 字段表）
+  - 验收标准：模型 tag 与迁移 SQL 逐字段一致；`go build` + `golangci-lint run ./...` + `check_docs.sh` 全绿
+  - 回写：PROJECT_STATUS 变更记录（ARCHITECTURE 已是 NOT NULL 口径则无需改）
+  - 分支：`fix/audit-log-not-null`
 
 ## blocked
 
