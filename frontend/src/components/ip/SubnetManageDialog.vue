@@ -69,7 +69,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { getSubnets, createSubnet, updateSubnet, deleteSubnet } from '../api/subnet'
+import { getSubnets, createSubnet, updateSubnet, deleteSubnet } from '../../api/subnet'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const emit = defineEmits(['changed'])
