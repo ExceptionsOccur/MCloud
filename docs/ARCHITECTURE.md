@@ -114,7 +114,8 @@ go/
 │   │   ├── subnet.go              # IP 网段 CRUD
 │   │   ├── audit_log.go           # 审计日志查询
 │   │   ├── audit_context.go       # 审计上下文（operator + request_id）
-│   │   └── websocket.go           # WebSocket IP 探测通道
+│   │   ├── websocket.go           # WebSocket IP 探测通道
+│   │   └── csv_test.go            # CSV 导入 16MB 超限/未超限穿透/缺字段测试（T-044）
 │   │
 │   ├── middleware/
 │   │   ├── jwt.go                 # JWT 认证中间件 + CORS 白名单中间件 + ValidateToken（T-022/T-043）

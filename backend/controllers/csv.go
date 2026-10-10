@@ -4,11 +4,15 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 
 	"mcloud/services"
 
 	"github.com/gin-gonic/gin"
 )
+
+// csvImportMaxBytes CSV 导入请求体上限 16MB，对齐前端 ImportDialog 提示（T-044）
+const csvImportMaxBytes = 16 << 20
 
 type CSVController struct {
 	hostService *services.HostService
@@ -21,16 +25,25 @@ func NewCSVController() *CSVController {
 }
 
 func (ctrl *CSVController) Import(c *gin.Context) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, csvImportMaxBytes)
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		Error(c, 40001, "请上传CSV文件")
+		if strings.Contains(err.Error(), "request body too large") {
+			Error(c, 40001, "文件大小超过 16MB 限制")
+		} else {
+			Error(c, 40001, "请上传CSV文件")
+		}
 		return
 	}
 	defer file.Close()
 
 	data, err := io.ReadAll(file)
 	if err != nil {
-		Error(c, 50001, "读取文件失败")
+		if strings.Contains(err.Error(), "request body too large") {
+			Error(c, 40001, "文件大小超过 16MB 限制")
+		} else {
+			Error(c, 50001, "读取文件失败")
+		}
 		return
 	}
 

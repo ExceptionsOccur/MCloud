@@ -92,7 +92,7 @@
 
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
-| POST | `/api/import` | `csv.Import` | 上传 CSV 批量导入 |
+| POST | `/api/import` | `csv.Import` | 上传 CSV 批量导入（请求体 ≤16MB，超限返回 `40001`，T-044） |
 | GET | `/api/export` | `csv.Export` | 导出 CSV（支持列表同名筛选参数，导出全部命中行、无分页） |
 | GET | `/api/template` | `csv.Template` | 下载导入模板 |
 

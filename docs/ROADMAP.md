@@ -30,11 +30,6 @@
 
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
 
-- [ ] **T-044** 后端 CSV 上传大小限制 ｜ P2 ｜ 负责: — ｜ 备注: 全量回顾 J3（2026-10-09）
-  - 内容：`controllers/csv.go` 导入无大小限制（16MB 仅为前端提示）；后端加限制（`http.MaxBytesReader`，上限对齐前端 16MB），超限返回 40001
-  - 定位：`backend/controllers/csv.go`（Import/Export）、`frontend/src/components/ImportDialog.vue`（16MB 提示）、`docs/DEVELOPMENT.md` 安全准则上传行
-  - 验收标准：超限导入返回 40001 且信息可读；正常导入不受影响；`go build` + `golangci-lint run ./...` 通过；DEVELOPMENT 同步
-  - 分支：`fix/csv-upload-limit`
 - [ ] **T-052** `zero_trusts.targets` 拆子表 ｜ P2 ｜ 负责: — ｜ 备注: 人类 2026-10-09 立队（重度 1NF 违反；录入量增长后 LIKE 反查/无 FK 代价放大，代码面最广故列 P2 靠后）
   - 依赖：建议 T-047 审计合并后执行（共享 `host_service.go` 删除引用检查段）
   - 内容：`targets` 现为 `"host_id:port,..."` 多值 text，删除/反查靠 LIKE 拼接、无 FK。拆子表 `zero_trust_targets(zero_trust_id FK RESTRICT, host_id FK RESTRICT, port)`；LIKE 反查与关键字搜索改 JOIN；`host_service` 删主机引用检查同步改写；xlsx「接入目标」列对外格式保持不变（导入导出解析层改写）；API 响应 `targets` 结构不变（服务层组装）
@@ -72,6 +67,7 @@
 | T-020 | config ServerPort 硬编码消除 | 2026-10-10 | `8535979` | 验收：`SERVER_PORT` 环境变量可配（`getEnv` 模式，保留默认 `5677`——推荐口径，与 DB_* 等其余字段一致、开发零配置；docker-compose.dev 已传该变量、`.env.example` 已同步）；技术债表该行删除；`go build`+`golangci-lint`+`check_docs` 全绿 |
 | T-022 | WS 探测通道 token 有效性校验 | 2026-10-10 | `a0e6477` | 验收：升级前复用 `middleware.ValidateToken`（与 Authorization 同源），缺失/无效/过期/伪造返回 `40101` 拒绝升级；有效 token 建连回归（middleware+routes 单测）；API/BUSINESS_LOGIC/CODE_INDEX/ARCHITECTURE 同步；门禁全绿 |
 | T-043 | CORS Origin 白名单收紧 | 2026-10-10 | `63bda34` | 验收：`CORS_ALLOWED_ORIGINS`（逗号分隔精确匹配，默认空）白名单化，非白名单 Origin 不回显 CORS 头；白名单预检/带凭证正常（单测覆盖）；DEVELOPMENT/.env.example/CODE_INDEX 同步；门禁全绿 |
+| T-044 | 后端 CSV 上传大小限制 | 2026-10-10 | `-` | 验收：`Import` 加 `MaxBytesReader` ≤16MB（对齐前端提示），超限返回 `40001`「文件大小超过 16MB 限制」；未超限穿透业务校验（3 例单测）；DEVELOPMENT/API.md 同步；门禁全绿 |
 | T-006 | 测试骨架 | 2026-10-10 | `894e93b` | 验收：`go test` services 表驱动（主机CRUD/登录锁定）+ utils 密码全绿（sqlite 内存库注入）；vitest 冒烟 6 例；门禁全绿 |
 | T-005 | `IpStatistics.vue` 拆分 | 2026-10-10 | `baa8e2e` | 验收：778→300 行（≤400）；拆 components/ip/（ProbePanel/SubnetCard/SubnetManageDialog 移入）+ composables/useProbeGrid；lint+build+check 全绿 |
 | T-004 | 前端 composables 抽取 | 2026-10-10 | `c1d4618` | 验收：抽 useProbeWebSocket/useChartOption/usePagedTable 三件，IpStatistics 841→778 行；lint:check + build + check_docs 全绿，页面行为不变 |

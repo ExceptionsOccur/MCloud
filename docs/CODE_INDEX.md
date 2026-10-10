@@ -106,6 +106,7 @@
 | `utils/password_test.go` | bcrypt 往返、旧 `salt$hash` 兼容、非法存储拒绝、盐唯一性 |
 | `middleware/jwt_test.go` | `ValidateToken` 表驱动：有效/过期/伪造签名/非法串/缺 user_id/none 算法（T-022） |
 | `routes/websocket_test.go` | WS 探测通道：缺失/无效 token 升级前 `40101` 拒绝 + 有效 token 建连（T-022） |
+| `controllers/csv_test.go` | CSV 导入：>16MB 超限 `40001`、未超限穿透至业务校验、缺 `file` 字段回归（T-044） |
 | `frontend/src/utils/__tests__/index.spec.js` | Vitest 冒烟（`npm run test`，日期格式化/常量） |
 
 ### 命令工具（cmd/）
