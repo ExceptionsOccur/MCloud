@@ -38,7 +38,7 @@
 func JWTAuth() gin.HandlerFunc { ... }
 ```
 
-WebSocket 通道无法携带 Header，token 通过 query 参数传递（`/api/ws/probe?token=xxx`）。前端通过 `encodeURIComponent` 编码。
+WebSocket 通道无法携带 Header，token 通过 query 参数传递（`/api/ws/probe?token=xxx`）。前端通过 `encodeURIComponent` 编码；升级前经共享的 `middleware.ValidateToken` 校验（与 `Authorization` 同源），缺失/无效/过期/伪造返回 `40101` 拒绝升级（T-022）。
 
 ## 审计日志
 
