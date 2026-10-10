@@ -25,7 +25,7 @@
 | `backend/database/postgres.go` | 数据库连接与迁移 | `Connect()`、`Migrate()`（goose.Up + AutoMigrate 兜底 + seedAdmin）、`seedAdmin()` |
 | `backend/migrations/embed.go` | 迁移 SQL embed FS | `//go:embed *.sql` → `migrations.FS`，供 goose 加载 |
 | `backend/routes/routes.go` | 路由协调 | `SetupRoutes()`：CORS + JWT 受保护组统一收口 + 分发各域 |
-| `backend/routes/{auth,host,data_exchange,cloud_resource,stats,subnet,person,public_ip,zero_trust,port_mapping,websocket}.go` | 各域路由注册 | `registerX(g)`；公开域仅登录/登出 + WS probe |
+| `backend/routes/{auth,host,data_exchange,cloud_resource,stats,subnet,person,public_ip,zero_trust,port_mapping,audit,websocket}.go` | 各域路由注册 | `registerX(g)`；公开域仅登录/登出 + WS probe |
 
 ### 数据模型（models/）
 
@@ -40,6 +40,7 @@
 | `backend/models/zero_trust.go` | `ZeroTrust` | `zero_trusts` |
 | `backend/models/port_mapping.go` | `PortMapping` | `port_mappings` |
 | `backend/models/public_ip.go` | `PublicIP` | `public_ips` |
+| `backend/models/audit_log.go` | `AuditLog` | `audit_logs` |
 
 ### 控制器（controllers/）
 
@@ -60,6 +61,8 @@
 | `controllers/zero_trust.go` | 零信任台账 CRUD |
 | `controllers/port_mapping.go` | 端口映射台账 CRUD |
 | `controllers/public_ip.go` | 公网IP资源台账 CRUD |
+| `controllers/audit_log.go` | 审计日志查询（分页筛选） |
+| `controllers/audit_context.go` | 审计上下文：`auditContext(c)` 取 operator + request_id |
 | `controllers/websocket.go` | WebSocket 探测通道（并发处理探测请求） |
 
 ### 业务服务（services/）
@@ -78,6 +81,7 @@
 | `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`normalizeTargetPairs`（配对校验）；`HostReferencedByZeroTrust`/`ZeroTrustsByHost` |
 | `services/port_mapping_service.go` | 端口映射台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`refreshHostIPMapped` |
 | `services/public_ip_service.go` | 公网IP资源台账 | `List`/`Create`/`Update`/`Delete`、`normalizePublicIP`（IP 唯一/格式校验） |
+| `services/audit_service.go` | 审计日志 | `Record`（写入，失败不阻断业务）、`List`（分页筛选）、`GetOperator`、`NewRequestID` |
 | `services/data_exchange.go` | 数据备份公共定义 | `dataExchangeSheets`（8 sheet + 中文列头）、`ImportReport`/`SheetStat`/`RowError` |
 | `services/export_service.go` | 数据备份导出 | `Export`（8 sheet 依赖序写入）、`ExportFilename` |
 | `services/import_service.go` | 数据备份导入 | `Import`（单事务 + 回滚）、`parseWorkbook`（结构校验）、`apply*`（按自然键 upsert） |
@@ -126,6 +130,7 @@
 | `api/zero_trust.js` | `/zero-trusts` |
 | `api/port_mapping.js` | `/port-mappings` |
 | `api/public_ip.js` | `/public-ips` |
+| `api/audit.js` | `/audit-logs` |
 
 ### 状态管理（stores/）
 
@@ -151,6 +156,7 @@
 | `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 「申请资源」标签列 `主机名(ip:port)` 按主机名排序 + 配对行表单 + 公网IP资源池带出接入地区 + 批量添加） |
 | `views/MappingLedger.vue` | `/mapping-ledger` | 端口映射台账（多端口标签 + 批量添加） |
 | `views/DataBackup.vue` | `/data-backup` | 数据备份（8 表 xlsx 导出/导入 + 导入报告展示，设置菜单入口） |
+| `views/AuditLog.vue` | `/audit-logs` | 审计日志（操作人/动作/资源筛选 + 分页 + 详情弹窗） |
 
 ### 组件（components/）
 
@@ -190,6 +196,7 @@
 | 功能 | 后端 | 前端 |
 |------|------|------|
 | **登录/认证** | `controllers/auth.go` `services/auth_service.go` `middleware/jwt.go` | `views/Login.vue` `stores/auth.js` `api/auth.js` |
+| **审计日志** | `controllers/audit_log.go` `services/audit_service.go` `models/audit_log.go` `routes/audit.go` | `views/AuditLog.vue` `api/audit.js` |
 | **主机 CRUD** | `controllers/host.go` `services/host_service.go` | `views/HostManagement.vue` `components/HostTable.vue` `components/HostFormDialog.vue` `stores/host.js` |
 | **主机筛选/搜索** | `services/host_service.go` → `Filter` | `components/SearchToolbar.vue` |
 | **批量增改** | `controllers/batch.go` `services/host_batch_service.go` → `BatchCreate`/`BatchUpdate` | `components/BatchAddDialog.vue` `components/BatchEditDialog.vue` |
@@ -297,3 +304,4 @@ GET/POST /api/zero-trusts、PUT/DELETE /api/zero-trusts/:id、POST /api/zero-tru
 | `zero_trusts` | `models/zero_trust.go` | `services/zero_trust_service.go`；删除主机前经 `HostReferencedByZeroTrust` 校验；主机详情经 `ZeroTrustsByHost` 回填 |
 | `port_mappings` | `models/port_mapping.go` | `services/port_mapping_service.go`；删除主机前经 `HostReferencedByMapping` 校验 |
 | `public_ips` | `models/public_ip.go` | `services/public_ip_service.go` |
+| `audit_logs` | `models/audit_log.go` | `services/audit_service.go`；各 CUD service 方法经 `Record` 写入；`controllers/audit_log.go` 查询 |

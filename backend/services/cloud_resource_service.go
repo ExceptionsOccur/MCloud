@@ -31,7 +31,7 @@ type UpdateCloudResourceRequest struct {
 	ObjectStorage int    `json:"object_storage"`
 }
 
-func (s *CloudResourceService) Update(req UpdateCloudResourceRequest) error {
+func (s *CloudResourceService) Update(req UpdateCloudResourceRequest, op Operator, requestID string) error {
 	var resource models.CloudResource
 	result := database.DB.Where("region = ?", req.Region).First(&resource)
 	if result.Error != nil {
@@ -45,9 +45,18 @@ func (s *CloudResourceService) Update(req UpdateCloudResourceRequest) error {
 			GpuCardCount:  req.GpuCardCount,
 			ObjectStorage: req.ObjectStorage,
 		}
-		return database.DB.Create(&resource).Error
+		if err := database.DB.Create(&resource).Error; err != nil {
+			return err
+		}
+		NewAuditService().Record(op, "create", "cloud_resource", &resource.ID, DetailDiff{After: req}, requestID)
+		return nil
 	}
 
+	before := UpdateCloudResourceRequest{
+		Region: resource.Region, PhysicalCPU: resource.PhysicalCPU, Vcpu: resource.Vcpu,
+		Memory: resource.Memory, Storage: resource.Storage, BareMetal: resource.BareMetal,
+		GpuCardCount: resource.GpuCardCount, ObjectStorage: resource.ObjectStorage,
+	}
 	resource.PhysicalCPU = req.PhysicalCPU
 	resource.Vcpu = req.Vcpu
 	resource.Memory = req.Memory
@@ -55,5 +64,10 @@ func (s *CloudResourceService) Update(req UpdateCloudResourceRequest) error {
 	resource.BareMetal = req.BareMetal
 	resource.GpuCardCount = req.GpuCardCount
 	resource.ObjectStorage = req.ObjectStorage
-	return database.DB.Save(&resource).Error
+	if err := database.DB.Save(&resource).Error; err != nil {
+		return err
+	}
+	NewAuditService().Record(op, "update", "cloud_resource", &resource.ID,
+		DetailDiff{Before: before, After: req}, requestID)
+	return nil
 }

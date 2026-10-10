@@ -25,6 +25,7 @@ func SetupRoutes(r *gin.Engine) {
 	registerPublicIPs(protected)
 	registerZeroTrusts(protected)
 	registerPortMappings(protected)
+	registerAudits(protected)
 
 	registerWS(api)
 }

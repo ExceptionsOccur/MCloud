@@ -40,7 +40,7 @@
 
 - **前端**：单页应用，`/api` 请求经 Axios，IP 探测走 WebSocket 长连接
 - **后端**：分层架构，启动时 goose 执行 `migrations/*.sql`（embed）+ AutoMigrate 兜底 + 种子数据
-- **数据库**：PostgreSQL，9 张表
+- **数据库**：PostgreSQL，10 张表
 
 ---
 
@@ -95,7 +95,8 @@ go/
 │   │   ├── ip_subnet.go           # IPSubnet 模型（IP 网段管理）
 │   │   ├── zero_trust.go          # ZeroTrust 模型（零信任台账）
 │   │   ├── port_mapping.go        # PortMapping 模型（端口映射台账）
-│   │   └── public_ip.go           # PublicIP 模型（公网IP资源台账）
+│   │   ├── public_ip.go           # PublicIP 模型（公网IP资源台账）
+│   │   └── audit_log.go           # AuditLog 模型（审计日志）
 │   │
 │   ├── controllers/
 │   │   ├── response.go            # 统一响应辅助函数
@@ -111,6 +112,8 @@ go/
 │   │   ├── public_ip.go           # 公网IP资源台账 CRUD
 │   │   ├── stats.go               # 统计（IP 使用、探测、业务统计）
 │   │   ├── subnet.go              # IP 网段 CRUD
+│   │   ├── audit_log.go           # 审计日志查询
+│   │   ├── audit_context.go       # 审计上下文（operator + request_id）
 │   │   └── websocket.go           # WebSocket IP 探测通道
 │   │
 │   ├── middleware/
@@ -129,6 +132,7 @@ go/
 │   │   ├── stats_service.go       # IP 使用统计 + 连通性探测
 │   │   ├── business_stats.go      # 业务统计聚合（项目/公司/人员）
 │   │   ├── subnet_service.go      # IP 网段业务逻辑（/24 校验）
+│   │   ├── audit_service.go       # 审计日志（Record/List，操作人快照 + request_id 聚合）
 │   │   ├── data_exchange.go       # 数据备份公共定义（8 sheet 规格 + 导入报告）
 │   │   ├── export_service.go      # 数据备份导出（8 sheet xlsx）
 │   │   └── import_service.go      # 数据备份导入（自然键 upsert + 单事务回滚）
@@ -145,6 +149,7 @@ go/
 │   │   ├── public_ip.go           # 公网IP域
 │   │   ├── zero_trust.go          # 零信任台账域
 │   │   ├── port_mapping.go        # 端口映射台账域
+│   │   ├── audit.go               # 审计日志域（查询）
 │   │   └── websocket.go           # WS 探测通道（query token 非空校验）
 │   │
 │   ├── cmd/
@@ -190,7 +195,7 @@ go/
 
 ## 数据模型
 
-数据库共 9 张表：
+数据库共 10 张表：
 
 | 表 | 模型 | 说明 |
 |----|------|------|
@@ -203,6 +208,7 @@ go/
 | `zero_trusts` | `models/zero_trust.go` | 零信任接入申请台账 |
 | `port_mappings` | `models/port_mapping.go` | 端口映射台账（公网IP↔内网主机多端口；域名可选） |
 | `public_ips` | `models/public_ip.go` | 公网IP资源台账（IP/运营商/出口位置/备注） |
+| `audit_logs` | `models/audit_log.go` | 审计日志（操作人快照/动作/资源/diff/request_id；只增不删） |
 
 > 库中另有 goose 运行时表 `goose_db_version`（记录迁移版本，由 goose 维护），不计入业务表。
 
@@ -334,6 +340,22 @@ go/
 | 出口位置 | `exit_location` | VARCHAR(128) | IP 所在地，选填 |
 | 备注 | `remark` | TEXT | |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
+
+### audit_logs 表（审计日志）
+
+| 字段 | 列名 | 类型 | 约束 |
+|------|------|------|------|
+| ID | `id` | BIGSERIAL | PRIMARY KEY |
+| 操作人ID | `operator_id` | BIGINT | NOT NULL（快照，非外键） |
+| 操作人名 | `operator_name` | VARCHAR(64) | NOT NULL DEFAULT ''（快照） |
+| 动作 | `action` | VARCHAR(32) | NOT NULL（create/update/delete/batch_update/import_csv/import_xlsx） |
+| 资源类型 | `resource_type` | VARCHAR(32) | NOT NULL（host/person/public_ip/zero_trust/port_mapping/cloud_resource/ip_subnet/data_exchange） |
+| 资源ID | `resource_id` | BIGINT | 可空（批量/导入类条目） |
+| 详情 | `detail` | JSONB | `{"before":{...},"after":{...}}` 前后值 diff |
+| 请求ID | `request_id` | VARCHAR(64) | NOT NULL DEFAULT ''（同一 HTTP 请求内多条审计共用） |
+| 创建时间 | `created_at` | TIMESTAMPTZ | NOT NULL DEFAULT NOW() |
+
+索引：`operator_id` / `action` / `resource_type` / `resource_id` / `request_id` / `created_at DESC`（仅普通索引，**无 UNIQUE 约束**、**无 users 外键**，只增不删）。
 
 ### 字段约束说明
 

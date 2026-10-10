@@ -42,6 +42,12 @@
         >
           映射
         </router-link>
+        <router-link
+          to="/audit-logs"
+          class="nav-tab"
+        >
+          审计日志
+        </router-link>
       </div>
       <div class="header-right">
         <span

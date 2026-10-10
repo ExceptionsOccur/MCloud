@@ -6,6 +6,7 @@
 
 - [认证流程](#认证流程)
 - [JWT 中间件](#jwt-中间件)
+- [审计日志](#审计日志)
 - [主机搜索/筛选](#主机搜索筛选)
 - [CSV 导入导出](#csv-导入导出)
 - [数据备份 xlsx 导出/导入](#数据备份-xlsx-导出导入)
@@ -38,6 +39,17 @@ func JWTAuth() gin.HandlerFunc { ... }
 ```
 
 WebSocket 通道无法携带 Header，token 通过 query 参数传递（`/api/ws/probe?token=xxx`）。前端通过 `encodeURIComponent` 编码。
+
+## 审计日志
+
+- **写入时机**：service 层 CUD 成功后调用 `AuditService.Record`；覆盖常规 CRUD、批量增改、CSV 导入、xlsx 数据备份导入
+- **不覆盖**：登录/改密事件、级联写（`refreshHostIPMapped`/登录计数）、WS 探测
+- **操作人**：controller 经 `auditContext(c)` 从 JWT `user_id` 取快照（`operator_id` + `operator_name`）
+- **request_id**：同一 HTTP 请求内多条审计共用（批量/CSV 导入逐行共用一个 ID）
+- **detail**：`{"before":{...},"after":{...}}` 前后值 diff；不含 password_hash 等敏感明文
+- **只增不删**：无 UNIQUE 约束、不设 users 外键（操作人以快照落库）
+- **查询**：`GET /api/audit-logs`（JWT、分页筛选）；写入失败不阻断业务（审计不改变 CUD 结果语义）
+
 
 ## 主机搜索/筛选
 

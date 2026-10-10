@@ -95,7 +95,7 @@ func parseWorkbook(data []byte) (map[string]*importSheet, error) {
 }
 
 // Import 导入 xlsx 并按依赖序 upsert 8 表；单事务，任意行失败整体回滚
-func (s *DataExchangeService) Import(data []byte) (*ImportReport, error) {
+func (s *DataExchangeService) Import(data []byte, op Operator, requestID string) (*ImportReport, error) {
 	sheets, err := parseWorkbook(data)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrImportStructure, err.Error())
@@ -132,6 +132,8 @@ func (s *DataExchangeService) Import(data []byte) (*ImportReport, error) {
 		return nil, fmt.Errorf("导入执行失败: %w", txErr)
 	}
 	report.Committed = true
+	NewAuditService().Record(op, "import_xlsx", "data_exchange", nil,
+		DetailDiff{After: map[string]interface{}{"committed": true}}, requestID)
 	return report, nil
 }
 

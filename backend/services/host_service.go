@@ -205,7 +205,7 @@ type CreateHostRequest struct {
 	Remark            string `json:"remark"`
 }
 
-func (s *HostService) Create(req CreateHostRequest) (uint, error) {
+func (s *HostService) Create(req CreateHostRequest, op Operator, requestID string) (uint, error) {
 	req.ApplyTime = strings.TrimSpace(req.ApplyTime)
 	if err := utils.ValidateDateOnly("申请时间", req.ApplyTime); err != nil {
 		return 0, err
@@ -245,6 +245,7 @@ func (s *HostService) Create(req CreateHostRequest) (uint, error) {
 
 	if req.PersonID.Present {
 		if err := validatePersonID(req.PersonID.Value); err != nil {
+			tx.Rollback()
 			return 0, err
 		}
 		host.PersonID = req.PersonID.Value
@@ -274,6 +275,7 @@ func (s *HostService) Create(req CreateHostRequest) (uint, error) {
 	}
 
 	tx.Commit()
+	NewAuditService().Record(op, "create", "host", &host.ID, DetailDiff{After: req}, requestID)
 	return host.ID, nil
 }
 
@@ -308,7 +310,7 @@ type UpdateHostRequest struct {
 	Remark            *string `json:"remark"`
 }
 
-func (s *HostService) Update(id uint, req UpdateHostRequest) error {
+func (s *HostService) Update(id uint, req UpdateHostRequest, op Operator, requestID string) error {
 	var host models.Host
 	if err := database.DB.First(&host, id).Error; err != nil {
 		return err
@@ -436,10 +438,11 @@ func (s *HostService) Update(id uint, req UpdateHostRequest) error {
 	}
 
 	tx.Commit()
+	NewAuditService().Record(op, "update", "host", &id, DetailDiff{After: req}, requestID)
 	return nil
 }
 
-func (s *HostService) Delete(id uint) error {
+func (s *HostService) Delete(id uint, op Operator, requestID string) error {
 	var host models.Host
 	if err := database.DB.First(&host, id).Error; err != nil {
 		return err
@@ -465,5 +468,9 @@ func (s *HostService) Delete(id uint) error {
 	tx.Where("host_id = ?", id).Delete(&models.HostApplication{})
 	tx.Delete(&host)
 	tx.Commit()
+	NewAuditService().Record(op, "delete", "host", &id,
+		DetailDiff{Before: map[string]interface{}{
+			"name": host.Name, "private_ip": host.PrivateIP, "region": host.Region,
+		}}, requestID)
 	return nil
 }

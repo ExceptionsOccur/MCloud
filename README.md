@@ -116,7 +116,7 @@ docker-compose -f docker-compose.dev.yml up -d
 
 ## 页面与导航
 
-系统共 9 个功能页面：6 个顶部导航 Tab + 人员录入页 + 公网IP录入页 + 数据备份页（设置菜单进入）：
+系统共 10 个功能页面：7 个顶部导航 Tab + 人员录入页 + 公网IP录入页 + 数据备份页（设置菜单进入）：
 
 | 路由 | 页面 | 说明 |
 |------|------|------|
@@ -126,6 +126,7 @@ docker-compose -f docker-compose.dev.yml up -d
 | `/business-statistics` | 业务统计 | 项目/公司/人员资源聚合 |
 | `/zero-trust` | 零信任台账 | 零信任接入申请增删改查 |
 | `/mapping-ledger` | 映射台账 | 公网IP↔内网主机端口映射（多端口、域名可选） |
+| `/audit-logs` | 审计日志 | 全资源 CUD/导入操作审计（操作人/动作/资源/diff/request_id） |
 | `/personnel` | 人员管理 | 人员录入与维护，关联主机资产 |
 | `/public-ip` | 公网IP管理 | 公网IP资源池录入与维护（IP/运营商/出口位置/备注） |
 | `/data-backup` | 数据备份 | 8 个业务 sheet 导出为单个 xlsx / 导入 upsert（失败整体回滚） |

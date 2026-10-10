@@ -103,6 +103,16 @@
 | GET | `/api/export/all` | `dataExchange.Export` | 导出 8 个业务 sheet 为单个 xlsx（附件下载） |
 | POST | `/api/import/all` | `dataExchange.Import` | 上传 xlsx 整体导入（multipart 字段 `file`，upsert + 单事务回滚） |
 
+### 审计日志（需 JWT）
+
+| 方法 | 路由 | Controller | 说明 |
+|------|------|-----------|------|
+| GET | `/api/audit-logs` | `auditLog.List` | 分页查询审计日志；查询参数 `page`/`page_size`/`operator_name`/`action`/`resource_type`/`request_id`/`keyword` |
+
+- CUD/导入/批量操作自动写入 `audit_logs`（操作人快照 + 动作 + 资源 + 前后值 diff + 同请求共用 `request_id`）
+- `detail` 不含 password_hash 等敏感明文；只增不删；无 UNIQUE 约束、不设 users 外键
+- 不覆盖：登录/改密事件、级联写（`refreshHostIPMapped`/登录计数）、WS 探测
+
 ### 云资源总览（需 JWT）
 
 | 方法 | 路由 | Controller | 说明 |

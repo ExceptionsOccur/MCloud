@@ -61,6 +61,7 @@ func Migrate() {
 		&models.ZeroTrust{},
 		&models.PortMapping{},
 		&models.PublicIP{},
+		&models.AuditLog{},
 	)
 	if err != nil {
 		log.Fatalf("数据库迁移失败: %v", err)

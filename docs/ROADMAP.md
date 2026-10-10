@@ -26,17 +26,10 @@
 
 ## in_progress
 
-（无）
+无
 
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
 
-- [ ] **T-047** 全资源增删改审计日志 ｜ P1 ｜ 负责: — ｜ 备注: 人类 2026-10-09 立队，口径已确认（弹框）
-  - 依赖：T-002、T-003、T-042、T-010 先行合并（共享 `host_service.go`/`csv.go`/`batch.go`/`routes.go`）——已全部满足
-  - 内容：新增 `audit_logs` 表（`operator_id`/`operator_name` 快照、`action`、`resource_type`、`resource_id`、`detail` jsonb 前后值 diff、`request_id` 请求内聚合、`created_at`；仅普通索引、**禁用 UNIQUE 约束**、不设 users 外键）；service 层 25 个 CUD 方法加 `operator` 形参（沿 `controllers/auth.go` ChangePassword 范式，controller 取 `c.Get("user_id")` 下传）；覆盖常规 CUD + CSV 导入/批量编辑，不含登录/改密事件、级联写（`refreshHostIPMapped`/登录计数）、WS 探测；查询 API `GET /api/audit-logs`（JWT、分页筛选）+ 前端「审计日志」页；只增不删
-  - 定位：新增 `backend/models/audit_log.go`、`backend/services/audit_service.go`、`backend/controllers/audit_log.go`、`backend/migrations/*_create_audit_logs.sql`、`frontend/src/api/audit.js`、`frontend/src/views/AuditLog.vue`；改动 `backend/routes/routes.go`（T-010 拆分后为 `routes/audit.go`）、`backend/database/postgres.go`（AutoMigrate 追加）、`services/{host,person,public_ip,cloud_resource,subnet,port_mapping,zero_trust,import}_service.go` 及对应 controller、`frontend/src/router/index.js` 与导航
-  - 验收标准：执行 CUD/导入后 `audit_logs` 有记录且字段齐全（操作人、动作、资源、diff、同请求共用 request_id）；`detail` 无 password_hash 等敏感明文；`GET /api/audit-logs` 鉴权+分页可用、前端页可查；`go build` + `golangci-lint run ./...` + `lint:check` + `build` + `check_docs.sh` 全绿
-  - 回写：ARCHITECTURE（数据模型+目录树+表数）、API.md、CODE_INDEX.md、BUSINESS_LOGIC.md、README（页面导航）、AGENTS 快照
-  - 分支：`feat/audit-logs`
 - [ ] **T-048** 数据库迁移 SQL ↔ 实际库漂移修复 ｜ P1 ｜ 负责: — ｜ 备注: 人类 2026-10-09 立队；范围已确认（不做软删除/CHECK/索引补齐）
   - 依赖：T-047 后执行（同为 P1 串行合并；两者仅共享 `migrations/` 目录，按时间戳排序）
   - 内容：`port_mappings`/`public_ips` 主键 `integer`→`bigint`；为缺省值的 `created_at` 列补 `DEFAULT now()`（共 6 列）；`uni_port_mappings_domain` 改 `idx_` 前缀且 `models/port_mapping.go` 补 `uniqueIndex`；`users.failed_attempts`、`host_applications.host_id` 类型按实库对齐；`host_applications` 补 `created_at`/`updated_at`；旧迁移 `ON DELETE CASCADE` 与实库 `NO ACTION` 的口径用新增对齐迁移修正（Up 块不可变）。不做：软删除、CHECK 约束、普通索引补齐、`people_pkey` 改名（后两项记入 PROJECT_STATUS 备注）
@@ -94,7 +87,7 @@
 - [ ] **T-012** 文档一致性巡检 ｜ P2 ｜ 负责: — ｜ 备注: 适合小型会话
   - 定位：`docs/*.md`、`README.md`、`AGENTS.md`（协议条文部分需人类授权，见红线 7）；校验器 `scripts/check_docs.sh`（T-021 已交付）
   - 验收标准：`bash scripts/check_docs.sh` 退出码 0（links/tree/snapshot/counts/shas 全绿）；warn 一并处理；发现的错误全部修复
-- [ ] **T-019** 前端抽 Layout/AppNav ｜ P2 ｜ 负责: — ｜ 备注: 定位已实测（2026-10-09）；T-047 落地后功能页 9→10，本任务定位与验收须按 10 页更新
+- [ ] **T-019** 前端抽 Layout/AppNav ｜ P2 ｜ 负责: — ｜ 备注: 定位已实测（2026-10-09）；功能页已 9→10（T-047），本任务定位与验收按 10 页
   - 内容：各页内嵌同一段 `nav-tab` 导航结构（9 个功能页、每文件 8-9 处 `nav-tab` 引用），抽为共享 `components/AppNav.vue` 或 Layout（`App.vue` 根布局），消除重复粘贴
   - 定位：`frontend/src/views/` 下 9 个功能页（HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / ZeroTrustLedger / MappingLedger / PublicIPManagement / DataBackup；`Login.vue` 不涉及）
   - 验收标准：`npm run lint:check && npm run build` 通过；导航与视觉零变化；重复结构只剩一处
@@ -142,6 +135,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-047 | 全资源增删改审计日志 | 2026-10-10 | `-` | 验收：audit_logs 只增不删（普通索引、无 UNIQUE/users 外键）；26 个 CUD 方法经 operator+request_id 写入、detail 前后 diff 无敏感明文；GET /api/audit-logs 分页筛选 + /audit-logs 页；门禁全绿 |
 | T-042 | 批量编辑 `apply_time` 错误码与空值语义修复 | 2026-10-10 | `8a3940e` | 验收：null 与省略同义放行；非字符串/非法日期统一 40001；API.md 同步；门禁全绿 |
 | T-010 | `routes/routes.go` 按域拆分 | 2026-10-10 | `1f0b6a3` | 验收：12 文件域拆分、JWT 收口受保护组；路由全表 A/B 67/67 一致；ARCHITECTURE/CODE_INDEX/T-022 定位已回写 |
 | T-003 | `controllers/csv.go` 业务逻辑下沉 | 2026-10-10 | `f0643f8` | 验收：后缀/解析/行循环/去重/裸查全下沉 service，controller 仅绑定+错误码映射；A/B 8 场景字节一致；门禁全绿 |

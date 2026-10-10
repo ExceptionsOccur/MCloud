@@ -49,7 +49,7 @@ func normalizeCIDR(input string) (string, error) {
 	return fmt.Sprintf("%s/24", network.String()), nil
 }
 
-func (s *SubnetService) Create(req SubnetRequest) (uint, error) {
+func (s *SubnetService) Create(req SubnetRequest, op Operator, requestID string) (uint, error) {
 	cidr, err := normalizeCIDR(req.CIDR)
 	if err != nil {
 		return 0, err
@@ -65,10 +65,12 @@ func (s *SubnetService) Create(req SubnetRequest) (uint, error) {
 	if err := database.DB.Create(&subnet).Error; err != nil {
 		return 0, err
 	}
+	NewAuditService().Record(op, "create", "ip_subnet", &subnet.ID,
+		DetailDiff{After: SubnetRequest{CIDR: cidr}}, requestID)
 	return subnet.ID, nil
 }
 
-func (s *SubnetService) Update(id uint, req SubnetRequest) error {
+func (s *SubnetService) Update(id uint, req SubnetRequest, op Operator, requestID string) error {
 	cidr, err := normalizeCIDR(req.CIDR)
 	if err != nil {
 		return err
@@ -85,14 +87,25 @@ func (s *SubnetService) Update(id uint, req SubnetRequest) error {
 		return errors.New("该网段已存在")
 	}
 
+	before := SubnetRequest{CIDR: subnet.CIDR}
 	subnet.CIDR = cidr
-	return database.DB.Save(&subnet).Error
+	if err := database.DB.Save(&subnet).Error; err != nil {
+		return err
+	}
+	NewAuditService().Record(op, "update", "ip_subnet", &id,
+		DetailDiff{Before: before, After: SubnetRequest{CIDR: cidr}}, requestID)
+	return nil
 }
 
-func (s *SubnetService) Delete(id uint) error {
+func (s *SubnetService) Delete(id uint, op Operator, requestID string) error {
 	var subnet models.IPSubnet
 	if err := database.DB.First(&subnet, id).Error; err != nil {
 		return errors.New("网段不存在")
 	}
-	return database.DB.Delete(&subnet).Error
+	if err := database.DB.Delete(&subnet).Error; err != nil {
+		return err
+	}
+	NewAuditService().Record(op, "delete", "ip_subnet", &id,
+		DetailDiff{Before: SubnetRequest{CIDR: subnet.CIDR}}, requestID)
+	return nil
 }

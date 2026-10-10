@@ -62,7 +62,8 @@ func (ctrl *DataExchangeController) Import(c *gin.Context) {
 		return
 	}
 
-	report, err := ctrl.service.Import(data)
+	op, requestID := auditContext(c)
+	report, err := ctrl.service.Import(data, op, requestID)
 	if err != nil {
 		// 结构性错误（非 xlsx/缺 sheet/缺列/表头重复）→ 40001；执行失败 → 50001
 		if errors.Is(err, services.ErrImportStructure) {
