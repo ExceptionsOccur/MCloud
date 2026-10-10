@@ -2,12 +2,31 @@ package services
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"mcloud/database"
 	"mcloud/models"
+	"mcloud/utils"
 )
+
+var (
+	// ErrCSVFileSuffix 上传文件后缀非 .csv（结构性错误，controller 映射 40001）
+	ErrCSVFileSuffix = errors.New("仅支持.csv文件")
+	// ErrCSVDecode 文件编码识别失败（结构性错误，controller 映射 40001）
+	ErrCSVDecode = errors.New("文件编码识别失败")
+	// ErrCSVParse CSV 解析失败（结构性错误，controller 映射 40001；具体原因经 wrap 携带）
+	ErrCSVParse = errors.New("CSV解析失败")
+)
+
+// CSVImportResult CSV 导入结果计数（对外响应结构；字段序对齐历史 gin.H 字典序，保证响应字节不变）
+type CSVImportResult struct {
+	Errors  int `json:"errors"`
+	Skipped int `json:"skipped"`
+	Success int `json:"success"`
+}
 
 // parseCSVLine 按 CSV 规则解析单行（支持双引号包裹含逗号的字段）
 func parseCSVLine(line string) ([]string, error) {
@@ -67,6 +86,53 @@ func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, 
 	}, nil
 }
 
+// ImportCSV CSV 导入全流程：后缀校验 → 编码识别 → 解析 → 逐行创建
+// 行为口径：跳过表头；列数不足或解析失败计入 errors；内网IP已存在计入 skipped
+func (s *HostService) ImportCSV(filename string, data []byte) (*CSVImportResult, error) {
+	if !strings.HasSuffix(filename, ".csv") {
+		return nil, ErrCSVFileSuffix
+	}
+
+	content, err := utils.DetectAndDecode(data)
+	if err != nil {
+		return nil, ErrCSVDecode
+	}
+
+	records, err := utils.ParseCSV(content)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrCSVParse, err)
+	}
+
+	result := &CSVImportResult{}
+	for i, row := range records {
+		if i == 0 {
+			continue // skip header
+		}
+		if len(row) < 26 {
+			result.Errors++
+			continue
+		}
+
+		req, err := s.ParseCSVRowToCreateHost(row)
+		if err != nil {
+			result.Errors++
+			continue
+		}
+
+		if _, err := s.Create(req); err != nil {
+			if strings.Contains(err.Error(), "已存在") {
+				result.Skipped++
+			} else {
+				result.Errors++
+			}
+		} else {
+			result.Success++
+		}
+	}
+
+	return result, nil
+}
+
 func (s *HostService) ExportToCSVRows(hosts []models.Host) [][]string {
 	var rows [][]string
 	for _, h := range hosts {
@@ -96,4 +162,18 @@ func (s *HostService) ExportToCSVRows(hosts []models.Host) [][]string {
 		rows = append(rows, row)
 	}
 	return rows
+}
+
+// ExportCSV 生成全量主机 CSV 文本（含 BOM 与表头）
+func (s *HostService) ExportCSV() (string, error) {
+	var hosts []models.Host
+	if err := database.DB.Preload("Application").Find(&hosts).Error; err != nil {
+		return "", err
+	}
+	return utils.BuildCSVOutput(utils.CSVHeaders, s.ExportToCSVRows(hosts))
+}
+
+// CSVTemplate 生成导入模板 CSV 文本（仅表头，含 BOM）
+func (s *HostService) CSVTemplate() (string, error) {
+	return utils.BuildCSVOutput(utils.CSVHeaders, nil)
 }

@@ -68,7 +68,7 @@
 | `services/auth_service.go` | 认证逻辑、失败锁定 | `Login`（5 次失败锁定 15 分钟）、`ChangePassword` |
 | `services/host_service.go` | 主机 CRUD 与筛选 | `Filter`、`Create`、`Update`、`Delete`、`validatePersonID` |
 | `services/host_batch_service.go` | 主机批量增改（结构化 JSON + 纯文本行）与批量编辑 | `BatchCreate`、`BatchCreateFromText`、`BatchUpdate`、`parsePersonID` |
-| `services/host_csv_service.go` | 主机 CSV 行映射与导入导出 | `ParseCSVRowToCreateHost`、`ExportToCSVRows`、`parseCSVLine` |
+| `services/host_csv_service.go` | 主机 CSV 导入导出流程（后缀/编码/行循环）与行映射 | `ImportCSV`、`ExportCSV`、`CSVTemplate`、`ParseCSVRowToCreateHost`、`ExportToCSVRows` |
 | `services/cloud_resource_service.go` | 云资源总览读写 | `List`、`Update`（按 region upsert） |
 | `services/stats_service.go` | IP 使用统计 + 连通性探测 | `GetIPUsage`、`Probe`、`pingICMP`、`probeTCP` |
 | `services/business_stats.go` | 业务统计聚合 | `GetBusinessStats`（项目/公司/人员三维聚合） |
@@ -256,14 +256,15 @@ PUT /api/cloud-resources
 ```
 POST /api/import（multipart file）
   → routes/routes.go（JWT 鉴权）
-  → controllers/csv.go               Import()（utils.DetectAndDecode 识别编码 + utils.ParseCSV）
-  → services/host_csv_service.go   ParseCSVRowToCreateHost() → Create()（成功/跳过/错误计数）
+  → controllers/csv.go               Import()（绑定文件 + 读入字节 + 错误码映射）
+  → services/host_csv_service.go     ImportCSV()（后缀校验 + DetectAndDecode 识别编码 + ParseCSV + 行循环）
+  → services/host_csv_service.go     ParseCSVRowToCreateHost() → Create()（成功/跳过/错误计数）
 
 GET /api/export
   → routes/routes.go（JWT 鉴权）
-  → controllers/csv.go               Export()（Preload Application 读全表）
-  → services/host_csv_service.go   ExportToCSVRows()
-  → utils/csv.go                     BuildCSVOutput()（BOM + CSVHeaders 表头）
+  → controllers/csv.go               Export()
+  → services/host_csv_service.go     ExportCSV()（Preload Application 读全表）
+  → services/host_csv_service.go     ExportToCSVRows() → utils/csv.go BuildCSVOutput()（BOM + CSVHeaders 表头）
 ```
 
 ### 零信任台账 CRUD

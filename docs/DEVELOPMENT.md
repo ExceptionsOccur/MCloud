@@ -449,4 +449,4 @@ docker-compose -f docker-compose.prod.yml up -d --build
 - `.env` 不提交到 Git
 - API 输入必须校验，SQL 通过 GORM 参数化查询防注入
 - CORS：现状为对任意 `Origin` 回显 `Access-Control-Allow-Origin`（`backend/middleware/jwt.go` `CORSMiddleware`，同时下发 `Access-Control-Allow-Credentials: true`），**无白名单**、开发与生产无差别；按环境白名单收紧的任务已入队 `T-043`
-- 文件上传限制：CSV 导入（`backend/controllers/csv.go`）后端仅校验 `.csv` 后缀、**无大小限制**（16MB 只是前端 `ImportDialog` 的提示文案）；数据备份 xlsx 导入（`backend/controllers/data_exchange.go`）由 `MaxBytesReader` 强制 ≤20MB 且仅接受 `.xlsx`；CSV 后端大小限制的任务已入队 `T-044`
+- 文件上传限制：CSV 导入（`backend/services/host_csv_service.go` 的 `ImportCSV`）后端仅校验 `.csv` 后缀、**无大小限制**（16MB 只是前端 `ImportDialog` 的提示文案）；数据备份 xlsx 导入（`backend/controllers/data_exchange.go`）由 `MaxBytesReader` 强制 ≤20MB 且仅接受 `.xlsx`；CSV 后端大小限制的任务已入队 `T-044`
