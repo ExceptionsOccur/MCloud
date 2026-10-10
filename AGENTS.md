@@ -75,9 +75,9 @@
 |------|-----|
 | last_updated | 2026-10-10 |
 | in_progress | 无 |
-| next_task | `T-012` 文档巡检（= ROADMAP todo 首条，P2 最高优先级） |
+| next_task | `T-019` 抽 Layout/AppNav（= ROADMAP todo 首条，P2 最高优先级） |
 | todo（P1） | 无 |
-| todo（P2） | `T-012` 文档巡检、`T-019` 抽 Layout/AppNav（功能页已 10 个，按 10 页更新）、`T-020` config ServerPort 硬编码、`T-022` WS probe token 校验、`T-043` CORS 白名单、`T-044` CSV 上传限制、`T-052` targets 拆子表、`T-053` audit_log NOT NULL 对齐 |
+| todo（P2） | `T-019` 抽 Layout/AppNav（功能页已 10 个，按 10 页更新）、`T-020` config ServerPort 硬编码、`T-022` WS probe token 校验、`T-043` CORS 白名单、`T-044` CSV 上传限制、`T-052` targets 拆子表、`T-053` audit_log NOT NULL 对齐 |
 | blocked | 无 |
 | 回顾锚点 | 上次回顾至 `T-008`（`done` 自此起满 5 条触发周期回顾，见会话协议 E） |
 | 功能完成度 | 功能模块 19 项：19 完成 / 0 待开发；技术债 4 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
@@ -216,7 +216,7 @@ cd backend && go build ./...   # 确认模型可编译 + 迁移 SQL 文件已按
 | IP 网段 | `ip_subnets`，用户自建，仅接受 /24，不预置数据 |
 | 探测颜色 | 🟢 空闲 / 🔴 已用有非空记录 / 🟡 已用但无记录 |
 | 「已停止」 | 统计口径 = `已停止` + `已关机` 合并 |
-| 位图 | IP 统计页 10 列 × 26 行共 256 格可视化 |
+| 位图 | IP 统计页 10 列 × 26 行坐标网格，256 个 IP（尾 4 格留空）可视化 |
 
 ## 常用命令
 
