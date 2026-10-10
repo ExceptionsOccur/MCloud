@@ -72,7 +72,7 @@
 | 字段 | 值 |
 |------|-----|
 | last_updated | 2026-10-10 |
-| in_progress | `T-051` 公网IP引用保护+映射防重（负责: opencode mimo-v2.6-flash-free 2026-10-10） |
+| in_progress | 无 |
 | next_task | `T-050` hosts.disk 补录入口（= ROADMAP todo 首条，P1 最高优先级） |
 | todo（P1） | `T-050` hosts.disk 补录入口 → `T-004` composables 抽取 → `T-005` IpStatistics 拆分 → `T-006` 测试骨架 |
 | todo（P2） | `T-008` 报表导出、`T-009` bcrypt 升级、`T-011` ping 解耦、`T-012` 文档巡检、`T-019` 抽 Layout/AppNav（功能页已 10 个，按 10 页更新）、`T-020` config ServerPort 硬编码、`T-022` WS probe token 校验、`T-043` CORS 白名单、`T-044` CSV 上传限制、`T-052` targets 拆子表 |

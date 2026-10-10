@@ -26,12 +26,8 @@
 
 ## in_progress
 
-- [ ] **T-051** 公网 IP 引用保护 + 端口映射防重 ｜ P1 ｜ 负责: opencode mimo-v2.6-flash-free 2026-10-10 ｜ 备注: 人类 2026-10-09 立队（数据量增长后孤儿/重复风险放大）
-  - 内容：`public_ip_service.Delete`/`Update`（改 IP）在被 `port_mappings`/`zero_trusts` 引用时返回 40901（对齐现有引用保护口径，当前删池留孤儿）；`port_mappings` 落唯一索引 `(host_id, public_ip, external_ports)`（执行前先清历史重复）；`port_mapping_service.Create` 补整组判重（当前仅查 domain）
-  - 定位：`backend/services/public_ip_service.go`（Delete ~L92-98 / Update ~L71-90）、`backend/services/port_mapping_service.go`（Create ~L156-195）、`backend/migrations/`（新增唯一索引）、`backend/models/port_mapping.go`（补 `uniqueIndex`）
-  - 验收标准：删除/修改被引用的公网 IP 返回 40901；重复创建完全相同的映射返回 40901 且库中唯一索引存在；`go build` + `golangci-lint run ./...` + `check_docs.sh` 全绿
-  - 回写：API.md（错误码场景）、ARCHITECTURE.md（port_mappings 约束）
-  - 分支：`feat/ip-ref-guard`
+无
+
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
 - [ ] **T-050** `hosts.disk` 补录入口（语义：分配的对象存储大小） ｜ P1 ｜ 负责: — ｜ 备注: 人类 2026-10-09 确认语义为独立字段（非系统盘+数据盘之和），**不删列**
   - 内容：`disk` 与系统盘/数据盘无关，是独立事实；但当前表单无输入框、CSV 导入导出/xlsx 导入导出均不含该列，三条主流录入通道写不进值。补录入口：`HostFormDialog` 加输入框与校验；CSV 导出列与导入表头解析补 `disk`；xlsx hosts sheet 导出/导入补列。字段名暂不更名（避免 API 字段名破坏性变更）
@@ -118,6 +114,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-051 | 公网 IP 引用保护 + 端口映射防重 | 2026-10-10 | `a3a19ec` | 验收：被引用公网IP删/改IP返回 40901；重复整组映射 Create 返回 40901 且唯一索引存在；dev 库迁移幂等实测；门禁全绿 |
 | T-049 | 删除 `port_mappings` 冗余列 `isp`/`exit_location` | 2026-10-10 | `f325d4d` | 验收：dev 库 DROP COLUMN 重跑幂等实测；List 响应 isp/exit_location 恒等于资源池；模型 gorm:"-" 派生字段；回填与双表 LIKE 已移除；门禁全绿 |
 | T-048 | 数据库迁移 SQL ↔ 实际库漂移修复 | 2026-10-10 | `266bf66` | 验收：对齐迁移 dev 库执行+重跑幂等实测；主键全 bigint、created_at 全有默认、唯一索引全 idx_ 前缀、FK 全 NO ACTION；模型/ARCHITECTURE 口径同步；门禁全绿 |
 | T-047 | 全资源增删改审计日志 | 2026-10-10 | `76d4e8a` | 验收：audit_logs 只增不删（普通索引、无 UNIQUE/users 外键）；26 个 CUD 方法经 operator+request_id 写入、detail 前后 diff 无敏感明文；GET /api/audit-logs 分页筛选 + /audit-logs 页；门禁全绿 |
