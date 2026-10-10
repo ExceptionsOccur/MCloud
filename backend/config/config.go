@@ -40,7 +40,7 @@ func Load() {
 		DBSSLMode:     getEnv("DB_SSLMODE", "disable"),
 		JWTSecret:     getEnv("JWT_SECRET", "default-secret-change-me"),
 		JWTExpiresHrs: getEnvInt("JWT_EXPIRES_HOURS", 24),
-		ServerPort:    "5677",
+		ServerPort:    getEnv("SERVER_PORT", "5677"),
 		ServerMode:    getEnv("SERVER_MODE", "debug"),
 	}
 
