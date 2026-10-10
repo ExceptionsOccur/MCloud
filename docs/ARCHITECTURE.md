@@ -327,11 +327,11 @@ go/
 | 外网端口 | `external_ports` | TEXT | NOT NULL（默认 `''`），逗号分隔多端口 |
 | 内网端口 | `internal_ports` | TEXT | NOT NULL（默认 `''`），与外网端口数量/顺序一一对应 |
 | 域名 | `domain` | VARCHAR(255) | 可选；非空时唯一（唯一索引 `idx_port_mappings_domain`） |
-| 运营商 | `isp` | VARCHAR(128) | |
-| 出口位置 | `exit_location` | VARCHAR(128) | IP 所在地，选填 |
 | 备注 | `remark` | TEXT | |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 | 更新时间 | `updated_at` | TIMESTAMPTZ | DEFAULT NOW() |
+
+> **运营商/出口位置为派生字段（T-049）**：`isp`/`exit_location` 两列已删除（历史传递依赖，值与资源池漂移），API 响应字段保留、恒从 `public_ips` 资源池读时带出（模型 `gorm:"-"`，对齐 `zero_trusts` 的接入地区做法）；搜索经 `public_ips` 匹配。
 
 ### public_ips 表（公网IP资源台账）
 

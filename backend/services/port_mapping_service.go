@@ -23,8 +23,6 @@ type PortMappingRequest struct {
 	ExternalPorts string `json:"external_ports" binding:"required"`
 	InternalPorts string `json:"internal_ports" binding:"required"`
 	Domain        string `json:"domain"`
-	ISP           string `json:"isp"`
-	ExitLocation  string `json:"exit_location"`
 	Remark        string `json:"remark"`
 }
 
@@ -57,8 +55,6 @@ func parsePortList(field, raw string) ([]string, error) {
 func normalizePortMapping(req PortMappingRequest) (PortMappingRequest, []string, []string, error) {
 	req.PublicIP = strings.TrimSpace(req.PublicIP)
 	req.Domain = strings.TrimSpace(req.Domain)
-	req.ISP = strings.TrimSpace(req.ISP)
-	req.ExitLocation = strings.TrimSpace(req.ExitLocation)
 	req.Remark = strings.TrimSpace(req.Remark)
 	if req.PublicIP == "" {
 		return req, nil, nil, errors.New("公网IP不能为空")
@@ -108,8 +104,8 @@ func (s *PortMappingService) List(keyword string) ([]models.PortMapping, error) 
 	if keyword = strings.TrimSpace(keyword); keyword != "" {
 		like := "%" + keyword + "%"
 		db = db.Where(
-			"port_mappings.public_ip ILIKE ? OR port_mappings.domain ILIKE ? OR port_mappings.isp ILIKE ? OR port_mappings.exit_location ILIKE ? OR port_mappings.remark ILIKE ? OR port_mappings.external_ports ILIKE ? OR port_mappings.internal_ports ILIKE ? OR EXISTS (SELECT 1 FROM hosts WHERE hosts.id = port_mappings.host_id AND (hosts.name ILIKE ? OR hosts.private_ip ILIKE ?)) OR EXISTS (SELECT 1 FROM public_ips pi WHERE pi.ip = port_mappings.public_ip AND (pi.isp ILIKE ? OR pi.exit_location ILIKE ?))",
-			like, like, like, like, like, like, like, like, like, like, like,
+			"port_mappings.public_ip ILIKE ? OR port_mappings.domain ILIKE ? OR port_mappings.remark ILIKE ? OR port_mappings.external_ports ILIKE ? OR port_mappings.internal_ports ILIKE ? OR EXISTS (SELECT 1 FROM hosts WHERE hosts.id = port_mappings.host_id AND (hosts.name ILIKE ? OR hosts.private_ip ILIKE ?)) OR EXISTS (SELECT 1 FROM public_ips pi WHERE pi.ip = port_mappings.public_ip AND (pi.isp ILIKE ? OR pi.exit_location ILIKE ?))",
+			like, like, like, like, like, like, like, like, like,
 		)
 	}
 	var items []models.PortMapping
@@ -117,7 +113,7 @@ func (s *PortMappingService) List(keyword string) ([]models.PortMapping, error) 
 		return nil, err
 	}
 
-	// 从公网IP资源池带出运营商/出口位置（映射表字段留空时展示资源池值）
+	// 运营商/出口位置为派生字段（本表不存储），恒从公网IP资源池带出（对齐 zero_trusts 做法）
 	if len(items) > 0 {
 		ipSet := make(map[string]struct{}, len(items))
 		ips := make([]string, 0, len(items))
@@ -139,12 +135,8 @@ func (s *PortMappingService) List(keyword string) ([]models.PortMapping, error) 
 				}
 				for i := range items {
 					if r, ok := byIP[items[i].PublicIP]; ok {
-						if items[i].ISP == "" {
-							items[i].ISP = r.ISP
-						}
-						if items[i].ExitLocation == "" {
-							items[i].ExitLocation = r.ExitLocation
-						}
+						items[i].ISP = r.ISP
+						items[i].ExitLocation = r.ExitLocation
 					}
 				}
 			}
@@ -181,8 +173,6 @@ func (s *PortMappingService) Create(req PortMappingRequest, op Operator, request
 		ExternalPorts: req.ExternalPorts,
 		InternalPorts: req.InternalPorts,
 		Domain:        req.Domain,
-		ISP:           req.ISP,
-		ExitLocation:  req.ExitLocation,
 		Remark:        req.Remark,
 	}
 	if err := database.DB.Create(&rec).Error; err != nil {
@@ -224,16 +214,13 @@ func (s *PortMappingService) Update(id uint, req PortMappingRequest, op Operator
 	}
 	before := PortMappingRequest{
 		PublicIP: rec.PublicIP, HostID: rec.HostID, ExternalPorts: rec.ExternalPorts,
-		InternalPorts: rec.InternalPorts, Domain: rec.Domain, ISP: rec.ISP,
-		ExitLocation: rec.ExitLocation, Remark: rec.Remark,
+		InternalPorts: rec.InternalPorts, Domain: rec.Domain, Remark: rec.Remark,
 	}
 	updates := map[string]interface{}{
 		"public_ip":      req.PublicIP,
 		"host_id":        req.HostID,
 		"external_ports": req.ExternalPorts,
 		"internal_ports": req.InternalPorts,
-		"isp":            req.ISP,
-		"exit_location":  req.ExitLocation,
 		"remark":         req.Remark,
 	}
 	if req.Domain != "" {
@@ -266,8 +253,7 @@ func (s *PortMappingService) Delete(id uint, op Operator, requestID string) erro
 	NewAuditService().Record(op, "delete", "port_mapping", &id,
 		DetailDiff{Before: PortMappingRequest{
 			PublicIP: rec.PublicIP, HostID: rec.HostID, ExternalPorts: rec.ExternalPorts,
-			InternalPorts: rec.InternalPorts, Domain: rec.Domain, ISP: rec.ISP,
-			ExitLocation: rec.ExitLocation, Remark: rec.Remark,
+			InternalPorts: rec.InternalPorts, Domain: rec.Domain, Remark: rec.Remark,
 		}}, requestID)
 	return refreshHostIPMapped(hostID)
 }
