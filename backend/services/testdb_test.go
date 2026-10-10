@@ -12,6 +12,7 @@ import (
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 )
 
@@ -19,7 +20,14 @@ import (
 // AutoMigrate 全量模型，口径与 database/postgres.go 的 Migrate() 一致。
 func newTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	dsn := "file:" + strings.ReplaceAll(t.Name(), "/", "_") + "?mode=memory&cache=shared"
+	return openTestDB(t, t.Name())
+}
+
+// openTestDB 按指定库名打开 sqlite 内存库并注入 database.DB；
+// 不同库名 = 不同内存库（回灌测试先开源库、再开空目标库）
+func openTestDB(t *testing.T, name string) *gorm.DB {
+	t.Helper()
+	dsn := "file:" + strings.ReplaceAll(name, "/", "_") + "?mode=memory&cache=shared"
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
@@ -39,6 +47,7 @@ func newTestDB(t *testing.T) *gorm.DB {
 		&models.CloudResource{},
 		&models.IPSubnet{},
 		&models.ZeroTrust{},
+		&models.ZeroTrustTarget{},
 		&models.PortMapping{},
 		&models.PublicIP{},
 		&models.AuditLog{},
@@ -58,7 +67,40 @@ func newTestDB(t *testing.T) *gorm.DB {
 	prev := database.DB
 	database.DB = db
 	t.Cleanup(func() { database.DB = prev })
+	registerILIKEDowngrade(t, db)
 	return db
+}
+
+// registerILIKEDowngrade sqlite 无 ILIKE 运算符：查询前把 where 原生 SQL 中的 ILIKE
+// 降级为 LIKE（sqlite LIKE 对 ASCII 大小写不敏感，搜索口径与生产 Postgres ILIKE 一致）
+func registerILIKEDowngrade(t *testing.T, db *gorm.DB) {
+	t.Helper()
+	err := db.Callback().Query().Before("gorm:query").Register("test:ilike_downgrade", func(db *gorm.DB) {
+		w, ok := db.Statement.Clauses["WHERE"]
+		if !ok {
+			return
+		}
+		wc, ok := w.Expression.(clause.Where)
+		if !ok {
+			return
+		}
+		changed := false
+		for i, e := range wc.Exprs {
+			v, ok := e.(clause.Expr)
+			if !ok || !strings.Contains(v.SQL, "ILIKE") {
+				continue
+			}
+			wc.Exprs[i] = clause.Expr{SQL: strings.ReplaceAll(v.SQL, "ILIKE", "LIKE"), Vars: v.Vars}
+			changed = true
+		}
+		if changed {
+			w.Expression = wc
+			db.Statement.Clauses["WHERE"] = w
+		}
+	})
+	if err != nil {
+		t.Fatalf("注册 ILIKE 降级回调失败: %v", err)
+	}
 }
 
 // newTestConfig 注入 JWT 测试配置（Login 依赖 config.AppConfig 非空）

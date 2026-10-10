@@ -30,13 +30,6 @@
 
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
 
-- [ ] **T-052** `zero_trusts.targets` 拆子表 ｜ P2 ｜ 负责: — ｜ 备注: 人类 2026-10-09 立队（重度 1NF 违反；录入量增长后 LIKE 反查/无 FK 代价放大，代码面最广故列 P2 靠后）
-  - 依赖：建议 T-047 审计合并后执行（共享 `host_service.go` 删除引用检查段）
-  - 内容：`targets` 现为 `"host_id:port,..."` 多值 text，删除/反查靠 LIKE 拼接、无 FK。拆子表 `zero_trust_targets(zero_trust_id FK RESTRICT, host_id FK RESTRICT, port)`；LIKE 反查与关键字搜索改 JOIN；`host_service` 删主机引用检查同步改写；xlsx「接入目标」列对外格式保持不变（导入导出解析层改写）；API 响应 `targets` 结构不变（服务层组装）
-  - 定位：`backend/migrations/`（建表+回填迁移）、`backend/models/`（新增 + `zero_trust.go`）、`backend/services/zero_trust_service.go`（解析/拼接/搜索）、`backend/services/host_service.go`（删除引用检查 ~:477-483）、`backend/services/import_service.go` / `export_service.go`（targets 列）、`frontend/src/views/ZeroTrustLedger.vue`
-  - 验收标准：API 请求/响应结构零变化；删除被引用主机仍 40901；按主机搜索正确；空库 xlsx 回灌通过；`go build` + `golangci-lint` + `lint:check` + `build` + `check_docs.sh` 全绿
-  - 回写：ARCHITECTURE（新增表+表数）、API.md、CODE_INDEX、BUSINESS_LOGIC
-  - 分支：`refactor/zero-trust-targets-table`
 - [ ] **T-053** `models/audit_log.go` NOT NULL 口径对齐 ｜ P2 ｜ 负责: — ｜ 备注: 2026-10-10 周期回顾发现（红线 9「SQL≡模型」）
   - 内容：`operator_id`/`operator_name`/`action`/`resource_type`/`request_id`/`created_at` 六字段补 `not null` gorm tag，与迁移 `20261010000001_create_audit_logs.sql` 的 NOT NULL 口径一致（goose 主路径无运行时影响，修的是 AutoMigrate 兜底会建可空列的漂移）；`resource_id`/`detail` 保持可空
   - 定位：`backend/models/audit_log.go`、`backend/migrations/20261010000001_create_audit_logs.sql`（对照）、`docs/ARCHITECTURE.md`（audit_logs 字段表）
@@ -69,6 +62,7 @@
 | T-043 | CORS Origin 白名单收紧 | 2026-10-10 | `63bda34` | 验收：`CORS_ALLOWED_ORIGINS`（逗号分隔精确匹配，默认空）白名单化，非白名单 Origin 不回显 CORS 头；白名单预检/带凭证正常（单测覆盖）；DEVELOPMENT/.env.example/CODE_INDEX 同步；门禁全绿 |
 | T-044 | 后端 CSV 上传大小限制 | 2026-10-10 | `176563c` | 验收：`Import` 加 `MaxBytesReader` ≤16MB（对齐前端提示），超限返回 `40001`「文件大小超过 16MB 限制」；未超限穿透业务校验（3 例单测）；DEVELOPMENT/API.md 同步；门禁全绿 |
 | T-054 | docker-compose 透传 CORS 变量 | 2026-10-10 | `d487b0b` | 验收：dev/prod backend `environment:` 各加 `CORS_ALLOWED_ORIGINS` 透传；`docker compose config` 双文件解析通过；DEVELOPMENT 注明 compose 已透传；check_docs 0/0 |
+| T-052 | `zero_trusts.targets` 拆子表 | 2026-10-10 | `-` | 验收：API `targets` 结构零变化；子表双 FK RESTRICT、回填迁移落地；40901/按主机搜索/空库回灌均有单测；门禁全绿 |
 | T-006 | 测试骨架 | 2026-10-10 | `894e93b` | 验收：`go test` services 表驱动（主机CRUD/登录锁定）+ utils 密码全绿（sqlite 内存库注入）；vitest 冒烟 6 例；门禁全绿 |
 | T-005 | `IpStatistics.vue` 拆分 | 2026-10-10 | `baa8e2e` | 验收：778→300 行（≤400）；拆 components/ip/（ProbePanel/SubnetCard/SubnetManageDialog 移入）+ composables/useProbeGrid；lint+build+check 全绿 |
 | T-004 | 前端 composables 抽取 | 2026-10-10 | `c1d4618` | 验收：抽 useProbeWebSocket/useChartOption/usePagedTable 三件，IpStatistics 841→778 行；lint:check + build + check_docs 全绿，页面行为不变 |

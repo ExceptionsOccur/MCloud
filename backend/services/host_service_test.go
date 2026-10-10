@@ -35,18 +35,6 @@ func uniqueTestIP() string {
 	return string(b)
 }
 
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	var b []byte
-	for n > 0 {
-		b = append([]byte{byte('0' + n%10)}, b...)
-		n /= 10
-	}
-	return string(b)
-}
-
 func TestHostCreate(t *testing.T) {
 	newTestDB(t)
 	s := NewHostService()
@@ -195,11 +183,14 @@ func TestHostDelete(t *testing.T) {
 		zt := models.ZeroTrust{
 			ApplyUnit:   "测试单位",
 			AccountName: "acct",
-			Targets:     itoa(int(id)) + ":22",
 			ApplyTime:   time.Now(),
 		}
 		if err := database.DB.Create(&zt).Error; err != nil {
 			t.Fatalf("种子零信任失败: %v", err)
+		}
+		ztTarget := models.ZeroTrustTarget{ZeroTrustID: zt.ID, HostID: id, Port: 22}
+		if err := database.DB.Create(&ztTarget).Error; err != nil {
+			t.Fatalf("种子零信任接入目标失败: %v", err)
 		}
 		err := s.Delete(id, testOp, NewRequestID())
 		if !errors.Is(err, ErrHostReferenced) {

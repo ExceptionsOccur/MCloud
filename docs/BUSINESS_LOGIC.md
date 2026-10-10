@@ -124,7 +124,7 @@ var CSVHeaders = []string{
 ### 导出
 
 - `GET /api/export/all` 返回单个 `.xlsx`（excelize），8 个 sheet 按导入依赖序排列：`persons` → `public_ips` → `cloud_resources` → `ip_subnets` → `hosts` → `host_applications` → `zero_trusts` → `port_mappings`
-- 列头为中文、按名匹配；不导出 `users`、自增 id 与时间戳；关联用自然键表达：`hosts` 人员列（姓名+联系方式，由 `person_id` 解析）、宿主一律用「内网IP」、零信任「接入目标」由存储值 `host_id:port` 解析为 `内网IP:端口`
+- 列头为中文、按名匹配；不导出 `users`、自增 id 与时间戳；关联用自然键表达：`hosts` 人员列（姓名+联系方式，由 `person_id` 解析）、宿主一律用「内网IP」、零信任「接入目标」由 `zero_trust_targets` 子表配对（`host_id` → 内网IP）拼出 `内网IP:端口`（T-052，对外格式不变）
 - 派生列不导出：`hosts.ip_mapped`、`port_mappings` 的运营商/出口位置（由公网IP资源池带出）
 
 ### 导入（upsert）

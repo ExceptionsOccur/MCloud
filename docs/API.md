@@ -364,7 +364,7 @@ POST /api/zero-trusts
 }
 ```
 
-- `apply_unit` / `account_name` / `targets` 必填；`targets` 为「主机:端口」**配对**数组（一次申请聚合多组，可表达 A:22、B:3389 等任意组合，存储为 `host_id:port` 逗号串），各端口范围 1-65535，重复配对自动去重
+- `apply_unit` / `account_name` / `targets` 必填；`targets` 为「主机:端口」**配对**数组（一次申请聚合多组，可表达 A:22、B:3389 等任意组合，存储于 `zero_trust_targets` 子表一对一行；API `targets` 为读时组装的派生字段，T-052），各端口范围 1-65535，重复配对自动去重
 - `targets[].host_id` 对应 `hosts.id`，任一主机不存在：`POST /api/zero-trusts` 返回 `40001`，`PUT /api/zero-trusts/:id` 返回 `40401`
 - `public_ip` 选填，须在公网IP资源池中（否则 `40001`）；**接入地区**（`exit_location`）由资源池读时带出，不单独存列
 - `system_name` 选填（VARCHAR 128），列表列与表单位于「申请端口」之后

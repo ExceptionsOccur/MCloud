@@ -40,7 +40,7 @@
 
 - **前端**：单页应用，`/api` 请求经 Axios，IP 探测走 WebSocket 长连接
 - **后端**：分层架构，启动时 goose 执行 `migrations/*.sql`（embed）+ AutoMigrate 兜底 + 种子数据
-- **数据库**：PostgreSQL，10 张表
+- **数据库**：PostgreSQL，11 张表
 
 ---
 
@@ -94,6 +94,7 @@ go/
 │   │   ├── cloud_resource.go      # CloudResource 模型
 │   │   ├── ip_subnet.go           # IPSubnet 模型（IP 网段管理）
 │   │   ├── zero_trust.go          # ZeroTrust 模型（零信任台账）
+│   │   ├── zero_trust_target.go   # ZeroTrustTarget 模型（接入目标子表，T-052）
 │   │   ├── port_mapping.go        # PortMapping 模型（端口映射台账）
 │   │   ├── public_ip.go           # PublicIP 模型（公网IP资源台账）
 │   │   └── audit_log.go           # AuditLog 模型（审计日志）
@@ -142,7 +143,9 @@ go/
 │   │   ├── host_service_test.go   # 主机 CRUD/筛选表驱动单测（T-006）
 │   │   ├── auth_service_test.go   # 登录/锁定表驱动单测（T-006）
 │   │   ├── host_csv_service_test.go # 筛选导出行数一致性单测（T-008）
-│   │   └── stats_service_test.go  # 探测状态机/TCP/ICMP 单测（T-011）
+│   │   ├── stats_service_test.go  # 探测状态机/TCP/ICMP 单测（T-011）
+│   │   ├── zero_trust_service_test.go # 接入目标子表 CRUD/按主机搜索单测（T-052）
+│   │   └── data_exchange_test.go  # 空库 xlsx 回灌（零信任子表往返）单测（T-052）
 │   │
 │   ├── routes/
 │   │   ├── routes.go              # 路由协调：CORS + JWT 受保护组收口 + 分发各域
@@ -207,7 +210,7 @@ go/
 
 ## 数据模型
 
-数据库共 10 张表：
+数据库共 11 张表：
 
 | 表 | 模型 | 说明 |
 |----|------|------|
@@ -218,6 +221,7 @@ go/
 | `cloud_resources` | `models/cloud_resource.go` | 云资源总览（按区域） |
 | `ip_subnets` | `models/ip_subnet.go` | IP 网段管理 |
 | `zero_trusts` | `models/zero_trust.go` | 零信任接入申请台账 |
+| `zero_trust_targets` | `models/zero_trust_target.go` | 零信任接入目标子表（一对「主机:端口」一行，T-052） |
 | `port_mappings` | `models/port_mapping.go` | 端口映射台账（公网IP↔内网主机多端口；域名可选） |
 | `public_ips` | `models/public_ip.go` | 公网IP资源台账（IP/运营商/出口位置/备注） |
 | `audit_logs` | `models/audit_log.go` | 审计日志（操作人快照/动作/资源/diff/request_id；只增不删） |
@@ -322,11 +326,23 @@ go/
 | 账户名 | `account_name` | VARCHAR(64) | NOT NULL |
 | 申请人联系方式 | `contact` | VARCHAR(64) | |
 | 公网IP入口 | `public_ip` | VARCHAR(45) | 选填，须在 `public_ips` 资源池；接入地区读时带出 |
-| 接入目标 | `targets` | TEXT | NOT NULL，`host_id:port` 逗号分隔多组配对；应用层禁止删除被引用主机 |
 | 系统名称 | `system_name` | VARCHAR(128) | 选填 |
 | 申请时间 | `apply_time` | TIMESTAMPTZ | NOT NULL |
 | 备注 | `remark` | TEXT | |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
+
+> **接入目标已拆子表（T-052）**：原 `targets`（`host_id:port` 逗号串）列删除，接入目标以 `zero_trust_targets` 配对行存储（1NF）；API `targets` 为派生字段（模型 `gorm:"-"`，读时由子表组装为 `host_id:port` 逗号串，对齐 `port_mappings` 的 `isp`/`exit_location` 派生做法），请求/响应结构不变。
+
+### zero_trust_targets 表（零信任接入目标）
+
+| 字段 | 列名 | 类型 | 约束 |
+|------|------|------|------|
+| ID | `id` | BIGSERIAL | PRIMARY KEY |
+| 零信任ID | `zero_trust_id` | BIGINT | NOT NULL，索引 `idx_zero_trust_targets_zero_trust_id`，FK → zero_trusts(id)，**ON DELETE RESTRICT** |
+| 主机ID | `host_id` | BIGINT | NOT NULL，索引 `idx_zero_trust_targets_host_id`，FK → hosts(id)，**ON DELETE RESTRICT** |
+| 端口 | `port` | INTEGER | NOT NULL，1-65535 |
+
+> 一对「主机:端口」一行；迁移 `20261010000005_zero_trust_targets.sql` 建表并回填存量 `targets` 串（格式非法或主机不存在的行跳过），随后删除 `zero_trusts.targets` 列。删除被引用主机/台账记录时，应用层经子表计数校验返回 `40901`，数据库层双 FK RESTRICT 兜底（本表按 T-052 规格用 RESTRICT，晚于 T-048 的既有 NO ACTION 口径）。
 
 ### port_mappings 表（端口映射台账）
 
@@ -381,7 +397,7 @@ go/
 - `persons.name` 必填，姓名 + 联系方式 + 单位完全重复视为同一人员
 - `ip_subnets.cidr` 仅允许 `/24` IPv4 网段，写入时自动规范化为网络地址（末位归 0）
 - 系统**不预置默认网段**，由用户在「IP统计 → 管理网段」中维护
-- `zero_trusts.targets` 为 `host_id:port` 多组配对（无数据库外键）；主机被零信任台账引用时禁止删除（应用层包含式匹配校验，返回 `40901`）；`public_ip` 须在公网IP资源池，接入地区（`exit_location`）读时带出不落库
+- `zero_trusts` 接入目标经 `zero_trust_targets` 子表存储（一对「主机:端口」一行，双 FK `ON DELETE RESTRICT`）；主机被零信任台账引用时禁止删除（应用层子表去重计数校验，返回 `40901`）；API `targets` 为读时组装的派生字段；`public_ip` 须在公网IP资源池，接入地区（`exit_location`）读时带出不落库
 - `port_mappings.host_id` 外键关联 `hosts.id`；外网/内网端口列表长度必须一致；主机被映射引用时禁止删除
 - `port_mappings` 整组唯一 `(host_id, public_ip, external_ports)`（唯一索引 `idx_port_mappings_host_ip_ports`，迁移先清历史重复再落索引；应用层 Create/Update 判重返回 `40901`，`T-051`）
 - `hosts.ip_mapped` 由映射台账自动重算（有映射=true，无=false），主机表单不可手改

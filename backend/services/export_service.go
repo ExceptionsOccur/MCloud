@@ -41,6 +41,14 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 	if err := database.DB.Order("id ASC").Find(&zeroTrusts).Error; err != nil {
 		return nil, fmt.Errorf("查询零信任台账失败: %w", err)
 	}
+	ztIDs := make([]uint, len(zeroTrusts))
+	for i, z := range zeroTrusts {
+		ztIDs[i] = z.ID
+	}
+	ztPairs, pairErr := loadZeroTrustTargetPairs(database.DB, ztIDs)
+	if pairErr != nil {
+		return nil, pairErr
+	}
 	var mappings []models.PortMapping
 	if err := database.DB.Preload("Host").Order("id ASC").Find(&mappings).Error; err != nil {
 		return nil, fmt.Errorf("查询端口映射失败: %w", err)
@@ -139,10 +147,10 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 		return nil, err
 	}
 
-	// zero_trusts（接入目标 host_id:port → 内网IP:端口）
+	// zero_trusts（接入目标取子表配对 host_id → 内网IP:端口）
 	ztRows := make([][]interface{}, 0, len(zeroTrusts))
 	for _, z := range zeroTrusts {
-		pairs := parseStoredTargets(z.Targets)
+		pairs := ztPairs[z.ID]
 		parts := make([]string, 0, len(pairs))
 		for _, p := range pairs {
 			ip, ok := hostIPByID[p.HostID]
