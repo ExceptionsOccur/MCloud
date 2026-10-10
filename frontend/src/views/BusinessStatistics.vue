@@ -351,13 +351,11 @@ import { useAuthStore } from '../stores/auth'
 import { useBusinessStore } from '../stores/business'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
-import VChart from 'vue-echarts'
-import { use } from 'echarts/core'
+import { useChartOption } from '../composables/useChartOption'
 import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import { CanvasRenderer } from 'echarts/renderers'
 
-use([BarChart, GridComponent, TooltipComponent, CanvasRenderer])
+const { VChart } = useChartOption([BarChart, GridComponent, TooltipComponent])
 
 const router = useRouter()
 const authStore = useAuthStore()

@@ -137,10 +137,18 @@
 | 文件 | 职责 |
 |------|------|
 | `stores/auth.js` | token、用户信息、登录/登出 |
-| `stores/host.js` | 主机列表、分页、筛选条件 |
+| `stores/host.js` | 主机列表 CRUD + 分页态（分页/筛选通用逻辑由 `composables/usePagedTable` 提供） |
 | `stores/cloudResource.js` | 云资源 + 按区域聚合的已用/运行中/已停止统计 |
 | `stores/stats.js` | IP 使用情况（网段 + 已用/空记录 IP） |
 | `stores/business.js` | 业务统计数据（三维聚合结果） |
+
+### 组合式函数（composables/，T-004）
+
+| 文件 | 职责 |
+|------|------|
+| `composables/useProbeWebSocket.js` | 探测 WS 连接管理：连接/3s 重连/发送/卸载清理，`onMessage` 回调交回调用方处理业务帧 |
+| `composables/useChartOption.js` | ECharts 按需注册（CanvasRenderer 内置）+ 返回 `VChart`（模板 `<v-chart>`） |
+| `composables/usePagedTable.js` | 分页列表通用态：页码/页大小/筛选/加载/总数、`fetchPage`/`setFilter`/`setPage`/`resetFilters` |
 
 ### 页面（views/）
 
@@ -197,15 +205,15 @@
 |------|------|------|
 | **登录/认证** | `controllers/auth.go` `services/auth_service.go` `middleware/jwt.go` | `views/Login.vue` `stores/auth.js` `api/auth.js` |
 | **审计日志** | `controllers/audit_log.go` `services/audit_service.go` `models/audit_log.go` `routes/audit.go` | `views/AuditLog.vue` `api/audit.js` |
-| **主机 CRUD** | `controllers/host.go` `services/host_service.go` | `views/HostManagement.vue` `components/HostTable.vue` `components/HostFormDialog.vue` `stores/host.js` |
+| **主机 CRUD** | `controllers/host.go` `services/host_service.go` | `views/HostManagement.vue` `components/HostTable.vue` `components/HostFormDialog.vue` `stores/host.js` `composables/usePagedTable.js` |
 | **主机筛选/搜索** | `services/host_service.go` → `Filter` | `components/SearchToolbar.vue` |
 | **批量增改** | `controllers/batch.go` `services/host_batch_service.go` → `BatchCreate`/`BatchUpdate` | `components/BatchAddDialog.vue` `components/BatchEditDialog.vue` |
 | **CSV 导入导出** | `controllers/csv.go` `services/host_csv_service.go` `utils/csv.go` | `components/ImportDialog.vue` `api/csv.js` |
 | **数据备份 xlsx 导出/导入** | `controllers/data_exchange.go` `services/export_service.go` `services/import_service.go` | `views/DataBackup.vue` `api/dataExchange.js` |
 | **云资源录入** | `controllers/cloud_resource.go` `services/cloud_resource_service.go` | `components/CloudResourceDialog.vue` `stores/cloudResource.js` |
-| **资源统计** | `controllers/cloud_resource.go` + `GET /api/hosts` | `views/ResourceStatistics.vue` `stores/cloudResource.js` |
+| **资源统计** | `controllers/cloud_resource.go` + `GET /api/hosts` | `views/ResourceStatistics.vue` `stores/cloudResource.js` `composables/useChartOption.js` |
 | **IP 使用位图** | `controllers/stats.go` → `IPUsage` `services/stats_service.go` → `GetIPUsage` | `views/IpStatistics.vue` `stores/stats.js` |
-| **IP 连通性探测** | `controllers/websocket.go` `controllers/stats.go` → `Probe` `services/stats_service.go` → `Probe` | `views/IpStatistics.vue`（WebSocket + 颜色状态机） |
+| **IP 连通性探测** | `controllers/websocket.go` `controllers/stats.go` → `Probe` `services/stats_service.go` → `Probe` | `views/IpStatistics.vue`（颜色状态机） `composables/useProbeWebSocket.js`（连接/重连/发送） |
 | **IP 网段管理** | `controllers/subnet.go` `services/subnet_service.go` `models/ip_subnet.go` | `components/SubnetManageDialog.vue` `api/subnet.js` |
 | **人员管理** | `controllers/person.go` `services/person_service.go` `models/person.go` | `views/PersonnelManagement.vue` `api/person.js` |
 | **公网IP资源录入** | `controllers/public_ip.go` `services/public_ip_service.go` `models/public_ip.go` | `views/PublicIPManagement.vue` `api/public_ip.js` |
@@ -213,7 +221,7 @@
 | **零信任台账** | `controllers/zero_trust.go` `services/zero_trust_service.go` `models/zero_trust.go` | `views/ZeroTrustLedger.vue` `api/zero_trust.js` `components/ZeroTrustBatchAddDialog.vue` |
 | **端口映射台账** | `controllers/port_mapping.go` `services/port_mapping_service.go` `models/port_mapping.go` | `views/MappingLedger.vue` `api/port_mapping.js` `components/MappingBatchAddDialog.vue` |
 | **主机关联人员** | `services/host_service.go`（`person_id` 事务写入） | `components/HostFormDialog.vue` `components/BatchEditDialog.vue`（选择/手输自动新增） |
-| **业务统计** | `controllers/stats.go` → `BusinessStats` `services/business_stats.go` | `views/BusinessStatistics.vue` `stores/business.js` |
+| **业务统计** | `controllers/stats.go` → `BusinessStats` `services/business_stats.go` | `views/BusinessStatistics.vue` `stores/business.js` `composables/useChartOption.js` |
 | **密码重置工具** | `cmd/resetpw/main.go` `utils/password.go` | — |
 
 ---

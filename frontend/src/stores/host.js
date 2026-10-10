@@ -1,46 +1,38 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
 import { getHosts, createHost, updateHost, deleteHost } from '../api/host'
+import { usePagedTable } from '../composables/usePagedTable'
+
+const DEFAULT_FILTERS = {
+  keyword: '',
+  env_type: '',
+  asset_type: '',
+  cpu_arch: '',
+  is_db_server: '',
+  status: '',
+  region: '',
+  applicant_empty: ''
+}
 
 export const useHostStore = defineStore('host', () => {
-  const hosts = ref([])
-  const total = ref(0)
-  const loading = ref(false)
-  const currentPage = ref(1)
-  const pageSize = ref(20)
-  const filters = ref({
-    keyword: '',
-    env_type: '',
-    asset_type: '',
-    cpu_arch: '',
-    is_db_server: '',
-    status: '',
-    region: '',
-    applicant_empty: ''
+  const {
+    items: hosts, total, loading, currentPage, pageSize, filters,
+    fetchPage, setFilter, setPage, resetFilters
+  } = usePagedTable({
+    defaultFilters: DEFAULT_FILTERS,
+    fetcher: async (params) => {
+      const res = await getHosts(params)
+      if (res.code === 0) {
+        return {
+          items: res.data.hosts || [],
+          total: res.data.total || 0
+        }
+      }
+      return null
+    }
   })
 
   async function fetchHosts() {
-    loading.value = true
-    try {
-      const params = {
-        page: currentPage.value,
-        page_size: pageSize.value
-      }
-      Object.keys(filters.value).forEach(key => {
-        if (filters.value[key] !== '' && filters.value[key] !== null && filters.value[key] !== undefined) {
-          params[key] = filters.value[key]
-        }
-      })
-
-      const res = await getHosts(params)
-
-      if (res.code === 0) {
-        hosts.value = res.data.hosts || []
-        total.value = res.data.total || 0
-      }
-    } finally {
-      loading.value = false
-    }
+    return fetchPage()
   }
 
   async function create(data) {
@@ -68,32 +60,6 @@ export const useHostStore = defineStore('host', () => {
       return true
     }
     return false
-  }
-
-  function setFilter(key, value) {
-    filters.value[key] = value
-    currentPage.value = 1
-    fetchHosts()
-  }
-
-  function setPage(page) {
-    currentPage.value = page
-    fetchHosts()
-  }
-
-  function resetFilters() {
-    filters.value = {
-      keyword: '',
-      env_type: '',
-      asset_type: '',
-      cpu_arch: '',
-      is_db_server: '',
-      status: '',
-      region: '',
-      applicant_empty: ''
-    }
-    currentPage.value = 1
-    fetchHosts()
   }
 
   return {

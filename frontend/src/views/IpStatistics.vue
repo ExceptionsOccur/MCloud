@@ -195,6 +195,7 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useStatsStore } from '../stores/stats'
+import { useProbeWebSocket } from '../composables/useProbeWebSocket'
 import { probeIP as probeIPHttp } from '../api/stats'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
@@ -211,12 +212,10 @@ const probing = reactive({})
 const cellColors = reactive({})
 const batchState = reactive({})
 const batchTested = reactive({})
-const wsConnected = ref(false)
-let ws = null
-let reconnectTimer = null
-let unmounted = false
 let suppressMessages = false
 const probeResolvers = {}
+
+const { wsConnected, connect: connectWS, send: sendProbe, isUnmounted } = useProbeWebSocket(applyProbeResult)
 
 const subnetCounts = computed(() => {
   const counts = {}
@@ -246,65 +245,11 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  unmounted = true
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer)
-    reconnectTimer = null
-  }
-  if (ws) {
-    ws.onclose = null
-    ws.close()
-    ws = null
-  }
   Object.keys(probeResolvers).forEach(ip => {
     probeResolvers[ip]()
     delete probeResolvers[ip]
   })
 })
-
-function connectWS() {
-  if (unmounted) return
-  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const token = authStore.token
-  const url = `${protocol}//${location.host}/api/ws/probe?token=${encodeURIComponent(token)}`
-
-  try {
-    ws = new WebSocket(url)
-  } catch {
-    scheduleReconnect()
-    return
-  }
-
-  ws.onopen = () => {
-    wsConnected.value = true
-  }
-
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data)
-      applyProbeResult(data)
-    } catch {
-      // 非法帧静默丢弃
-    }
-  }
-
-  ws.onclose = () => {
-    wsConnected.value = false
-    scheduleReconnect()
-  }
-
-  ws.onerror = () => {
-    if (ws) ws.close()
-  }
-}
-
-function scheduleReconnect() {
-  if (unmounted || reconnectTimer) return
-  reconnectTimer = setTimeout(() => {
-    reconnectTimer = null
-    connectWS()
-  }, 3000)
-}
 
 function applyProbeResult(data) {
   if (!data || !data.ip || !data.color) return
@@ -326,14 +271,6 @@ function applyProbeResult(data) {
     delete probeResolvers[data.ip]
     resolver()
   }
-}
-
-function sendProbe(payload) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(payload))
-    return true
-  }
-  return false
 }
 
 function initCellColors() {
@@ -475,7 +412,7 @@ async function handleBatchTest(subnet) {
   let index = 0
   const worker = async () => {
     while (index < ips.length) {
-      if (unmounted) return
+      if (isUnmounted()) return
       const ip = ips[index++]
       try {
         await probeAndWait(ip)
