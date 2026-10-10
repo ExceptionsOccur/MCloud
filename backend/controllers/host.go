@@ -43,7 +43,8 @@ func (ctrl *HostController) Create(c *gin.Context) {
 		return
 	}
 
-	id, err := ctrl.service.Create(req)
+	op, requestID := auditContext(c)
+	id, err := ctrl.service.Create(req, op, requestID)
 	if err != nil {
 		if errors.Is(err, services.ErrPersonNotFound) || errors.Is(err, utils.ErrInvalidDate) {
 			Error(c, 40001, err.Error())
@@ -69,7 +70,8 @@ func (ctrl *HostController) Update(c *gin.Context) {
 		return
 	}
 
-	if err := ctrl.service.Update(uint(id), req); err != nil {
+	op, requestID := auditContext(c)
+	if err := ctrl.service.Update(uint(id), req, op, requestID); err != nil {
 		if errors.Is(err, services.ErrPersonNotFound) || errors.Is(err, utils.ErrInvalidDate) {
 			Error(c, 40001, err.Error())
 			return
@@ -104,7 +106,8 @@ func (ctrl *HostController) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := ctrl.service.Delete(uint(id)); err != nil {
+	op, requestID := auditContext(c)
+	if err := ctrl.service.Delete(uint(id), op, requestID); err != nil {
 		if errors.Is(err, services.ErrHostReferenced) || errors.Is(err, services.ErrHostReferencedByMapping) {
 			Error(c, 40901, err.Error())
 			return

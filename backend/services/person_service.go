@@ -71,7 +71,7 @@ func (s *PersonService) GetByID(id uint) (*models.Person, error) {
 	return &person, nil
 }
 
-func (s *PersonService) Create(req PersonRequest) (uint, error) {
+func (s *PersonService) Create(req PersonRequest, op Operator, requestID string) (uint, error) {
 	req, err := normalizePerson(req)
 	if err != nil {
 		return 0, err
@@ -89,10 +89,11 @@ func (s *PersonService) Create(req PersonRequest) (uint, error) {
 	if err := database.DB.Create(&person).Error; err != nil {
 		return 0, err
 	}
+	NewAuditService().Record(op, "create", "person", &person.ID, DetailDiff{After: req}, requestID)
 	return person.ID, nil
 }
 
-func (s *PersonService) Update(id uint, req PersonRequest) error {
+func (s *PersonService) Update(id uint, req PersonRequest, op Operator, requestID string) error {
 	req, err := normalizePerson(req)
 	if err != nil {
 		return err
@@ -111,13 +112,18 @@ func (s *PersonService) Update(id uint, req PersonRequest) error {
 		return errors.New("该人员已存在")
 	}
 
+	before := PersonRequest{Name: person.Name, Contact: person.Contact, Unit: person.Unit}
 	person.Name = req.Name
 	person.Contact = req.Contact
 	person.Unit = req.Unit
-	return database.DB.Save(&person).Error
+	if err := database.DB.Save(&person).Error; err != nil {
+		return err
+	}
+	NewAuditService().Record(op, "update", "person", &id, DetailDiff{Before: before, After: req}, requestID)
+	return nil
 }
 
-func (s *PersonService) Delete(id uint) error {
+func (s *PersonService) Delete(id uint, op Operator, requestID string) error {
 	var person models.Person
 	if err := database.DB.First(&person, id).Error; err != nil {
 		return ErrPersonNotFound
@@ -128,5 +134,10 @@ func (s *PersonService) Delete(id uint) error {
 	if count > 0 {
 		return fmt.Errorf("%w，%d 台主机正在使用", ErrPersonReferenced, count)
 	}
-	return database.DB.Delete(&person).Error
+	if err := database.DB.Delete(&person).Error; err != nil {
+		return err
+	}
+	NewAuditService().Record(op, "delete", "person", &id,
+		DetailDiff{Before: PersonRequest{Name: person.Name, Contact: person.Contact, Unit: person.Unit}}, requestID)
+	return nil
 }

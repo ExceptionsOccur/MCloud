@@ -289,7 +289,7 @@ func (s *ZeroTrustService) GetByID(id uint) (*models.ZeroTrust, error) {
 	return &record, nil
 }
 
-func (s *ZeroTrustService) Create(req ZeroTrustRequest) (uint, error) {
+func (s *ZeroTrustService) Create(req ZeroTrustRequest, op Operator, requestID string) (uint, error) {
 	req, pairs, err := normalizeZeroTrust(req)
 	if err != nil {
 		return 0, err
@@ -314,10 +314,11 @@ func (s *ZeroTrustService) Create(req ZeroTrustRequest) (uint, error) {
 	if err := database.DB.Create(&record).Error; err != nil {
 		return 0, err
 	}
+	NewAuditService().Record(op, "create", "zero_trust", &record.ID, DetailDiff{After: req}, requestID)
 	return record.ID, nil
 }
 
-func (s *ZeroTrustService) Update(id uint, req ZeroTrustRequest) error {
+func (s *ZeroTrustService) Update(id uint, req ZeroTrustRequest, op Operator, requestID string) error {
 	req, pairs, err := normalizeZeroTrust(req)
 	if err != nil {
 		return err
@@ -334,6 +335,15 @@ func (s *ZeroTrustService) Update(id uint, req ZeroTrustRequest) error {
 		return err
 	}
 
+	before := map[string]interface{}{
+		"apply_unit":   record.ApplyUnit,
+		"account_name": record.AccountName,
+		"contact":      record.Contact,
+		"public_ip":    record.PublicIP,
+		"targets":      record.Targets,
+		"system_name":  record.SystemName,
+		"remark":       record.Remark,
+	}
 	record.ApplyUnit = req.ApplyUnit
 	record.AccountName = req.AccountName
 	record.Contact = req.Contact
@@ -342,15 +352,27 @@ func (s *ZeroTrustService) Update(id uint, req ZeroTrustRequest) error {
 	record.SystemName = req.SystemName
 	record.ApplyTime = req.ApplyTime.Time
 	record.Remark = req.Remark
-	return database.DB.Save(&record).Error
+	if err := database.DB.Save(&record).Error; err != nil {
+		return err
+	}
+	NewAuditService().Record(op, "update", "zero_trust", &id, DetailDiff{Before: before, After: req}, requestID)
+	return nil
 }
 
-func (s *ZeroTrustService) Delete(id uint) error {
+func (s *ZeroTrustService) Delete(id uint, op Operator, requestID string) error {
 	var record models.ZeroTrust
 	if err := database.DB.First(&record, id).Error; err != nil {
 		return ErrZeroTrustNotFound
 	}
-	return database.DB.Delete(&record).Error
+	if err := database.DB.Delete(&record).Error; err != nil {
+		return err
+	}
+	NewAuditService().Record(op, "delete", "zero_trust", &id,
+		DetailDiff{Before: map[string]interface{}{
+			"apply_unit": record.ApplyUnit, "account_name": record.AccountName, "contact": record.Contact,
+			"public_ip": record.PublicIP, "targets": record.Targets, "system_name": record.SystemName, "remark": record.Remark,
+		}}, requestID)
+	return nil
 }
 
 // hostInTargetsCond 主机ID出现在 targets 配对中的匹配表达式（防子串误匹配，两侧补逗号）
@@ -388,7 +410,7 @@ func ZeroTrustsByHost(hostID uint) ([]models.ZeroTrust, error) {
 // BatchCreateText 零信任批量添加：列顺序 申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注[,公网IP]
 // 内网IP与申请端口两列数量必须一致、按位置配对；公网IP第9列选填、须在资源池
 // 主机按内网IP定位，不存在则该行失败；合法行全部插入（无唯一约束，不跳过）
-func (s *ZeroTrustService) BatchCreateText(text string) (*BatchCreateResponse, error) {
+func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID string) (*BatchCreateResponse, error) {
 	resp := &BatchCreateResponse{}
 	headerSkipped := false
 
@@ -483,7 +505,7 @@ func (s *ZeroTrustService) BatchCreateText(text string) (*BatchCreateResponse, e
 			req.ApplyTime = &utils.FlexibleTime{Time: parsed}
 		}
 
-		if _, err := s.Create(req); err != nil {
+		if _, err := s.Create(req, op, requestID); err != nil {
 			resp.Errors++
 			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: %v", lineNo, err))
 		} else {

@@ -32,7 +32,8 @@ func (ctrl *CloudResourceController) Update(c *gin.Context) {
 		return
 	}
 
-	if err := ctrl.service.Update(req); err != nil {
+	op, requestID := auditContext(c)
+	if err := ctrl.service.Update(req, op, requestID); err != nil {
 		Error(c, 50001, "更新失败: "+err.Error())
 		return
 	}

@@ -6,7 +6,7 @@
 
 ## 功能完成度
 
-> 计数（2026-10-10）：功能模块 **18** 项（**16** 完成 / **2** 待开发）；技术债 **8** 项。
+> 计数（2026-10-10）：功能模块 **19** 项（**17** 完成 / **2** 待开发）；技术债 **7** 项。
 
 | 模块 | 状态 | 说明 |
 |------|------|------|
@@ -28,6 +28,7 @@
 | Goose 迁移执行器 | ✅ 完成 | `T-016` 启动时 goose 执行 `migrations/*.sql`（embed），AutoMigrate 兜底；存量 dev 库首跑+幂等已实测 |
 | 公网 IP 资源录入 | ✅ 完成 | `T-031` `public_ips` 资源池（IP/运营商/备注），设置菜单 + `/public-ip` 独立页 |
 | 数据备份 | ✅ 完成 | `T-038` 8 个业务 sheet 导出为单个 xlsx / 导入自然键 upsert（单事务失败整体回滚），`/data-backup` 页 + 设置菜单入口 |
+| 审计日志 | ✅ 完成 | `T-047` `audit_logs` 全资源 CUD/导入审计（操作人快照/diff/request_id）+ `GET /api/audit-logs` + `/audit-logs` 页 |
 
 ## 近期变更记录
 
@@ -35,6 +36,7 @@
 
 ### 2026-10-10
 
+- `76d4e8a` `feat:` **T-047** 全资源增删改审计日志（`audit_logs` 快照+diff+request_id，26 个 CUD 方法写入，`GET /api/audit-logs` + `/audit-logs` 页；表数 9→10、页面 9→10）
 - `8a3940e` `fix:` **T-042** 批量编辑 `apply_time` null 与省略同义放行，非字符串/非法日期统一 40001（对齐单条口径；API.md 日期章节同步）
 - `e039190` `refactor:` **T-002** 后端 `host_service.go` 拆分为 CRUD/批量/CSV 三文件（同包零签名变化，对外 API 行为不变；技术债「单文件过大」关闭）
 - `f0643f8` `refactor:` **T-003** `csv.go` 业务逻辑下沉至 `host_csv_service.go`（controller 仅绑定+错误码映射，A/B 8 场景响应字节一致；技术债「controller 混入业务逻辑」关闭）

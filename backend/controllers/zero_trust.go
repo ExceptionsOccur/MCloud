@@ -37,7 +37,8 @@ func (ctrl *ZeroTrustController) BatchCreateText(c *gin.Context) {
 		Error(c, 40001, "参数校验失败: "+err.Error())
 		return
 	}
-	resp, err := ctrl.service.BatchCreateText(req.Text)
+	op, requestID := auditContext(c)
+	resp, err := ctrl.service.BatchCreateText(req.Text, op, requestID)
 	if err != nil {
 		Error(c, 50001, "批量创建失败: "+err.Error())
 		return
@@ -51,7 +52,8 @@ func (ctrl *ZeroTrustController) Create(c *gin.Context) {
 		Error(c, 40001, "参数校验失败: "+err.Error())
 		return
 	}
-	id, err := ctrl.service.Create(req)
+	op, requestID := auditContext(c)
+	id, err := ctrl.service.Create(req, op, requestID)
 	if err != nil {
 		if errors.Is(err, services.ErrHostNotFound) {
 			Error(c, 40001, err.Error())
@@ -74,7 +76,8 @@ func (ctrl *ZeroTrustController) Update(c *gin.Context) {
 		Error(c, 40001, "参数校验失败: "+err.Error())
 		return
 	}
-	if err := ctrl.service.Update(uint(id), req); err != nil {
+	op, requestID := auditContext(c)
+	if err := ctrl.service.Update(uint(id), req, op, requestID); err != nil {
 		if errors.Is(err, services.ErrZeroTrustNotFound) || errors.Is(err, services.ErrHostNotFound) {
 			Error(c, 40401, err.Error())
 			return
@@ -91,7 +94,8 @@ func (ctrl *ZeroTrustController) Delete(c *gin.Context) {
 		Error(c, 40001, "无效的ID")
 		return
 	}
-	if err := ctrl.service.Delete(uint(id)); err != nil {
+	op, requestID := auditContext(c)
+	if err := ctrl.service.Delete(uint(id), op, requestID); err != nil {
 		if errors.Is(err, services.ErrZeroTrustNotFound) {
 			Error(c, 40401, err.Error())
 			return

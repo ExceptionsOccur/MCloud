@@ -153,7 +153,7 @@ func (s *PortMappingService) List(keyword string) ([]models.PortMapping, error) 
 	return items, nil
 }
 
-func (s *PortMappingService) Create(req PortMappingRequest) (uint, error) {
+func (s *PortMappingService) Create(req PortMappingRequest, op Operator, requestID string) (uint, error) {
 	req, _, _, err := normalizePortMapping(req)
 	if err != nil {
 		return 0, err
@@ -188,13 +188,14 @@ func (s *PortMappingService) Create(req PortMappingRequest) (uint, error) {
 	if err := database.DB.Create(&rec).Error; err != nil {
 		return 0, err
 	}
+	NewAuditService().Record(op, "create", "port_mapping", &rec.ID, DetailDiff{After: req}, requestID)
 	if err := refreshHostIPMapped(req.HostID); err != nil {
 		return 0, err
 	}
 	return rec.ID, nil
 }
 
-func (s *PortMappingService) Update(id uint, req PortMappingRequest) error {
+func (s *PortMappingService) Update(id uint, req PortMappingRequest, op Operator, requestID string) error {
 	req, _, _, err := normalizePortMapping(req)
 	if err != nil {
 		return err
@@ -221,6 +222,11 @@ func (s *PortMappingService) Update(id uint, req PortMappingRequest) error {
 			return errors.New("该域名已存在")
 		}
 	}
+	before := PortMappingRequest{
+		PublicIP: rec.PublicIP, HostID: rec.HostID, ExternalPorts: rec.ExternalPorts,
+		InternalPorts: rec.InternalPorts, Domain: rec.Domain, ISP: rec.ISP,
+		ExitLocation: rec.ExitLocation, Remark: rec.Remark,
+	}
 	updates := map[string]interface{}{
 		"public_ip":      req.PublicIP,
 		"host_id":        req.HostID,
@@ -238,6 +244,7 @@ func (s *PortMappingService) Update(id uint, req PortMappingRequest) error {
 	if err := database.DB.Model(&rec).Updates(updates).Error; err != nil {
 		return err
 	}
+	NewAuditService().Record(op, "update", "port_mapping", &id, DetailDiff{Before: before, After: req}, requestID)
 	if err := refreshHostIPMapped(oldHostID); err != nil {
 		return err
 	}
@@ -247,7 +254,7 @@ func (s *PortMappingService) Update(id uint, req PortMappingRequest) error {
 	return nil
 }
 
-func (s *PortMappingService) Delete(id uint) error {
+func (s *PortMappingService) Delete(id uint, op Operator, requestID string) error {
 	var rec models.PortMapping
 	if err := database.DB.First(&rec, id).Error; err != nil {
 		return ErrPortMappingNotFound
@@ -256,12 +263,18 @@ func (s *PortMappingService) Delete(id uint) error {
 	if err := database.DB.Delete(&rec).Error; err != nil {
 		return err
 	}
+	NewAuditService().Record(op, "delete", "port_mapping", &id,
+		DetailDiff{Before: PortMappingRequest{
+			PublicIP: rec.PublicIP, HostID: rec.HostID, ExternalPorts: rec.ExternalPorts,
+			InternalPorts: rec.InternalPorts, Domain: rec.Domain, ISP: rec.ISP,
+			ExitLocation: rec.ExitLocation, Remark: rec.Remark,
+		}}, requestID)
 	return refreshHostIPMapped(hostID)
 }
 
 // BatchCreateText 映射批量添加：公网IP,内网IP,外网端口,内网端口,域名,备注
 // 运营商/出口位置从公网IP资源池展示，不在批量行填写
-func (s *PortMappingService) BatchCreateText(text string) (*BatchCreateResponse, error) {
+func (s *PortMappingService) BatchCreateText(text string, op Operator, requestID string) (*BatchCreateResponse, error) {
 	resp := &BatchCreateResponse{}
 	headerSkipped := false
 
@@ -309,7 +322,7 @@ func (s *PortMappingService) BatchCreateText(text string) (*BatchCreateResponse,
 			Domain:        strings.TrimSpace(row[4]),
 			Remark:        strings.TrimSpace(row[5]),
 		}
-		if _, err := s.Create(req); err != nil {
+		if _, err := s.Create(req, op, requestID); err != nil {
 			if strings.Contains(err.Error(), "已存在") {
 				resp.Skipped++
 			} else {

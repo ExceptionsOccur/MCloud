@@ -88,7 +88,7 @@ func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, 
 
 // ImportCSV CSV 导入全流程：后缀校验 → 编码识别 → 解析 → 逐行创建
 // 行为口径：跳过表头；列数不足或解析失败计入 errors；内网IP已存在计入 skipped
-func (s *HostService) ImportCSV(filename string, data []byte) (*CSVImportResult, error) {
+func (s *HostService) ImportCSV(filename string, data []byte, op Operator, requestID string) (*CSVImportResult, error) {
 	if !strings.HasSuffix(filename, ".csv") {
 		return nil, ErrCSVFileSuffix
 	}
@@ -119,7 +119,7 @@ func (s *HostService) ImportCSV(filename string, data []byte) (*CSVImportResult,
 			continue
 		}
 
-		if _, err := s.Create(req); err != nil {
+		if _, err := s.Create(req, op, requestID); err != nil {
 			if strings.Contains(err.Error(), "已存在") {
 				result.Skipped++
 			} else {
@@ -130,6 +130,11 @@ func (s *HostService) ImportCSV(filename string, data []byte) (*CSVImportResult,
 		}
 	}
 
+	NewAuditService().Record(op, "import_csv", "host", nil,
+		DetailDiff{After: map[string]interface{}{
+			"filename": filename, "success": result.Success,
+			"skipped": result.Skipped, "errors": result.Errors,
+		}}, requestID)
 	return result, nil
 }
 

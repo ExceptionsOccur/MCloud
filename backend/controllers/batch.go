@@ -26,7 +26,8 @@ func (ctrl *BatchController) BatchCreate(c *gin.Context) {
 		return
 	}
 
-	resp, err := ctrl.service.BatchCreate(req)
+	op, requestID := auditContext(c)
+	resp, err := ctrl.service.BatchCreate(req, op, requestID)
 	if err != nil {
 		Error(c, 50001, "批量创建失败: "+err.Error())
 		return
@@ -43,7 +44,8 @@ func (ctrl *BatchController) BatchCreateText(c *gin.Context) {
 		return
 	}
 
-	resp, err := ctrl.service.BatchCreateFromText(req.Text)
+	op, requestID := auditContext(c)
+	resp, err := ctrl.service.BatchCreateFromText(req.Text, op, requestID)
 	if err != nil {
 		Error(c, 50001, "批量创建失败: "+err.Error())
 		return
@@ -59,7 +61,8 @@ func (ctrl *BatchController) BatchUpdate(c *gin.Context) {
 		return
 	}
 
-	if err := ctrl.service.BatchUpdate(req); err != nil {
+	op, requestID := auditContext(c)
+	if err := ctrl.service.BatchUpdate(req, op, requestID); err != nil {
 		if errors.Is(err, services.ErrPersonNotFound) || errors.Is(err, utils.ErrInvalidDate) {
 			Error(c, 40001, err.Error())
 			return

@@ -226,14 +226,14 @@ check_counts() {
   while IFS=: read -r f lno text; do
     check_count_stmt "$f" "$lno" "$text" "$actual"
   done < <(grep -rnE '[0-9]+ 个( `[^`]*`)? SQL' docs README.md AGENTS.md |
-    sed -E 's/^([^:]+):([0-9]+):.*([0-9]+ 个( `[^`]*`)? SQL).*$/\1:\2:\3/')
+    sed -E 's/^([^:]+):([0-9]+):.*[^0-9]([0-9]+ 个( `[^`]*`)? SQL).*$/\1:\2:\3/')
 
   # 2) N 张表 / N 张业务表 / N 张： ↔ ARCHITECTURE 数据模型章节数
   actual="$(sed -n '/^## 数据模型/,$p' docs/ARCHITECTURE.md | grep -cE '^### .* 表')"
   while IFS=: read -r f lno text; do
     check_count_stmt "$f" "$lno" "$text" "$actual"
   done < <(grep -rnE '[0-9]+ 张(业务表|表|：)' docs README.md AGENTS.md |
-    sed -E 's/^([^:]+):([0-9]+):.*([0-9]+ 张(业务表|表|：)).*$/\1:\2:\3/')
+    sed -E 's/^([^:]+):([0-9]+):.*[^0-9]([0-9]+ 张(业务表|表|：)).*$/\1:\2:\3/')
 
   # 3) N 个函数 ↔ 行内引用的 .go 文件 func 数（行内无文件路径则跳过）
   while IFS=: read -r f lno line; do

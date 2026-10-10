@@ -51,7 +51,7 @@ func (s *PublicIPService) List(keyword string) ([]models.PublicIP, error) {
 	return items, nil
 }
 
-func (s *PublicIPService) Create(req PublicIPRequest) (uint, error) {
+func (s *PublicIPService) Create(req PublicIPRequest, op Operator, requestID string) (uint, error) {
 	req, err := normalizePublicIP(req)
 	if err != nil {
 		return 0, err
@@ -65,10 +65,11 @@ func (s *PublicIPService) Create(req PublicIPRequest) (uint, error) {
 	if err := database.DB.Create(&record).Error; err != nil {
 		return 0, err
 	}
+	NewAuditService().Record(op, "create", "public_ip", &record.ID, DetailDiff{After: req}, requestID)
 	return record.ID, nil
 }
 
-func (s *PublicIPService) Update(id uint, req PublicIPRequest) error {
+func (s *PublicIPService) Update(id uint, req PublicIPRequest, op Operator, requestID string) error {
 	req, err := normalizePublicIP(req)
 	if err != nil {
 		return err
@@ -82,17 +83,27 @@ func (s *PublicIPService) Update(id uint, req PublicIPRequest) error {
 	if count > 0 {
 		return errors.New("该公网IP已存在")
 	}
+	before := PublicIPRequest{IP: record.IP, ISP: record.ISP, ExitLocation: record.ExitLocation, Remark: record.Remark}
 	record.IP = req.IP
 	record.ISP = req.ISP
 	record.ExitLocation = req.ExitLocation
 	record.Remark = req.Remark
-	return database.DB.Save(&record).Error
+	if err := database.DB.Save(&record).Error; err != nil {
+		return err
+	}
+	NewAuditService().Record(op, "update", "public_ip", &id, DetailDiff{Before: before, After: req}, requestID)
+	return nil
 }
 
-func (s *PublicIPService) Delete(id uint) error {
+func (s *PublicIPService) Delete(id uint, op Operator, requestID string) error {
 	var record models.PublicIP
 	if err := database.DB.First(&record, id).Error; err != nil {
 		return ErrPublicIPNotFound
 	}
-	return database.DB.Delete(&record).Error
+	if err := database.DB.Delete(&record).Error; err != nil {
+		return err
+	}
+	NewAuditService().Record(op, "delete", "public_ip", &id,
+		DetailDiff{Before: PublicIPRequest{IP: record.IP, ISP: record.ISP, ExitLocation: record.ExitLocation, Remark: record.Remark}}, requestID)
+	return nil
 }

@@ -91,7 +91,7 @@ type BatchCreateTextRequest struct {
 }
 
 // BatchCreateFromText 纯文本批量添加：每行一条记录，逗号分隔，列顺序与 CSV 模板一致（最多26列）
-func (s *HostService) BatchCreateFromText(text string) (*BatchCreateResponse, error) {
+func (s *HostService) BatchCreateFromText(text string, op Operator, requestID string) (*BatchCreateResponse, error) {
 	resp := &BatchCreateResponse{}
 	headerSkipped := false
 
@@ -138,7 +138,7 @@ func (s *HostService) BatchCreateFromText(text string) (*BatchCreateResponse, er
 			continue
 		}
 
-		if _, err := s.Create(req); err != nil {
+		if _, err := s.Create(req, op, requestID); err != nil {
 			if strings.Contains(err.Error(), "已存在") {
 				resp.Skipped++
 			} else {
@@ -153,7 +153,7 @@ func (s *HostService) BatchCreateFromText(text string) (*BatchCreateResponse, er
 	return resp, nil
 }
 
-func (s *HostService) BatchCreate(req BatchCreateRequest) (*BatchCreateResponse, error) {
+func (s *HostService) BatchCreate(req BatchCreateRequest, op Operator, requestID string) (*BatchCreateResponse, error) {
 	resp := &BatchCreateResponse{}
 
 	for i, item := range req.Hosts {
@@ -193,7 +193,7 @@ func (s *HostService) BatchCreate(req BatchCreateRequest) (*BatchCreateResponse,
 			ApplicantContact:  item.ApplicantContact,
 		}
 
-		_, err := s.Create(req2)
+		_, err := s.Create(req2, op, requestID)
 		if err != nil {
 			resp.Errors++
 			resp.LineErrors = appendLineError(resp.LineErrors, fmt.Sprintf("第%d条: %v", i+1, err))
@@ -210,7 +210,7 @@ type BatchUpdateRequest struct {
 	Data map[string]interface{} `json:"data" binding:"required"`
 }
 
-func (s *HostService) BatchUpdate(req BatchUpdateRequest) error {
+func (s *HostService) BatchUpdate(req BatchUpdateRequest, op Operator, requestID string) error {
 	if len(req.IDS) == 0 {
 		return errors.New("未选择任何主机")
 	}
@@ -276,5 +276,7 @@ func (s *HostService) BatchUpdate(req BatchUpdateRequest) error {
 	}
 
 	tx.Commit()
+	NewAuditService().Record(op, "batch_update", "host", nil,
+		DetailDiff{After: map[string]interface{}{"ids": req.IDS, "data": req.Data}}, requestID)
 	return nil
 }
