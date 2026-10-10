@@ -36,6 +36,8 @@
 
 ### 2026-10-10
 
+- `176563c` `fix:` **T-044** CSV 导入加后端 16MB 上限（`MaxBytesReader`，对齐前端提示），超限返回 40001，未超限行为不变（3 例单测）
+
 - `63bda34` `fix:` **T-043** CORS 改 Origin 白名单（`CORS_ALLOWED_ORIGINS` 精确匹配、默认空不下发），关闭非白名单回显任意 Origin + credentials 漏洞
 
 - `a0e6477` `fix:` **T-022** WS 通道升级前校验 JWT 有效性（同源 `ValidateToken`），无效/过期/伪造返回 40101 拒绝建连，已知问题「WS 通道无 JWT 校验」关闭
