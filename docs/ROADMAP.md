@@ -20,7 +20,7 @@
 
 **认领规则**：一次只领 **1 条**优先级最高（`P0` > `P1` > `P2`）的任务；领用 = 把该条移到 `in_progress` 并填写负责字段（在写任何代码之前先改本文件）。
 
-**回顾锚点**：`上次回顾至 T-041`。`done` 表自该锚点起新增 ≥ 5 条时，须先执行 [AGENTS.md · 会话协议 E](../AGENTS.md#会话协议) 的周期回顾（按各任务「回写」字段定向核查文档↔代码符合度、补回填写漏，纯文档类任务跳过，偏差先报告人类再修），回顾完成并经人类确认后把锚点推进至该批最后一条 `done` ID。
+**回顾锚点**：`上次回顾至 T-010`。`done` 表自该锚点起新增 ≥ 5 条时，须先执行 [AGENTS.md · 会话协议 E](../AGENTS.md#会话协议) 的周期回顾（按各任务「回写」字段定向核查文档↔代码符合度、补回填写漏，纯文档类任务跳过，偏差先报告人类再修），回顾完成并经人类确认后把锚点推进至该批最后一条 `done` ID。
 
 ---
 
@@ -28,19 +28,10 @@
 
 （无）
 
-## in_progress
-
-（无）
-
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
 
-- [ ] **T-042** 批量编辑 `apply_time` 错误码与空值语义修复 ｜ P1 ｜ 负责: — ｜ 备注: 全量回顾 J1（2026-10-09）；T-047 前置（共享 `host_service.go` 批量分支 + `batch.go`）
-  - 内容：`PUT /api/batch/hosts` 对 `apply_time=null`/非字符串返回裸 error → 50001 且 null 被拒；改为 null 与省略同义放行、非法值统一 40001（与单条口径一致）
-  - 定位：`backend/services/host_service.go`（批量编辑 `isStr` 分支 ~L704）、`backend/controllers/batch.go`（L63 错误映射）、`docs/API.md` 日期时间格式章节（现按 50001 如实描述，修复后同步）
-  - 验收标准：`apply_time=null` 不再 50001；非字符串/非法日期返回 40001；`go build` + `golangci-lint run ./...` 通过；`docs/API.md` 同步
-  - 分支：`fix/batch-apply-time-code`
 - [ ] **T-047** 全资源增删改审计日志 ｜ P1 ｜ 负责: — ｜ 备注: 人类 2026-10-09 立队，口径已确认（弹框）
-  - 依赖：T-002、T-003、T-042、T-010 先行合并（共享 `host_service.go`/`csv.go`/`batch.go`/`routes.go`）
+  - 依赖：T-002、T-003、T-042、T-010 先行合并（共享 `host_service.go`/`csv.go`/`batch.go`/`routes.go`）——已全部满足
   - 内容：新增 `audit_logs` 表（`operator_id`/`operator_name` 快照、`action`、`resource_type`、`resource_id`、`detail` jsonb 前后值 diff、`request_id` 请求内聚合、`created_at`；仅普通索引、**禁用 UNIQUE 约束**、不设 users 外键）；service 层 25 个 CUD 方法加 `operator` 形参（沿 `controllers/auth.go` ChangePassword 范式，controller 取 `c.Get("user_id")` 下传）；覆盖常规 CUD + CSV 导入/批量编辑，不含登录/改密事件、级联写（`refreshHostIPMapped`/登录计数）、WS 探测；查询 API `GET /api/audit-logs`（JWT、分页筛选）+ 前端「审计日志」页；只增不删
   - 定位：新增 `backend/models/audit_log.go`、`backend/services/audit_service.go`、`backend/controllers/audit_log.go`、`backend/migrations/*_create_audit_logs.sql`、`frontend/src/api/audit.js`、`frontend/src/views/AuditLog.vue`；改动 `backend/routes/routes.go`（T-010 拆分后为 `routes/audit.go`）、`backend/database/postgres.go`（AutoMigrate 追加）、`services/{host,person,public_ip,cloud_resource,subnet,port_mapping,zero_trust,import}_service.go` 及对应 controller、`frontend/src/router/index.js` 与导航
   - 验收标准：执行 CUD/导入后 `audit_logs` 有记录且字段齐全（操作人、动作、资源、diff、同请求共用 request_id）；`detail` 无 password_hash 等敏感明文；`GET /api/audit-logs` 鉴权+分页可用、前端页可查；`go build` + `golangci-lint run ./...` + `lint:check` + `build` + `check_docs.sh` 全绿
@@ -151,6 +142,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-042 | 批量编辑 `apply_time` 错误码与空值语义修复 | 2026-10-10 | `8a3940e` | 验收：null 与省略同义放行；非字符串/非法日期统一 40001；API.md 同步；门禁全绿 |
 | T-010 | `routes/routes.go` 按域拆分 | 2026-10-10 | `1f0b6a3` | 验收：12 文件域拆分、JWT 收口受保护组；路由全表 A/B 67/67 一致；ARCHITECTURE/CODE_INDEX/T-022 定位已回写 |
 | T-003 | `controllers/csv.go` 业务逻辑下沉 | 2026-10-10 | `f0643f8` | 验收：后缀/解析/行循环/去重/裸查全下沉 service，controller 仅绑定+错误码映射；A/B 8 场景字节一致；门禁全绿 |
 | T-002 | 后端 `services/host_service.go` 拆分 | 2026-10-10 | `e039190` | 验收：拆为 CRUD/批量/CSV 三文件（9/5/4 函数）；签名零变化、API 行为不变；build+lint+check_docs 全绿 |

@@ -35,6 +35,7 @@
 
 ### 2026-10-10
 
+- `8a3940e` `fix:` **T-042** 批量编辑 `apply_time` null 与省略同义放行，非字符串/非法日期统一 40001（对齐单条口径；API.md 日期章节同步）
 - `e039190` `refactor:` **T-002** 后端 `host_service.go` 拆分为 CRUD/批量/CSV 三文件（同包零签名变化，对外 API 行为不变；技术债「单文件过大」关闭）
 - `f0643f8` `refactor:` **T-003** `csv.go` 业务逻辑下沉至 `host_csv_service.go`（controller 仅绑定+错误码映射，A/B 8 场景响应字节一致；技术债「controller 混入业务逻辑」关闭）
 - `1f0b6a3` `refactor:` **T-010** 路由按域拆为 12 文件，JWT 收口受保护组（路由全表 A/B 67/67 一致，路径/方法/鉴权零变化）
@@ -122,7 +123,7 @@
 | 探测依赖 ping | 依赖宿主机 `ping` 命令；Linux `-W` 单位为秒，已改用 context 控制 100ms 超时 |
 | 密码哈希强度 | SHA-256 + 盐，非慢哈希，生产环境建议升级 bcrypt |
 | ServerPort 硬编码 | `config.go:43` 默认值 `"5677"` 违反红线 3（配置外置），待改环境变量，`T-020` 已入队 |
-| WS 通道无 JWT 校验 | `/api/ws/probe` 仅校验 `token` 非空（`routes.go`），任意非空字符串即可建连并发起探测；`T-022` 已入队 |
+| WS 通道无 JWT 校验 | `/api/ws/probe` 仅校验 `token` 非空（`routes/websocket.go`），任意非空字符串即可建连并发起探测；`T-022` 已入队 |
 
 ## 注意事项
 

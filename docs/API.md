@@ -47,7 +47,7 @@
 
 - **JSON 时间字段**（如零信任 `apply_time`）以 **RFC3339 带时区**为主格式（`2026-10-08T10:00:00+08:00`），兼容无时区 `YYYY-MM-DDTHH:mm:ss` 与 `YYYY-MM-DD HH:mm:ss`（按**服务器本地时区**解释）
 - **主机申请时间** `host_applications.apply_time` 为纯日期：严格 `YYYY-MM-DD`（空值合法）；经 API（创建/更新/批量创建）提交非空非法值一律拒绝（单条 `40001`，批量为行级错误，错误信息含 `YYYY-MM-DD`）
-- **批量编辑**（`PUT /api/batch/hosts`）的 `apply_time` 必须为字符串 `YYYY-MM-DD`（空串合法）或省略该字段：字符串但非 `YYYY-MM-DD` 返回 `40001`，`null` / 非字符串当前返回 `50001`
+- **批量编辑**（`PUT /api/batch/hosts`）的 `apply_time`：字符串 `YYYY-MM-DD`（空串合法）、`null`（与省略同义，不更新该字段）；字符串但非 `YYYY-MM-DD` 或非字符串值返回 `40001`
 - **导入**：xlsx 导入在报告 `errors[]` 中返回含 `YYYY-MM-DD` 的行级错误（存在行级错误时整体回滚）；CSV 导入只累计 `errors` 计数、不返回行级消息，坏行不入库
 - **展示与导出**：展示统一 `YYYY-MM-DD HH:mm:ss`；日期字段（主机申请时间）导出为 `YYYY-MM-DD`（CSV 与 xlsx 备份），零信任申请时间导出为 `YYYY-MM-DD HH:mm:ss`；备份文件名日期统一 `YYYY-MM-DD`
 
@@ -172,7 +172,7 @@
 
 ## WebSocket 探测帧协议
 
-`GET /api/ws/probe?token=<JWT>`（`routes.go` 将连接升级为 WebSocket；浏览器 WS 请求无法携带 `Authorization` 头，故 token 走 query）。`token` 缺失返回 `40101`（当前仅校验非空，不校验 JWT 有效性——已知限制，`T-022` 已入队修复）。
+`GET /api/ws/probe?token=<JWT>`（`routes/websocket.go` 将连接升级为 WebSocket；浏览器 WS 请求无法携带 `Authorization` 头，故 token 走 query）。`token` 缺失返回 `40101`（当前仅校验非空，不校验 JWT 有效性——已知限制，`T-022` 已入队修复）。
 
 双向均为 **Text frame + JSON**：
 
