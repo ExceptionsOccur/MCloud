@@ -36,6 +36,8 @@
 
 ### 2026-10-10
 
+- `a0e6477` `fix:` **T-022** WS 通道升级前校验 JWT 有效性（同源 `ValidateToken`），无效/过期/伪造返回 40101 拒绝建连，已知问题「WS 通道无 JWT 校验」关闭
+
 - `8535979` `fix:` **T-020** `ServerPort` 改 `SERVER_PORT` 环境变量（保留默认 5677），`.env.example` 同步，技术债「ServerPort 硬编码」关闭
 
 - `481477e` `refactor:` **T-019** 抽 AppNav 顶部导航：7 Tab 导航 10 页共用（净删 605 行重复），variant prop 保留 AuditLog/DataBackup 样式变体，视觉零变化
