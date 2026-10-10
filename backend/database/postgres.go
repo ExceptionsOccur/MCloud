@@ -59,6 +59,7 @@ func Migrate() {
 		&models.CloudResource{},
 		&models.IPSubnet{},
 		&models.ZeroTrust{},
+		&models.ZeroTrustTarget{},
 		&models.PortMapping{},
 		&models.PublicIP{},
 		&models.AuditLog{},

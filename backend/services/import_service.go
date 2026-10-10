@@ -710,15 +710,21 @@ func (s *DataExchangeService) applyHostApplications(tx *gorm.DB, sh *importSheet
 }
 
 // applyZeroTrusts 自然键 apply_unit+account_name+system_name；
-// 接入目标 = 内网IP:端口（导入解析回 host_id），公网IP须在资源池
+// 接入目标 = 内网IP:端口（导入解析回 host_id，写 zero_trust_targets 子表），公网IP须在资源池
 func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, report *ImportReport) error {
 	var existing []models.ZeroTrust
 	if err := tx.Find(&existing).Error; err != nil {
 		return err
 	}
 	byKey := make(map[string]*models.ZeroTrust, len(existing))
+	existingIDs := make([]uint, len(existing))
 	for i := range existing {
 		byKey[zeroTrustKey(existing[i])] = &existing[i]
+		existingIDs[i] = existing[i].ID
+	}
+	pairsByID, err := loadZeroTrustTargetPairs(tx, existingIDs)
+	if err != nil {
+		return err
 	}
 	seen := make(map[string]int)
 
@@ -788,17 +794,17 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 			return
 		}
 
-		targets := joinTargetPairs(normalized)
 		updates := map[string]interface{}{
-			"contact": contact, "public_ip": publicIP, "targets": targets, "remark": remark,
+			"contact": contact, "public_ip": publicIP, "remark": remark,
 		}
 		if !applyTime.IsZero() {
 			updates["apply_time"] = applyTime
 		}
 
 		if cur, ok := byKey[key]; ok {
+			curPairs := pairsByID[cur.ID]
 			changed := cur.Contact != contact || cur.PublicIP != publicIP ||
-				cur.Targets != targets || cur.Remark != remark ||
+				!targetPairsEqual(curPairs, normalized) || cur.Remark != remark ||
 				(!applyTime.IsZero() && !cur.ApplyTime.Equal(applyTime))
 			if !changed {
 				stat.Skipped++
@@ -808,12 +814,21 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 				fail(report, c, err)
 				return
 			}
+			if err := tx.Where("zero_trust_id = ?", cur.ID).Delete(&models.ZeroTrustTarget{}).Error; err != nil {
+				fail(report, c, err)
+				return
+			}
+			if err := insertZeroTrustTargets(tx, cur.ID, normalized); err != nil {
+				fail(report, c, err)
+				return
+			}
+			pairsByID[cur.ID] = normalized
 			stat.Updated++
 			return
 		}
 		z := models.ZeroTrust{
 			ApplyUnit: applyUnit, AccountName: accountName, SystemName: systemName,
-			Contact: contact, PublicIP: publicIP, Targets: targets, Remark: remark,
+			Contact: contact, PublicIP: publicIP, Remark: remark,
 			ApplyTime: time.Now(),
 		}
 		if !applyTime.IsZero() {
@@ -823,10 +838,28 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 			fail(report, c, err)
 			return
 		}
+		if err := insertZeroTrustTargets(tx, z.ID, normalized); err != nil {
+			fail(report, c, err)
+			return
+		}
 		byKey[key] = &z
+		pairsByID[z.ID] = normalized
 		stat.Created++
 	})
 	return nil
+}
+
+// targetPairsEqual 按序比较两组配对（与旧存储串逐字比较语义一致）
+func targetPairsEqual(a, b []ZeroTrustTarget) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func zeroTrustKey(z models.ZeroTrust) string {

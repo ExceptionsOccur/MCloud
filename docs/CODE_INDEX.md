@@ -38,6 +38,7 @@
 | `backend/models/ip_subnet.go` | `IPSubnet` | `ip_subnets` |
 | `backend/models/person.go` | `Person` | `persons` |
 | `backend/models/zero_trust.go` | `ZeroTrust` | `zero_trusts` |
+| `backend/models/zero_trust_target.go` | `ZeroTrustTarget` | `zero_trust_targets`（T-052） |
 | `backend/models/port_mapping.go` | `PortMapping` | `port_mappings` |
 | `backend/models/public_ip.go` | `PublicIP` | `public_ips` |
 | `backend/models/audit_log.go` | `AuditLog` | `audit_logs` |
@@ -78,7 +79,7 @@
 | `services/business_stats.go` | 业务统计聚合 | `GetBusinessStats`（项目/公司/人员三维聚合） |
 | `services/subnet_service.go` | IP 网段管理 | `List`/`Create`/`Update`/`Delete`、`normalizeCIDR`（/24 校验） |
 | `services/person_service.go` | 人员管理 | `List`/`Create`/`Update`/`Delete`、`normalizePerson`；删除时校验关联主机数 |
-| `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`normalizeTargetPairs`（配对校验）；`HostReferencedByZeroTrust`/`ZeroTrustsByHost` |
+| `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`normalizeTargetPairs`（配对校验）；`loadZeroTrustTargetPairs`/`insertZeroTrustTargets`（接入目标子表读写，T-052）；`HostReferencedByZeroTrust`（子表去重计数）/`ZeroTrustsByHost` |
 | `services/port_mapping_service.go` | 端口映射台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`ErrPortMappingExists` 整组判重（`host_id+public_ip+external_ports`）；`refreshHostIPMapped` |
 | `services/public_ip_service.go` | 公网IP资源台账 | `List`/`Create`/`Update`/`Delete`、`normalizePublicIP`（IP 唯一/格式校验）、`countPublicIPRefs`/`ErrPublicIPReferenced` 引用保护 |
 | `services/audit_service.go` | 审计日志 | `Record`（写入，失败不阻断业务）、`List`（分页筛选）、`GetOperator`、`NewRequestID` |
@@ -103,6 +104,8 @@
 | `services/host_service_test.go` | 主机 CRUD/筛选表驱动（IP 判重/申请时间/人员校验/零信任引用删除保护/Filter 分页） |
 | `services/auth_service_test.go` | 登录表驱动（成功签发/用户不存在/失败计数/锁定拒绝/成功清零）+ 旧格式登录自动升级 bcrypt（T-009） |
 | `services/stats_service_test.go` | 探测颜色状态机（dead/alive 分支）、`probeTCP` 开/闭端口、ICMP 回环/不可达（环境无 ICMP socket 时跳过，T-011） |
+| `services/zero_trust_service_test.go` | 接入目标子表 CRUD/替换/反查、`zero_trusts` 无 `targets` 列、按主机名/内网IP 搜索（sqlite ILIKE 降级，T-052） |
+| `services/data_exchange_test.go` | 空库 xlsx 回灌：零信任字段+子表往返、二次导入幂等 skip（T-052） |
 | `utils/password_test.go` | bcrypt 往返、旧 `salt$hash` 兼容、非法存储拒绝、盐唯一性 |
 | `middleware/jwt_test.go` | `ValidateToken` 表驱动：有效/过期/伪造签名/非法串/缺 user_id/none 算法（T-022） |
 | `routes/websocket_test.go` | WS 探测通道：缺失/无效 token 升级前 `40101` 拒绝 + 有效 token 建连（T-022） |
@@ -330,6 +333,7 @@ GET/POST /api/zero-trusts、PUT/DELETE /api/zero-trusts/:id、POST /api/zero-tru
 | `ip_subnets` | `models/ip_subnet.go` | `services/subnet_service.go`、`services/stats_service.go`（读取网段） |
 | `persons` | `models/person.go` | `services/person_service.go`；`hosts.person_id` 由 `services/host_service.go` 写入 |
 | `zero_trusts` | `models/zero_trust.go` | `services/zero_trust_service.go`；删除主机前经 `HostReferencedByZeroTrust` 校验；主机详情经 `ZeroTrustsByHost` 回填 |
+| `zero_trust_targets` | `models/zero_trust_target.go` | `services/zero_trust_service.go`（配对子表读写，T-052）；`services/import_service.go`/`export_service.go` 导入导出经子表 |
 | `port_mappings` | `models/port_mapping.go` | `services/port_mapping_service.go`；删除主机前经 `HostReferencedByMapping` 校验 |
 | `public_ips` | `models/public_ip.go` | `services/public_ip_service.go` |
 | `audit_logs` | `models/audit_log.go` | `services/audit_service.go`；各 CUD service 方法经 `Record` 写入；`controllers/audit_log.go` 查询 |

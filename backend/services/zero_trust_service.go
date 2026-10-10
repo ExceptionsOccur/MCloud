@@ -10,6 +10,8 @@ import (
 	"mcloud/database"
 	"mcloud/models"
 	"mcloud/utils"
+
+	"gorm.io/gorm"
 )
 
 type ZeroTrustService struct{}
@@ -91,7 +93,7 @@ func normalizeTargetPairs(list []ZeroTrustTarget) ([]ZeroTrustTarget, error) {
 	return pairs, nil
 }
 
-// joinTargetPairs 配对列表 → 存储串 "host_id:port,..."
+// joinTargetPairs 配对列表 → "host_id:port,..." 串（派生字段/审计 diff 用，口径同旧存储列）
 func joinTargetPairs(pairs []ZeroTrustTarget) string {
 	parts := make([]string, len(pairs))
 	for i, t := range pairs {
@@ -100,29 +102,40 @@ func joinTargetPairs(pairs []ZeroTrustTarget) string {
 	return strings.Join(parts, ",")
 }
 
-// parseStoredTargets 宽松解析存储串（跳过畸形段），供列表/引用回填
-func parseStoredTargets(raw string) []ZeroTrustTarget {
-	pairs := make([]ZeroTrustTarget, 0)
-	for _, seg := range strings.Split(raw, ",") {
-		seg = strings.TrimSpace(seg)
-		if seg == "" {
-			continue
-		}
-		idStr, portStr, ok := strings.Cut(seg, ":")
-		if !ok {
-			continue
-		}
-		id, err := strconv.ParseUint(strings.TrimSpace(idStr), 10, 64)
-		if err != nil || id == 0 {
-			continue
-		}
-		port, err := strconv.Atoi(strings.TrimSpace(portStr))
-		if err != nil || port < 1 || port > 65535 {
-			continue
-		}
-		pairs = append(pairs, ZeroTrustTarget{HostID: uint(id), Port: port})
+// loadZeroTrustTargetPairs 批量加载接入目标子表（zero_trust_id → 配对，按行 id 升序）；
+// db 可为事务（导入路径传 tx）
+func loadZeroTrustTargetPairs(db *gorm.DB, ids []uint) (map[uint][]ZeroTrustTarget, error) {
+	pairs := make(map[uint][]ZeroTrustTarget, len(ids))
+	if len(ids) == 0 {
+		return pairs, nil
 	}
-	return pairs
+	var rows []models.ZeroTrustTarget
+	if err := db.Where("zero_trust_id IN ?", ids).Order("id ASC").Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("查询零信任接入目标失败: %w", err)
+	}
+	for _, r := range rows {
+		pairs[r.ZeroTrustID] = append(pairs[r.ZeroTrustID], ZeroTrustTarget{HostID: r.HostID, Port: r.Port})
+	}
+	return pairs, nil
+}
+
+// insertZeroTrustTargets 事务内写入配对子表行（Create/Update/导入共用）
+func insertZeroTrustTargets(tx *gorm.DB, zeroTrustID uint, pairs []ZeroTrustTarget) error {
+	if len(pairs) == 0 {
+		return nil
+	}
+	rows := make([]models.ZeroTrustTarget, 0, len(pairs))
+	for _, p := range pairs {
+		rows = append(rows, models.ZeroTrustTarget{ZeroTrustID: zeroTrustID, HostID: p.HostID, Port: p.Port})
+	}
+	return tx.Create(&rows).Error
+}
+
+// populateZeroTrustTargets 回填派生 Targets 字段（gorm:"-"，读时组装）
+func populateZeroTrustTargets(records []models.ZeroTrust, pairs map[uint][]ZeroTrustTarget) {
+	for i := range records {
+		records[i].Targets = joinTargetPairs(pairs[records[i].ID])
+	}
 }
 
 // validateZeroTrustHosts 配对引用的主机必须全部存在
@@ -225,7 +238,7 @@ func (s *ZeroTrustService) List(keyword string) ([]ZeroTrustItem, error) {
 	if keyword = strings.TrimSpace(keyword); keyword != "" {
 		like := "%" + keyword + "%"
 		db = db.Where(
-			"zero_trusts.apply_unit ILIKE ? OR zero_trusts.account_name ILIKE ? OR zero_trusts.contact ILIKE ? OR zero_trusts.system_name ILIKE ? OR zero_trusts.remark ILIKE ? OR zero_trusts.public_ip ILIKE ? OR EXISTS (SELECT 1 FROM public_ips pi WHERE pi.ip = zero_trusts.public_ip AND (pi.exit_location ILIKE ? OR pi.isp ILIKE ?)) OR EXISTS (SELECT 1 FROM hosts WHERE (hosts.name ILIKE ? OR hosts.private_ip ILIKE ?) AND (',' || zero_trusts.targets || ',') LIKE '%,' || hosts.id::text || ':%')",
+			"zero_trusts.apply_unit ILIKE ? OR zero_trusts.account_name ILIKE ? OR zero_trusts.contact ILIKE ? OR zero_trusts.system_name ILIKE ? OR zero_trusts.remark ILIKE ? OR zero_trusts.public_ip ILIKE ? OR EXISTS (SELECT 1 FROM public_ips pi WHERE pi.ip = zero_trusts.public_ip AND (pi.exit_location ILIKE ? OR pi.isp ILIKE ?)) OR EXISTS (SELECT 1 FROM zero_trust_targets ztt JOIN hosts h ON h.id = ztt.host_id WHERE ztt.zero_trust_id = zero_trusts.id AND (h.name ILIKE ? OR h.private_ip ILIKE ?))",
 			like, like, like, like, like, like, like, like, like, like,
 		)
 	}
@@ -235,11 +248,17 @@ func (s *ZeroTrustService) List(keyword string) ([]ZeroTrustItem, error) {
 		return nil, err
 	}
 
-	hostIDSet := make(map[uint]struct{})
-	parsed := make([][]ZeroTrustTarget, len(records))
+	ids := make([]uint, len(records))
 	for i, r := range records {
-		pairs := parseStoredTargets(r.Targets)
-		parsed[i] = pairs
+		ids[i] = r.ID
+	}
+	pairsByID, err := loadZeroTrustTargetPairs(database.DB, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	hostIDSet := make(map[uint]struct{})
+	for _, pairs := range pairsByID {
 		for _, t := range pairs {
 			hostIDSet[t.HostID] = struct{}{}
 		}
@@ -265,9 +284,10 @@ func (s *ZeroTrustService) List(keyword string) ([]ZeroTrustItem, error) {
 	}
 
 	items := make([]ZeroTrustItem, 0, len(records))
-	for i, r := range records {
-		item := ZeroTrustItem{ZeroTrust: r, Targets: make([]ZeroTrustTargetView, 0, len(parsed[i]))}
-		for _, t := range parsed[i] {
+	for _, r := range records {
+		pairs := pairsByID[r.ID]
+		item := ZeroTrustItem{ZeroTrust: r, Targets: make([]ZeroTrustTargetView, 0, len(pairs))}
+		for _, t := range pairs {
 			view := ZeroTrustTargetView{HostID: t.HostID, Port: t.Port}
 			if b, ok := briefs[t.HostID]; ok {
 				view.HostName = b.Name
@@ -286,6 +306,11 @@ func (s *ZeroTrustService) GetByID(id uint) (*models.ZeroTrust, error) {
 	if err := database.DB.First(&record, id).Error; err != nil {
 		return nil, ErrZeroTrustNotFound
 	}
+	pairs, err := loadZeroTrustTargetPairs(database.DB, []uint{record.ID})
+	if err != nil {
+		return nil, err
+	}
+	record.Targets = joinTargetPairs(pairs[record.ID])
 	return &record, nil
 }
 
@@ -306,12 +331,20 @@ func (s *ZeroTrustService) Create(req ZeroTrustRequest, op Operator, requestID s
 		AccountName: req.AccountName,
 		Contact:     req.Contact,
 		PublicIP:    req.PublicIP,
-		Targets:     joinTargetPairs(pairs),
 		SystemName:  req.SystemName,
 		ApplyTime:   req.ApplyTime.Time,
 		Remark:      req.Remark,
 	}
-	if err := database.DB.Create(&record).Error; err != nil {
+	tx := database.DB.Begin()
+	if err := tx.Create(&record).Error; err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+	if err := insertZeroTrustTargets(tx, record.ID, pairs); err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+	if err := tx.Commit().Error; err != nil {
 		return 0, err
 	}
 	NewAuditService().Record(op, "create", "zero_trust", &record.ID, DetailDiff{After: req}, requestID)
@@ -334,13 +367,17 @@ func (s *ZeroTrustService) Update(id uint, req ZeroTrustRequest, op Operator, re
 	if err := validateZeroTrustPublicIP(req.PublicIP); err != nil {
 		return err
 	}
+	curPairs, pairErr := loadZeroTrustTargetPairs(database.DB, []uint{record.ID})
+	if pairErr != nil {
+		return pairErr
+	}
 
 	before := map[string]interface{}{
 		"apply_unit":   record.ApplyUnit,
 		"account_name": record.AccountName,
 		"contact":      record.Contact,
 		"public_ip":    record.PublicIP,
-		"targets":      record.Targets,
+		"targets":      joinTargetPairs(curPairs[record.ID]),
 		"system_name":  record.SystemName,
 		"remark":       record.Remark,
 	}
@@ -348,11 +385,23 @@ func (s *ZeroTrustService) Update(id uint, req ZeroTrustRequest, op Operator, re
 	record.AccountName = req.AccountName
 	record.Contact = req.Contact
 	record.PublicIP = req.PublicIP
-	record.Targets = joinTargetPairs(pairs)
 	record.SystemName = req.SystemName
 	record.ApplyTime = req.ApplyTime.Time
 	record.Remark = req.Remark
-	if err := database.DB.Save(&record).Error; err != nil {
+	tx := database.DB.Begin()
+	if err := tx.Save(&record).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err := tx.Where("zero_trust_id = ?", record.ID).Delete(&models.ZeroTrustTarget{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err := insertZeroTrustTargets(tx, record.ID, pairs); err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err := tx.Commit().Error; err != nil {
 		return err
 	}
 	NewAuditService().Record(op, "update", "zero_trust", &id, DetailDiff{Before: before, After: req}, requestID)
@@ -364,29 +413,38 @@ func (s *ZeroTrustService) Delete(id uint, op Operator, requestID string) error 
 	if err := database.DB.First(&record, id).Error; err != nil {
 		return ErrZeroTrustNotFound
 	}
-	if err := database.DB.Delete(&record).Error; err != nil {
+	curPairs, err := loadZeroTrustTargetPairs(database.DB, []uint{record.ID})
+	if err != nil {
+		return err
+	}
+	tx := database.DB.Begin()
+	if err := tx.Where("zero_trust_id = ?", record.ID).Delete(&models.ZeroTrustTarget{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err := tx.Delete(&record).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err := tx.Commit().Error; err != nil {
 		return err
 	}
 	NewAuditService().Record(op, "delete", "zero_trust", &id,
 		DetailDiff{Before: map[string]interface{}{
 			"apply_unit": record.ApplyUnit, "account_name": record.AccountName, "contact": record.Contact,
-			"public_ip": record.PublicIP, "targets": record.Targets, "system_name": record.SystemName, "remark": record.Remark,
+			"public_ip": record.PublicIP, "targets": joinTargetPairs(curPairs[record.ID]),
+			"system_name": record.SystemName, "remark": record.Remark,
 		}}, requestID)
 	return nil
 }
 
-// hostInTargetsCond 主机ID出现在 targets 配对中的匹配表达式（防子串误匹配，两侧补逗号）
-const hostInTargetsCond = "(',' || targets || ',') LIKE ?"
-
-func hostInTargetsPattern(hostID uint) string {
-	return "%," + strconv.FormatUint(uint64(hostID), 10) + ":%"
-}
-
-// HostReferencedByZeroTrust 主机是否被零信任台账引用（供 host_service 删除前校验）
+// HostReferencedByZeroTrust 引用指定主机的零信任台账记录数（供 host_service 删除前校验；
+// 子表按 zero_trust_id 去重计数，同记录多配对只计一次）
 func HostReferencedByZeroTrust(hostID uint) (int64, error) {
 	var count int64
-	err := database.DB.Model(&models.ZeroTrust{}).
-		Where(hostInTargetsCond, hostInTargetsPattern(hostID)).
+	err := database.DB.Model(&models.ZeroTrustTarget{}).
+		Distinct("zero_trust_id").
+		Where("host_id = ?", hostID).
 		Count(&count).Error
 	if err != nil {
 		return 0, fmt.Errorf("查询零信任台账引用失败: %w", err)
@@ -394,16 +452,25 @@ func HostReferencedByZeroTrust(hostID uint) (int64, error) {
 	return count, nil
 }
 
-// ZeroTrustsByHost 查询引用指定主机的零信任台账记录（供主机详情展示）
+// ZeroTrustsByHost 查询引用指定主机的零信任台账记录（供主机详情展示，派生 Targets 已回填）
 func ZeroTrustsByHost(hostID uint) ([]models.ZeroTrust, error) {
 	var records []models.ZeroTrust
 	err := database.DB.
-		Where(hostInTargetsCond, hostInTargetsPattern(hostID)).
+		Where("id IN (SELECT zero_trust_id FROM zero_trust_targets WHERE host_id = ?)", hostID).
 		Order("id ASC").
 		Find(&records).Error
 	if err != nil {
 		return nil, fmt.Errorf("查询零信任台账失败: %w", err)
 	}
+	ids := make([]uint, len(records))
+	for i, r := range records {
+		ids[i] = r.ID
+	}
+	pairs, err := loadZeroTrustTargetPairs(database.DB, ids)
+	if err != nil {
+		return nil, err
+	}
+	populateZeroTrustTargets(records, pairs)
 	return records, nil
 }
 
