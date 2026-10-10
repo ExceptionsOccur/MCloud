@@ -83,7 +83,7 @@
 | T-009 | 密码哈希升级 bcrypt | 2026-10-10 | `c27e306` | 验收：旧 `salt$hash` 用户登录成功后自动升级 bcrypt（单测覆盖）；bcrypt cost 10，`seedAdmin`/`resetpw` 同步新格式；**无需迁移 SQL**（`password_hash VARCHAR(256)` 兼容两种格式，平滑升级在登录时完成，技术选型推荐结论）；门禁全绿 |
 | T-011 | IP 探测去宿主机 ping 依赖 | 2026-10-10 | `dfd2ac7` | 验收：纯 Go ICMP（`x/net/icmp`，udp4 ping socket → ip4:icmp 原始 socket → TCP 22/3389 兜底，100ms 超时）替代 `exec ping`；颜色状态机单测覆盖 dead 分支 + alive 分支（环境无 ICMP socket 时跳过）；BUSINESS_LOGIC「探测方式」回写；门禁全绿 |
 | T-012 | 文档一致性巡检 | 2026-10-10 | `aba8246` | 验收：check_docs 0/0；人工抽查路由 47/47 全匹配（gin Routes() dump 对照）、错误码 5/5、CSV 27 列三方一致、筛选参数 10 项、T-id 引用 53/53、页面路由 11/11、表/模型 10/10、关键常量（5次/15分/100ms/32并发/3s重连/10×26）；修复 2 处口径偏差（AGENTS 位图术语、T-019 定位处数） |
-| T-019 | 前端抽 Layout/AppNav | 2026-10-10 | `-` | 验收：`components/AppNav.vue` 承载 7 Tab 导航，10 页重复结构仅剩一处；`variant` prop（default/audit/backup）保留三套历史样式实现视觉零变化；导航项 10 页本就同为 7 项（统计三页硬编码 active 改为动态等价）；`lint:check`+`build`+`vitest 6/6` 全绿 |
+| T-019 | 前端抽 Layout/AppNav | 2026-10-10 | `481477e` | 验收：`components/AppNav.vue` 承载 7 Tab 导航，10 页重复结构仅剩一处；`variant` prop（default/audit/backup）保留三套历史样式实现视觉零变化；导航项 10 页本就同为 7 项（统计三页硬编码 active 改为动态等价）；`lint:check`+`build`+`vitest 6/6` 全绿 |
 | T-006 | 测试骨架 | 2026-10-10 | `894e93b` | 验收：`go test` services 表驱动（主机CRUD/登录锁定）+ utils 密码全绿（sqlite 内存库注入）；vitest 冒烟 6 例；门禁全绿 |
 | T-005 | `IpStatistics.vue` 拆分 | 2026-10-10 | `baa8e2e` | 验收：778→300 行（≤400）；拆 components/ip/（ProbePanel/SubnetCard/SubnetManageDialog 移入）+ composables/useProbeGrid；lint+build+check 全绿 |
 | T-004 | 前端 composables 抽取 | 2026-10-10 | `c1d4618` | 验收：抽 useProbeWebSocket/useChartOption/usePagedTable 三件，IpStatistics 841→778 行；lint:check + build + check_docs 全绿，页面行为不变 |
