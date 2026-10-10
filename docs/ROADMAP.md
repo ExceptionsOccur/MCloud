@@ -29,10 +29,6 @@
 无
 
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
-- [ ] **T-006** 测试骨架 ｜ P1 ｜ 负责: —
-  - 内容：后端 `services` 表驱动单测（先覆盖主机 CRUD、登录）+ 前端 Vitest 冒烟
-  - 定位：新建 `backend/services/*_test.go`；前端 `frontend/package.json`（加 vitest 依赖与 script）+ `src/**/__tests__/`
-  - 验收标准：`cd backend && go test ./...` 有用例非零且通过；`npm run test` 可运行
 - [ ] **T-008** 数据导出报表（Excel/CSV） ｜ P2 ｜ 负责: — ｜ 备注: T-038 后收窄（2026-10-09）
   - 内容：全量导出已覆盖——主机 CSV（`GET /api/export`，BOM）+ 8 表 xlsx 备份（T-038 `/api/export/all`）；剩余缺口 = **按筛选条件导出**：`ExportCSV`（T-003 前在 `csv.Export`）裸 `Find(&hosts)` 不带筛选、前端 `exportCSV()` 无参，导出与列表所见不一致；补齐筛选参数透传（接口复用列表筛选 + SearchToolbar 传参），原「新建 report_service.go」定位作废
   - 定位：`backend/services/host_csv_service.go`（`ExportCSV` 裸查全表）、`backend/controllers/csv.go`（`Export` 透传筛选参数）、`backend/services/host_service.go`（列表筛选逻辑复用）、`frontend/src/api/csv.js`（`exportCSV()` 无参）、`frontend/src/components/SearchToolbar.vue`（`handleExport`）
@@ -105,6 +101,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-006 | 测试骨架 | 2026-10-10 | `-` | 验收：`go test` services 表驱动（主机CRUD/登录锁定）+ utils 密码全绿（sqlite 内存库注入）；vitest 冒烟 6 例；门禁全绿 |
 | T-005 | `IpStatistics.vue` 拆分 | 2026-10-10 | `baa8e2e` | 验收：778→300 行（≤400）；拆 components/ip/（ProbePanel/SubnetCard/SubnetManageDialog 移入）+ composables/useProbeGrid；lint+build+check 全绿 |
 | T-004 | 前端 composables 抽取 | 2026-10-10 | `c1d4618` | 验收：抽 useProbeWebSocket/useChartOption/usePagedTable 三件，IpStatistics 841→778 行；lint:check + build + check_docs 全绿，页面行为不变 |
 | T-050 | `hosts.disk` 补录入口 | 2026-10-10 | `6b62e8d` | 验收：表单磁盘输入框+校验回显；CSV 27 列导出/导入与 xlsx hosts sheet 含磁盘列，27 列往返值不变、旧 26 列兼容 disk=0；门禁全绿 |
