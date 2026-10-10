@@ -149,6 +149,7 @@
 | `composables/useProbeWebSocket.js` | 探测 WS 连接管理：连接/3s 重连/发送/卸载清理，`onMessage` 回调交回调用方处理业务帧 |
 | `composables/useChartOption.js` | ECharts 按需注册（CanvasRenderer 内置）+ 返回 `VChart`（模板 `<v-chart>`） |
 | `composables/usePagedTable.js` | 分页列表通用态：页码/页大小/筛选/加载/总数、`fetchPage`/`setFilter`/`setPage`/`resetFilters` |
+| `composables/useProbeGrid.js` | 位图探测状态机（T-005）：颜色/单点探测/批量测试/网段计数，`onUnmounted` 清理 resolver |
 
 ### 页面（views/）
 
@@ -178,7 +179,9 @@
 | `ImportDialog.vue` | CSV 导入弹窗 | HostManagement |
 | `ChangePasswordDialog.vue` | 修改密码弹窗 | 全部页面 |
 | `CloudResourceDialog.vue` | 云资源录入弹窗 | 除 DataBackup 外的设置菜单页面 |
-| `SubnetManageDialog.vue` | IP 网段管理弹窗 | IpStatistics |
+| `ip/SubnetManageDialog.vue` | IP 网段管理弹窗 | IpStatistics |
+| `ip/ProbePanel.vue` | 探测服务连接状态 + 「管理网段」入口（T-005） | IpStatistics |
+| `ip/SubnetCard.vue` | 单网段卡片：统计/批量进度/位图格子（T-005） | IpStatistics |
 | `ZeroTrustBatchAddDialog.vue` | 零信任批量添加弹窗（文本粘贴，9 列） | ZeroTrustLedger |
 | `MappingBatchAddDialog.vue` | 端口映射批量添加弹窗（文本粘贴，6 列） | MappingLedger |
 
@@ -212,9 +215,9 @@
 | **数据备份 xlsx 导出/导入** | `controllers/data_exchange.go` `services/export_service.go` `services/import_service.go` | `views/DataBackup.vue` `api/dataExchange.js` |
 | **云资源录入** | `controllers/cloud_resource.go` `services/cloud_resource_service.go` | `components/CloudResourceDialog.vue` `stores/cloudResource.js` |
 | **资源统计** | `controllers/cloud_resource.go` + `GET /api/hosts` | `views/ResourceStatistics.vue` `stores/cloudResource.js` `composables/useChartOption.js` |
-| **IP 使用位图** | `controllers/stats.go` → `IPUsage` `services/stats_service.go` → `GetIPUsage` | `views/IpStatistics.vue` `stores/stats.js` |
-| **IP 连通性探测** | `controllers/websocket.go` `controllers/stats.go` → `Probe` `services/stats_service.go` → `Probe` | `views/IpStatistics.vue`（颜色状态机） `composables/useProbeWebSocket.js`（连接/重连/发送） |
-| **IP 网段管理** | `controllers/subnet.go` `services/subnet_service.go` `models/ip_subnet.go` | `components/SubnetManageDialog.vue` `api/subnet.js` |
+| **IP 使用位图** | `controllers/stats.go` → `IPUsage` `services/stats_service.go` → `GetIPUsage` | `views/IpStatistics.vue` `components/ip/SubnetCard.vue` `stores/stats.js` |
+| **IP 连通性探测** | `controllers/websocket.go` `controllers/stats.go` → `Probe` `services/stats_service.go` → `Probe` | `composables/useProbeGrid.js`（颜色状态机/批量） `composables/useProbeWebSocket.js`（连接/重连/发送） `components/ip/ProbePanel.vue`（状态指示） |
+| **IP 网段管理** | `controllers/subnet.go` `services/subnet_service.go` `models/ip_subnet.go` | `components/ip/SubnetManageDialog.vue` `api/subnet.js` |
 | **人员管理** | `controllers/person.go` `services/person_service.go` `models/person.go` | `views/PersonnelManagement.vue` `api/person.js` |
 | **公网IP资源录入** | `controllers/public_ip.go` `services/public_ip_service.go` `models/public_ip.go` | `views/PublicIPManagement.vue` `api/public_ip.js` |
 | **公网IP引用保护 + 映射整组防重** | `services/public_ip_service.go` → `countPublicIPRefs`/`ErrPublicIPReferenced`（`40901`）、`services/port_mapping_service.go` → `ErrPortMappingExists`（`40901`）、`migrations/20261010000004` 唯一索引 | `api/public_ip.js` `api/port_mapping.js`（错误码提示） |

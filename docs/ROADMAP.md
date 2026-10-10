@@ -29,11 +29,6 @@
 无
 
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
-- [ ] **T-005** `IpStatistics.vue`（835 行）拆分 ｜ P1 ｜ 负责: —
-  - 依赖：T-004
-  - 内容：拆出 `components/ip/`（网格局部、探测面板、网段管理），单文件 ≤ 400 行
-  - 定位：`frontend/src/views/IpStatistics.vue`（全文 835 行）→ 新建 `frontend/src/components/ip/`
-  - 验收标准：拆分后 `IpStatistics.vue` ≤ 400 行；`npm run lint:check && npm run build` 通过；功能无回归
 - [ ] **T-006** 测试骨架 ｜ P1 ｜ 负责: —
   - 内容：后端 `services` 表驱动单测（先覆盖主机 CRUD、登录）+ 前端 Vitest 冒烟
   - 定位：新建 `backend/services/*_test.go`；前端 `frontend/package.json`（加 vitest 依赖与 script）+ `src/**/__tests__/`
@@ -110,6 +105,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-005 | `IpStatistics.vue` 拆分 | 2026-10-10 | `baa8e2e` | 验收：778→300 行（≤400）；拆 components/ip/（ProbePanel/SubnetCard/SubnetManageDialog 移入）+ composables/useProbeGrid；lint+build+check 全绿 |
 | T-004 | 前端 composables 抽取 | 2026-10-10 | `c1d4618` | 验收：抽 useProbeWebSocket/useChartOption/usePagedTable 三件，IpStatistics 841→778 行；lint:check + build + check_docs 全绿，页面行为不变 |
 | T-050 | `hosts.disk` 补录入口 | 2026-10-10 | `6b62e8d` | 验收：表单磁盘输入框+校验回显；CSV 27 列导出/导入与 xlsx hosts sheet 含磁盘列，27 列往返值不变、旧 26 列兼容 disk=0；门禁全绿 |
 | T-051 | 公网 IP 引用保护 + 端口映射防重 | 2026-10-10 | `a3a19ec` | 验收：被引用公网IP删/改IP返回 40901；重复整组映射 Create 返回 40901 且唯一索引存在；dev 库迁移幂等实测；门禁全绿 |
