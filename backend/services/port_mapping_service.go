@@ -28,6 +28,9 @@ type PortMappingRequest struct {
 
 var ErrPortMappingNotFound = errors.New("映射记录不存在")
 
+// ErrPortMappingExists 完全相同的映射（host_id + public_ip + external_ports 整组）已存在
+var ErrPortMappingExists = errors.New("该映射已存在")
+
 // ErrHostReferencedByMapping 主机已被映射台账引用
 var ErrHostReferencedByMapping = errors.New("该主机已被映射台账引用")
 
@@ -167,6 +170,13 @@ func (s *PortMappingService) Create(req PortMappingRequest, op Operator, request
 			return 0, errors.New("该域名已存在")
 		}
 	}
+	var dupCount int64
+	database.DB.Model(&models.PortMapping{}).
+		Where("host_id = ? AND public_ip = ? AND external_ports = ?", req.HostID, req.PublicIP, req.ExternalPorts).
+		Count(&dupCount)
+	if dupCount > 0 {
+		return 0, ErrPortMappingExists
+	}
 	rec := models.PortMapping{
 		PublicIP:      req.PublicIP,
 		HostID:        req.HostID,
@@ -211,6 +221,13 @@ func (s *PortMappingService) Update(id uint, req PortMappingRequest, op Operator
 		if count > 0 {
 			return errors.New("该域名已存在")
 		}
+	}
+	var dupCount int64
+	database.DB.Model(&models.PortMapping{}).
+		Where("host_id = ? AND public_ip = ? AND external_ports = ? AND id != ?", req.HostID, req.PublicIP, req.ExternalPorts, id).
+		Count(&dupCount)
+	if dupCount > 0 {
+		return ErrPortMappingExists
 	}
 	before := PortMappingRequest{
 		PublicIP: rec.PublicIP, HostID: rec.HostID, ExternalPorts: rec.ExternalPorts,
