@@ -30,11 +30,6 @@
 
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
 
-- [ ] **T-043** CORS Origin 白名单收紧 ｜ P2 ｜ 负责: — ｜ 备注: 全量回顾 J2（安全类，2026-10-09，与 T-022 同批后置）
-  - 内容：`middleware/jwt.go` 当前对任意 Origin 回显 `Access-Control-Allow-Origin` + `credentials=true`，无白名单；改为环境变量可配的 Origin 白名单，非白名单不回显 CORS 头
-  - 定位：`backend/middleware/jwt.go`（CORS 段 ~L57-72）、`docker/.env.example`、`docs/DEVELOPMENT.md` 安全准则 CORS 行
-  - 验收标准：非白名单 Origin 不回显 CORS 头；白名单内预检/带凭证请求行为正常；`go build` + `golangci-lint run ./...` 通过；DEVELOPMENT 同步
-  - 分支：`fix/cors-origin-whitelist`
 - [ ] **T-044** 后端 CSV 上传大小限制 ｜ P2 ｜ 负责: — ｜ 备注: 全量回顾 J3（2026-10-09）
   - 内容：`controllers/csv.go` 导入无大小限制（16MB 仅为前端提示）；后端加限制（`http.MaxBytesReader`，上限对齐前端 16MB），超限返回 40001
   - 定位：`backend/controllers/csv.go`（Import/Export）、`frontend/src/components/ImportDialog.vue`（16MB 提示）、`docs/DEVELOPMENT.md` 安全准则上传行
@@ -76,6 +71,7 @@
 | T-019 | 前端抽 Layout/AppNav | 2026-10-10 | `481477e` | 验收：`components/AppNav.vue` 承载 7 Tab 导航，10 页重复结构仅剩一处；`variant` prop（default/audit/backup）保留三套历史样式实现视觉零变化；导航项 10 页本就同为 7 项（统计三页硬编码 active 改为动态等价）；`lint:check`+`build`+`vitest 6/6` 全绿 |
 | T-020 | config ServerPort 硬编码消除 | 2026-10-10 | `8535979` | 验收：`SERVER_PORT` 环境变量可配（`getEnv` 模式，保留默认 `5677`——推荐口径，与 DB_* 等其余字段一致、开发零配置；docker-compose.dev 已传该变量、`.env.example` 已同步）；技术债表该行删除；`go build`+`golangci-lint`+`check_docs` 全绿 |
 | T-022 | WS 探测通道 token 有效性校验 | 2026-10-10 | `a0e6477` | 验收：升级前复用 `middleware.ValidateToken`（与 Authorization 同源），缺失/无效/过期/伪造返回 `40101` 拒绝升级；有效 token 建连回归（middleware+routes 单测）；API/BUSINESS_LOGIC/CODE_INDEX/ARCHITECTURE 同步；门禁全绿 |
+| T-043 | CORS Origin 白名单收紧 | 2026-10-10 | `-` | 验收：`CORS_ALLOWED_ORIGINS`（逗号分隔精确匹配，默认空）白名单化，非白名单 Origin 不回显 CORS 头；白名单预检/带凭证正常（单测覆盖）；DEVELOPMENT/.env.example/CODE_INDEX 同步；门禁全绿 |
 | T-006 | 测试骨架 | 2026-10-10 | `894e93b` | 验收：`go test` services 表驱动（主机CRUD/登录锁定）+ utils 密码全绿（sqlite 内存库注入）；vitest 冒烟 6 例；门禁全绿 |
 | T-005 | `IpStatistics.vue` 拆分 | 2026-10-10 | `baa8e2e` | 验收：778→300 行（≤400）；拆 components/ip/（ProbePanel/SubnetCard/SubnetManageDialog 移入）+ composables/useProbeGrid；lint+build+check 全绿 |
 | T-004 | 前端 composables 抽取 | 2026-10-10 | `c1d4618` | 验收：抽 useProbeWebSocket/useChartOption/usePagedTable 三件，IpStatistics 841→778 行；lint:check + build + check_docs 全绿，页面行为不变 |
