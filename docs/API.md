@@ -130,7 +130,7 @@
 | GET | `/api/stats/business` | `stats.BusinessStats` | 业务统计（按项目/公司/人员聚合资源用量） |
 | GET | `/api/ws/probe` | `HandleProbeWS` | WebSocket 探测通道（token 通过 query 传递）† |
 
-† 该路由未挂 JWT 中间件，仅校验 `token` 非空、不校验 JWT 有效性，详见[WebSocket 探测帧协议](#websocket-探测帧协议)。
+† 该路由未挂 JWT 中间件组，升级前在 `routes/websocket.go` 校验 query token 的 JWT 有效性（与 `Authorization` 同源，`T-022`）：`token` 缺失或无效/过期/伪造均返回 `40101`，详见[WebSocket 探测帧协议](#websocket-探测帧协议)。
 
 ### IP 网段管理（需 JWT）
 
@@ -183,7 +183,7 @@
 
 ## WebSocket 探测帧协议
 
-`GET /api/ws/probe?token=<JWT>`（`routes/websocket.go` 将连接升级为 WebSocket；浏览器 WS 请求无法携带 `Authorization` 头，故 token 走 query）。`token` 缺失返回 `40101`（当前仅校验非空，不校验 JWT 有效性——已知限制，`T-022` 已入队修复）。
+`GET /api/ws/probe?token=<JWT>`（`routes/websocket.go` 将连接升级为 WebSocket；浏览器 WS 请求无法携带 `Authorization` 头，故 token 走 query）。升级前校验 token：缺失返回 `40101`（未提供认证信息）；无效/过期/伪造同样返回 `40101`（`middleware.ValidateToken`，与 HTTP `Authorization` 共用同一校验，`T-022`），校验通过才升级连接。
 
 双向均为 **Text frame + JSON**：
 

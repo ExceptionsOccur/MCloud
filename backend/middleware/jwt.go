@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -10,6 +11,30 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
+
+// ValidateToken 校验 JWT token 串并返回 user_id。
+// HTTP `Authorization: Bearer` 与 WS query token 共用同一校验（T-022）。
+func ValidateToken(tokenString string) (uint, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		return []byte(config.AppConfig.JWTSecret), nil
+	})
+	if err != nil || !token.Valid {
+		return 0, errors.New("无效的认证Token")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return 0, errors.New("无效的Token信息")
+	}
+	userID, ok := claims["user_id"].(float64)
+	if !ok {
+		return 0, errors.New("无效的Token信息")
+	}
+	return uint(userID), nil
+}
 
 func JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -27,28 +52,13 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 
-		tokenString := parts[1]
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
-			}
-			return []byte(config.AppConfig.JWTSecret), nil
-		})
-
-		if err != nil || !token.Valid {
-			controllers.Error(c, 40101, "无效的认证Token")
+		userID, err := ValidateToken(parts[1])
+		if err != nil {
+			controllers.Error(c, 40101, err.Error())
 			c.Abort()
 			return
 		}
 
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			controllers.Error(c, 40101, "无效的Token信息")
-			c.Abort()
-			return
-		}
-
-		userID := uint(claims["user_id"].(float64))
 		c.Set("user_id", userID)
 		c.Next()
 	}

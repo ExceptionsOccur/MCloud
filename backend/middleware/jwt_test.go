@@ -1,0 +1,117 @@
+package middleware
+
+import (
+	"testing"
+	"time"
+
+	"mcloud/config"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
+const testJWTSecret = "unit-test-secret"
+
+func setupTestConfig(t *testing.T) {
+	t.Helper()
+	prev := config.AppConfig
+	config.AppConfig = &config.Config{JWTSecret: testJWTSecret}
+	t.Cleanup(func() { config.AppConfig = prev })
+}
+
+func signToken(t *testing.T, claims jwt.MapClaims, secret string) string {
+	t.Helper()
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(secret))
+	if err != nil {
+		t.Fatalf("签发测试 token 失败: %v", err)
+	}
+	return token
+}
+
+func TestValidateToken(t *testing.T) {
+	setupTestConfig(t)
+	now := time.Now()
+
+	tests := []struct {
+		name    string
+		token   func(t *testing.T) string
+		wantID  uint
+		wantErr string
+	}{
+		{
+			name: "有效token返回user_id",
+			token: func(t *testing.T) string {
+				return signToken(t, jwt.MapClaims{
+					"user_id": float64(7),
+					"exp":     now.Add(time.Hour).Unix(),
+				}, testJWTSecret)
+			},
+			wantID: 7,
+		},
+		{
+			name: "过期token拒绝",
+			token: func(t *testing.T) string {
+				return signToken(t, jwt.MapClaims{
+					"user_id": float64(1),
+					"exp":     now.Add(-time.Hour).Unix(),
+				}, testJWTSecret)
+			},
+			wantErr: "无效的认证Token",
+		},
+		{
+			name: "伪造签名拒绝",
+			token: func(t *testing.T) string {
+				return signToken(t, jwt.MapClaims{
+					"user_id": float64(1),
+					"exp":     now.Add(time.Hour).Unix(),
+				}, "attacker-secret")
+			},
+			wantErr: "无效的认证Token",
+		},
+		{
+			name:    "非法字符串拒绝",
+			token:   func(t *testing.T) string { return "not-a-jwt" },
+			wantErr: "无效的认证Token",
+		},
+		{
+			name: "缺少user_id拒绝",
+			token: func(t *testing.T) string {
+				return signToken(t, jwt.MapClaims{
+					"exp": now.Add(time.Hour).Unix(),
+				}, testJWTSecret)
+			},
+			wantErr: "无效的Token信息",
+		},
+		{
+			name: "非HMAC算法拒绝",
+			token: func(t *testing.T) string {
+				tok, err := jwt.NewWithClaims(jwt.SigningMethodNone, jwt.MapClaims{
+					"user_id": float64(1),
+					"exp":     now.Add(time.Hour).Unix(),
+				}).SignedString(jwt.UnsafeAllowNoneSignatureType)
+				if err != nil {
+					t.Fatalf("签发 none 算法测试 token 失败: %v", err)
+				}
+				return tok
+			},
+			wantErr: "无效的认证Token",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userID, err := ValidateToken(tt.token(t))
+			if tt.wantErr != "" {
+				if err == nil || err.Error() != tt.wantErr {
+					t.Fatalf("ValidateToken() error = %v, want %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("ValidateToken() unexpected error: %v", err)
+			}
+			if userID != tt.wantID {
+				t.Fatalf("ValidateToken() userID = %d, want %d", userID, tt.wantID)
+			}
+		})
+	}
+}

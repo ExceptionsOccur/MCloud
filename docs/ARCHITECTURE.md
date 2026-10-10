@@ -117,7 +117,8 @@ go/
 │   │   └── websocket.go           # WebSocket IP 探测通道
 │   │
 │   ├── middleware/
-│   │   └── jwt.go                 # JWT 认证中间件 + CORS 中间件
+│   │   ├── jwt.go                 # JWT 认证中间件 + CORS 中间件 + ValidateToken（T-022）
+│   │   └── jwt_test.go            # ValidateToken 单测（有效/过期/伪造/none 算法，T-022）
 │   │
 │   ├── services/
 │   │   ├── auth_service.go        # 认证业务逻辑
@@ -155,7 +156,8 @@ go/
 │   │   ├── zero_trust.go          # 零信任台账域
 │   │   ├── port_mapping.go        # 端口映射台账域
 │   │   ├── audit.go               # 审计日志域（查询）
-│   │   └── websocket.go           # WS 探测通道（query token 非空校验）
+│   │   ├── websocket.go           # WS 探测通道（query token JWT 有效性校验，T-022）
+│   │   └── websocket_test.go      # WS token 缺失/无效拒绝 + 有效建连测试（T-022）
 │   │
 │   ├── cmd/
 │   │   └── resetpw/main.go        # 密码重置工具（随机/指定密码）

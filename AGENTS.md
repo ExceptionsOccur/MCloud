@@ -75,13 +75,13 @@
 |------|-----|
 | last_updated | 2026-10-10 |
 | in_progress | 无 |
-| next_task | `T-022` WS probe token 校验（= ROADMAP todo 首条，P2 最高优先级） |
+| next_task | `T-043` CORS Origin 白名单（= ROADMAP todo 首条，P2） |
 | todo（P1） | 无 |
-| todo（P2） | `T-022` WS probe token 校验、`T-043` CORS 白名单、`T-044` CSV 上传限制、`T-052` targets 拆子表、`T-053` audit_log NOT NULL 对齐 |
+| todo（P2） | `T-043` CORS 白名单、`T-044` CSV 上传限制、`T-052` targets 拆子表、`T-053` audit_log NOT NULL 对齐 |
 | blocked | 无 |
 | 回顾锚点 | 上次回顾至 `T-020`（`done` 自此起满 5 条触发周期回顾，见会话协议 E） |
-| 功能完成度 | 功能模块 19 项：19 完成 / 0 待开发；技术债 3 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
-| 已知风险 | WS 探测仅校验 token 非空（`T-022`）（详见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
+| 功能完成度 | 功能模块 19 项：19 完成 / 0 待开发；技术债 2 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
+| 已知风险 | 无（WS 探测 token 校验漏洞已由 `T-022` 关闭；余项见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
 
 > T-036~T-041 各批次均已合并 main（提交号见 ROADMAP done 表）；全量回顾偏差修复与锚点推进见 ROADMAP「回顾锚点」。
 

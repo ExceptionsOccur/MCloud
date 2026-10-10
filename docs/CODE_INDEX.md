@@ -104,6 +104,8 @@
 | `services/auth_service_test.go` | 登录表驱动（成功签发/用户不存在/失败计数/锁定拒绝/成功清零）+ 旧格式登录自动升级 bcrypt（T-009） |
 | `services/stats_service_test.go` | 探测颜色状态机（dead/alive 分支）、`probeTCP` 开/闭端口、ICMP 回环/不可达（环境无 ICMP socket 时跳过，T-011） |
 | `utils/password_test.go` | bcrypt 往返、旧 `salt$hash` 兼容、非法存储拒绝、盐唯一性 |
+| `middleware/jwt_test.go` | `ValidateToken` 表驱动：有效/过期/伪造签名/非法串/缺 user_id/none 算法（T-022） |
+| `routes/websocket_test.go` | WS 探测通道：缺失/无效 token 升级前 `40101` 拒绝 + 有效 token 建连（T-022） |
 | `frontend/src/utils/__tests__/index.spec.js` | Vitest 冒烟（`npm run test`，日期格式化/常量） |
 
 ### 命令工具（cmd/）
@@ -261,7 +263,7 @@ GET /api/hosts
 ```
 前端点击格子
   → ws://.../api/ws/probe?token=xxx
-  → routes/websocket.go            （校验 query token）
+  → routes/websocket.go            （校验 query token JWT 有效性，T-022）
   → controllers/websocket.go      HandleProbeWS() → handleProbeMessage()（每请求独立 goroutine）
   → services/stats_service.go     Probe()（ICMP + TCP22/3389 → 颜色状态机，仅返回颜色不写库）
   → 回推 { ip, color }
