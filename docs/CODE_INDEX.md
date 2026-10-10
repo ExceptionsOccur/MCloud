@@ -95,6 +95,16 @@
 | `utils/csv.go` | CSV 解析/生成、多编码检测 |
 | `utils/datetime.go` | 日期时间统一口径：`ValidateDateOnly`（严格 `YYYY-MM-DD`）、`ParseFlexibleTime`/`FlexibleTime`（RFC3339 为主 + 无时区兼容）、展示常量 `DateTimeLayout` |
 
+### 单元测试（T-006）
+
+| 文件 | 职责 |
+|------|------|
+| `services/testdb_test.go` | 测试基建：sqlite 内存库注入 `database.DB`、JWT 配置注入、种子辅助 |
+| `services/host_service_test.go` | 主机 CRUD/筛选表驱动（IP 判重/申请时间/人员校验/零信任引用删除保护/Filter 分页） |
+| `services/auth_service_test.go` | 登录表驱动（成功签发/用户不存在/失败计数/锁定拒绝/成功清零） |
+| `utils/password_test.go` | `salt$hash` 往返、旧格式拒绝、盐唯一性 |
+| `frontend/src/utils/__tests__/index.spec.js` | Vitest 冒烟（`npm run test`，日期格式化/常量） |
+
 ### 命令工具（cmd/）
 
 | 文件 | 职责 |

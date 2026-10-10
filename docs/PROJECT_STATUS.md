@@ -6,7 +6,7 @@
 
 ## 功能完成度
 
-> 计数（2026-10-10）：功能模块 **19** 项（**17** 完成 / **2** 待开发）；技术债 **7** 项。
+> 计数（2026-10-10）：功能模块 **19** 项（**18** 完成 / **1** 待开发）；技术债 **6** 项。
 
 | 模块 | 状态 | 说明 |
 |------|------|------|
@@ -24,7 +24,7 @@
 | 数据导出报表 | ⏳ 待开发 | 预留 Excel/CSV 报表导出 |
 | 域名台账 | ✅ 完成 | `T-034` 已升级为**端口映射台账** `/mapping-ledger`（公网IP↔内网多端口，域名可选）；`hosts.ip_mapped` 自动重算 |
 | 公网 IP 关联 | ✅ 完成 | `T-015`/`T-034` `hosts.ip_mapped` 由映射台账自动重算；主机详情展示映射/零信任关联 |
-| 自动化测试 | ⏳ 待开发 | 后端 Service/Controller、前端组件测试均未编写 |
+| 自动化测试 | ✅ 完成 | `T-006` 测试骨架：后端 services 表驱动单测（主机 CRUD/登录锁定，sqlite 内存库注入 `database.DB`）+ utils 密码；前端 Vitest 冒烟（`npm run test`） |
 | Goose 迁移执行器 | ✅ 完成 | `T-016` 启动时 goose 执行 `migrations/*.sql`（embed），AutoMigrate 兜底；存量 dev 库首跑+幂等已实测 |
 | 公网 IP 资源录入 | ✅ 完成 | `T-031` `public_ips` 资源池（IP/运营商/备注），设置菜单 + `/public-ip` 独立页 |
 | 数据备份 | ✅ 完成 | `T-038` 8 个业务 sheet 导出为单个 xlsx / 导入自然键 upsert（单事务失败整体回滚），`/data-backup` 页 + 设置菜单入口 |
@@ -36,6 +36,7 @@
 
 ### 2026-10-10
 
+- `-` `test:` **T-006** 测试骨架：后端 services 表驱动单测（主机 CRUD/登录锁定，sqlite 内存库注入 `database.DB`）+ utils 密码校验，前端 Vitest 冒烟 6 例（`npm run test`）
 - `baa8e2e` `refactor:` **T-005** `IpStatistics` 拆分：`components/ip/`（探测面板/网段卡片/网段管理）+ `useProbeGrid` 状态机，主文件 778→300 行
 - `c1d4618` `refactor:` **T-004** 前端抽 composables（探测 WS / ECharts 注册 / 分页表），`stores/host` 组合改造对外 API 不变，IpStatistics 841→778 行
 - `6b62e8d` `feat:` **T-050** `hosts.disk` 补录入口：表单磁盘输入框+校验，CSV 尾列/`xlsx hosts` sheet 补磁盘列（旧 26 列兼容）
@@ -125,7 +126,6 @@
 
 | 问题 | 说明 |
 |------|------|
-| 无自动化测试 | 现有测试约定为规划，尚无实际测试代码 |
 | 前端大组件 | `IpStatistics.vue` 835 行等，待抽 composables |
 | GORM 列名 | 缩写字段（如 `CIDR`）默认命名异常（`c_id_r`），须显式 `gorm:"column:xxx"` |
 | 探测依赖 ping | 依赖宿主机 `ping` 命令；Linux `-W` 单位为秒，已改用 context 控制 100ms 超时 |
