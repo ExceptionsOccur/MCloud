@@ -8,6 +8,8 @@
 
 ### A. 开工前（顺序执行）
 
+**开工同步**（会话首步，先于 A.0~A.6）：`git checkout main && git pull`，确保入队、快照比对与任务认领均基于最新远程 `main`；本地有未合并工作或处于协议 D 接管场景时仅 `git fetch origin`，不强制切分支。
+
 **A.0 临时任务入队**（仅当人类指定的需求不在 ROADMAP `todo`/`blocked` 时执行，否则跳过本步）：
 
 1. 分配 ID：取 ROADMAP 已出现的 `T-xxx` 最大值 + 1，**永不复用**
