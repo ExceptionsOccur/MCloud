@@ -30,13 +30,6 @@
 
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
 
-- [ ] **T-003** `controllers/csv.go` 业务逻辑下沉 ｜ P1 ｜ 负责: —
-  - 依赖：已解除（T-018 lint 清零已完成）
-  - 内容：行数校验、表头判断、去重等逻辑移入 service，controller 只剩绑定+调用+响应（红线 1）
-  - 定位：`backend/controllers/csv.go`（文件后缀判断、行循环、行数校验、重复判断）→ 下沉至 `services/host_service.go` 的 CSV 部分
-  - 验收标准：controller 中无业务校验代码；导入导出行为不变；`go build` + lint 通过
-  - 注意：与 T-002 共享 `host_service.go`，建议排在 T-002 之后或同分支执行
-  - 分支：`refactor/csv-controller-thin`
 - [ ] **T-010** `routes/routes.go` 按域拆分 ｜ P1 ｜ 负责: — ｜ 备注: 2026-10-09 由 P2 升 P1，作为 T-047 前置（先拆路由再落审计组，避免二次返工）
   - 定位：`backend/routes/routes.go`（单文件 100+ 行，JWT 逐组挂载）→ 按域拆 `routes/*.go`，JWT 挂载收口
   - 验收标准：路由按域拆为多文件；`docs/CODE_INDEX.md` 请求链路同步
@@ -92,8 +85,8 @@
   - 定位：新建 `backend/services/*_test.go`；前端 `frontend/package.json`（加 vitest 依赖与 script）+ `src/**/__tests__/`
   - 验收标准：`cd backend && go test ./...` 有用例非零且通过；`npm run test` 可运行
 - [ ] **T-008** 数据导出报表（Excel/CSV） ｜ P2 ｜ 负责: — ｜ 备注: T-038 后收窄（2026-10-09）
-  - 内容：全量导出已覆盖——主机 CSV（`GET /api/export`，BOM）+ 8 表 xlsx 备份（T-038 `/api/export/all`）；剩余缺口 = **按筛选条件导出**：`csv.Export` 裸 `Find(&hosts)` 不带筛选、前端 `exportCSV()` 无参，导出与列表所见不一致；补齐筛选参数透传（接口复用列表筛选 + SearchToolbar 传参），原「新建 report_service.go」定位作废
-  - 定位：`backend/controllers/csv.go`（`Export` 裸查全表）、`backend/services/host_service.go`（列表筛选逻辑复用）、`frontend/src/api/csv.js`（`exportCSV()` 无参）、`frontend/src/components/SearchToolbar.vue`（`handleExport`）
+  - 内容：全量导出已覆盖——主机 CSV（`GET /api/export`，BOM）+ 8 表 xlsx 备份（T-038 `/api/export/all`）；剩余缺口 = **按筛选条件导出**：`ExportCSV`（T-003 前在 `csv.Export`）裸 `Find(&hosts)` 不带筛选、前端 `exportCSV()` 无参，导出与列表所见不一致；补齐筛选参数透传（接口复用列表筛选 + SearchToolbar 传参），原「新建 report_service.go」定位作废
+  - 定位：`backend/services/host_csv_service.go`（`ExportCSV` 裸查全表）、`backend/controllers/csv.go`（`Export` 透传筛选参数）、`backend/services/host_service.go`（列表筛选逻辑复用）、`frontend/src/api/csv.js`（`exportCSV()` 无参）、`frontend/src/components/SearchToolbar.vue`（`handleExport`）
   - 验收标准：带筛选导出的行数与列表一致；`go build` + `golangci-lint` + `lint:check` + `build` 通过；`docs/API.md` 同步参数
   - 回写：API.md `GET /api/export` 查询参数
 - [ ] **T-009** 密码哈希升级 bcrypt ｜ P2 ｜ 负责: —
@@ -157,6 +150,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-003 | `controllers/csv.go` 业务逻辑下沉 | 2026-10-10 | `-` | 验收：后缀/解析/行循环/去重/裸查全下沉 service，controller 仅绑定+错误码映射；A/B 8 场景字节一致；门禁全绿 |
 | T-002 | 后端 `services/host_service.go` 拆分 | 2026-10-10 | `e039190` | 验收：拆为 CRUD/批量/CSV 三文件（9/5/4 函数）；签名零变化、API 行为不变；build+lint+check_docs 全绿 |
 | T-046 | 零信任列表「申请主机+申请端口」合并为「申请资源」标签列 | 2026-10-09 | `9c1cbfa` | 验收：两列并一列标签 `主机名(ip:port)` 按主机名排序；前端门禁+check_docs 全绿；API/DB 零改动 |
 | T-045 | 协议补强：周期回顾偏差核查跳过纯文档类任务 | 2026-10-09 | `5fbb249` | 验收：AGENTS E.2/DEVELOPMENT/ROADMAP 三处口径同步纯文档类任务跳过；check_docs 0 errors |

@@ -36,6 +36,7 @@
 ### 2026-10-10
 
 - `e039190` `refactor:` **T-002** 后端 `host_service.go` 拆分为 CRUD/批量/CSV 三文件（同包零签名变化，对外 API 行为不变；技术债「单文件过大」关闭）
+- `-` `refactor:` **T-003** `csv.go` 业务逻辑下沉至 `host_csv_service.go`（controller 仅绑定+错误码映射，A/B 8 场景响应字节一致；提交号待回填）
 
 ### 2026-10-09
 
@@ -115,7 +116,6 @@
 | 问题 | 说明 |
 |------|------|
 | 无自动化测试 | 现有测试约定为规划，尚无实际测试代码 |
-| controller 混入业务逻辑 | `controllers/csv.go` 含行校验/去重，违反红线 1，待下沉 |
 | 前端大组件 | `IpStatistics.vue` 835 行等，待抽 composables |
 | GORM 列名 | 缩写字段（如 `CIDR`）默认命名异常（`c_id_r`），须显式 `gorm:"column:xxx"` |
 | 探测依赖 ping | 依赖宿主机 `ping` 命令；Linux `-W` 单位为秒，已改用 context 控制 100ms 超时 |

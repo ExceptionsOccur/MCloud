@@ -1,14 +1,11 @@
 package controllers
 
 import (
+	"errors"
 	"io"
 	"net/http"
-	"strings"
 
-	"mcloud/database"
-	"mcloud/models"
 	"mcloud/services"
-	"mcloud/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -31,73 +28,30 @@ func (ctrl *CSVController) Import(c *gin.Context) {
 	}
 	defer file.Close()
 
-	if !strings.HasSuffix(header.Filename, ".csv") {
-		Error(c, 40001, "仅支持.csv文件")
-		return
-	}
-
 	data, err := io.ReadAll(file)
 	if err != nil {
 		Error(c, 50001, "读取文件失败")
 		return
 	}
 
-	content, err := utils.DetectAndDecode(data)
+	result, err := ctrl.hostService.ImportCSV(header.Filename, data)
 	if err != nil {
-		Error(c, 40001, "文件编码识别失败")
+		// 结构性错误（后缀/编码/解析）→ 40001；其余执行失败 → 50001
+		if errors.Is(err, services.ErrCSVFileSuffix) ||
+			errors.Is(err, services.ErrCSVDecode) ||
+			errors.Is(err, services.ErrCSVParse) {
+			Error(c, 40001, err.Error())
+			return
+		}
+		Error(c, 50001, "导入失败: "+err.Error())
 		return
 	}
 
-	records, err := utils.ParseCSV(content)
-	if err != nil {
-		Error(c, 40001, "CSV解析失败: "+err.Error())
-		return
-	}
-
-	success := 0
-	skipped := 0
-	errors := 0
-
-	for i, row := range records {
-		if i == 0 {
-			continue // skip header
-		}
-		if len(row) < 26 {
-			errors++
-			continue
-		}
-
-		req, err := ctrl.hostService.ParseCSVRowToCreateHost(row)
-		if err != nil {
-			errors++
-			continue
-		}
-
-		_, err = ctrl.hostService.Create(req)
-		if err != nil {
-			if strings.Contains(err.Error(), "已存在") {
-				skipped++
-			} else {
-				errors++
-			}
-		} else {
-			success++
-		}
-	}
-
-	Success(c, gin.H{
-		"success": success,
-		"skipped": skipped,
-		"errors":  errors,
-	})
+	Success(c, result)
 }
 
 func (ctrl *CSVController) Export(c *gin.Context) {
-	var hosts []models.Host
-	database.DB.Preload("Application").Find(&hosts)
-
-	rows := ctrl.hostService.ExportToCSVRows(hosts)
-	csvContent, err := utils.BuildCSVOutput(utils.CSVHeaders, rows)
+	csvContent, err := ctrl.hostService.ExportCSV()
 	if err != nil {
 		Error(c, 50001, "生成CSV导出失败")
 		return
@@ -109,11 +63,12 @@ func (ctrl *CSVController) Export(c *gin.Context) {
 }
 
 func (ctrl *CSVController) Template(c *gin.Context) {
-	csvContent, err := utils.BuildCSVOutput(utils.CSVHeaders, nil)
+	csvContent, err := ctrl.hostService.CSVTemplate()
 	if err != nil {
 		Error(c, 50001, "生成CSV模板失败")
 		return
 	}
+
 	c.Header("Content-Type", "text/csv; charset=utf-8")
 	c.Header("Content-Disposition", "attachment; filename=import_template.csv")
 	c.String(http.StatusOK, csvContent)
