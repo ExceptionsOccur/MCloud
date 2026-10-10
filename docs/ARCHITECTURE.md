@@ -187,7 +187,7 @@ go/
         ├── composables/           # 组合式函数（T-004/T-005）：useProbeWebSocket / useChartOption / usePagedTable / useProbeGrid
         ├── api/                   # API 封装：index / auth / host / csv / dataExchange / cloud_resource / person / zero_trust / port_mapping / public_ip / stats / subnet / audit
         ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / PublicIPManagement / ZeroTrustLedger / MappingLedger / DataBackup / AuditLog
-        ├── components/            # 组件：工具栏/表格/各类弹窗（ip/：网段管理/探测面板/网段卡片）
+        ├── components/            # 组件：顶部导航 AppNav（T-019）/工具栏/表格/各类弹窗（ip/：网段管理/探测面板/网段卡片）
         │
         ├── utils/
         │   ├── index.js           # 通用工具函数

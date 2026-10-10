@@ -182,6 +182,7 @@
 
 | 文件 | 职责 | 使用页面 |
 |------|------|----------|
+| `AppNav.vue` | 顶部导航 7 个 Tab（T-019 抽取，10 页共用）；`variant` prop 保留 AuditLog/DataBackup 历史样式变体保证视觉零变化 | 全部 10 个功能页 |
 | `SearchToolbar.vue` | 搜索框、筛选下拉、操作按钮 | HostManagement |
 | `HostTable.vue` | 主机列表表格 + 分页 | HostManagement |
 | `HostFormDialog.vue` | 新增/编辑/详情弹窗（技术+申请双 Tab，含人员选择/手输自动建人员） | HostManagement |
@@ -218,6 +219,7 @@
 | 功能 | 后端 | 前端 |
 |------|------|------|
 | **登录/认证** | `controllers/auth.go` `services/auth_service.go` `middleware/jwt.go` | `views/Login.vue` `stores/auth.js` `api/auth.js` |
+| **顶部导航** | —（纯前端路由） | `components/AppNav.vue`（7 Tab 10 页共用，T-019） |
 | **审计日志** | `controllers/audit_log.go` `services/audit_service.go` `models/audit_log.go` `routes/audit.go` | `views/AuditLog.vue` `api/audit.js` |
 | **主机 CRUD** | `controllers/host.go` `services/host_service.go` | `views/HostManagement.vue` `components/HostTable.vue` `components/HostFormDialog.vue` `stores/host.js` `composables/usePagedTable.js` |
 | **主机筛选/搜索** | `services/host_service.go` → `Filter` | `components/SearchToolbar.vue` |
