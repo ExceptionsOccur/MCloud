@@ -90,7 +90,7 @@
 
 | 文件 | 职责 |
 |------|------|
-| `middleware/jwt.go` | `JWTAuth()` JWT 鉴权、`CORSMiddleware()` 跨域 |
+| `middleware/jwt.go` | `JWTAuth()` JWT 鉴权 + `ValidateToken()` 共享校验（T-022）、`CORSMiddleware()` Origin 白名单（T-043） |
 | `utils/password.go` | 密码哈希：`HashPassword`、`FormatPasswordHash`、`VerifyPassword` |
 | `utils/csv.go` | CSV 解析/生成、多编码检测 |
 | `utils/datetime.go` | 日期时间统一口径：`ValidateDateOnly`（严格 `YYYY-MM-DD`）、`ParseFlexibleTime`/`FlexibleTime`（RFC3339 为主 + 无时区兼容）、展示常量 `DateTimeLayout` |

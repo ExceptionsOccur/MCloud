@@ -64,10 +64,22 @@ func JWTAuth() gin.HandlerFunc {
 	}
 }
 
+// originAllowed 判断 Origin 是否在白名单内（精确匹配，不支持通配符，T-043）
+func originAllowed(origin string) bool {
+	for _, allowed := range config.AppConfig.CORSAllowedOrigins {
+		if allowed == origin {
+			return true
+		}
+	}
+	return false
+}
+
+// CORSMiddleware 仅对白名单 Origin 回显 CORS 头（含 credentials）；
+// 非白名单或未配置（默认空）不回显任何 CORS 头，同源访问不受影响（T-043）
 func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
-		if origin != "" {
+		if origin != "" && originAllowed(origin) {
 			c.Header("Access-Control-Allow-Origin", origin)
 			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")

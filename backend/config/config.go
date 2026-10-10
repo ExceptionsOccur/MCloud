@@ -6,21 +6,23 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	DBHost        string
-	DBPort        string
-	DBUser        string
-	DBPassword    string
-	DBName        string
-	DBSSLMode     string
-	JWTSecret     string
-	JWTExpiresHrs int
-	ServerPort    string
-	ServerMode    string
+	DBHost             string
+	DBPort             string
+	DBUser             string
+	DBPassword         string
+	DBName             string
+	DBSSLMode          string
+	JWTSecret          string
+	JWTExpiresHrs      int
+	ServerPort         string
+	ServerMode         string
+	CORSAllowedOrigins []string
 }
 
 var AppConfig *Config
@@ -32,16 +34,17 @@ func Load() {
 	}
 
 	appConfig := &Config{
-		DBHost:        getEnv("DB_HOST", "localhost"),
-		DBPort:        getEnv("DB_PORT", "5432"),
-		DBUser:        getEnv("DB_USER", "postgres"),
-		DBPassword:    getEnv("DB_PASSWORD", ""),
-		DBName:        getEnv("DB_NAME", "mcloud"),
-		DBSSLMode:     getEnv("DB_SSLMODE", "disable"),
-		JWTSecret:     getEnv("JWT_SECRET", "default-secret-change-me"),
-		JWTExpiresHrs: getEnvInt("JWT_EXPIRES_HOURS", 24),
-		ServerPort:    getEnv("SERVER_PORT", "5677"),
-		ServerMode:    getEnv("SERVER_MODE", "debug"),
+		DBHost:             getEnv("DB_HOST", "localhost"),
+		DBPort:             getEnv("DB_PORT", "5432"),
+		DBUser:             getEnv("DB_USER", "postgres"),
+		DBPassword:         getEnv("DB_PASSWORD", ""),
+		DBName:             getEnv("DB_NAME", "mcloud"),
+		DBSSLMode:          getEnv("DB_SSLMODE", "disable"),
+		JWTSecret:          getEnv("JWT_SECRET", "default-secret-change-me"),
+		JWTExpiresHrs:      getEnvInt("JWT_EXPIRES_HOURS", 24),
+		ServerPort:         getEnv("SERVER_PORT", "5677"),
+		ServerMode:         getEnv("SERVER_MODE", "debug"),
+		CORSAllowedOrigins: splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "")),
 	}
 
 	AppConfig = appConfig
@@ -61,4 +64,16 @@ func getEnvInt(key string, fallback int) int {
 		}
 	}
 	return fallback
+}
+
+// splitCSV 拆分逗号分隔的配置值（如 CORS 白名单），去除空白项（T-043）
+func splitCSV(s string) []string {
+	var out []string
+	for _, part := range strings.Split(s, ",") {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
 }

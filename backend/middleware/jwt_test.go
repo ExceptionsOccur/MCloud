@@ -1,11 +1,14 @@
 package middleware
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"mcloud/config"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -113,5 +116,86 @@ func TestValidateToken(t *testing.T) {
 				t.Fatalf("ValidateToken() userID = %d, want %d", userID, tt.wantID)
 			}
 		})
+	}
+}
+
+// TestCORSMiddleware 白名单 Origin 回显 CORS 头（含 credentials/预检），非白名单不回显（T-043）
+func TestCORSMiddleware(t *testing.T) {
+	prev := config.AppConfig
+	config.AppConfig = &config.Config{CORSAllowedOrigins: []string{"http://localhost:5173"}}
+	t.Cleanup(func() { config.AppConfig = prev })
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(CORSMiddleware())
+	r.GET("/ping", func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	const allowed = "http://localhost:5173"
+
+	tests := []struct {
+		name    string
+		method  string
+		origin  string
+		wantACA bool
+	}{
+		{"白名单GET回显", http.MethodGet, allowed, true},
+		{"非白名单GET不回显", http.MethodGet, "http://evil.example", false},
+		{"无Origin不受影响", http.MethodGet, "", false},
+		{"白名单预检回显", http.MethodOptions, allowed, true},
+		{"非白名单预检不回显", http.MethodOptions, "http://evil.example", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(tt.method, "/ping", nil)
+			if tt.origin != "" {
+				req.Header.Set("Origin", tt.origin)
+			}
+			r.ServeHTTP(w, req)
+
+			acao := w.Header().Get("Access-Control-Allow-Origin")
+			if tt.wantACA {
+				if acao != allowed {
+					t.Fatalf("Allow-Origin = %q, want %q", acao, allowed)
+				}
+				if got := w.Header().Get("Access-Control-Allow-Credentials"); got != "true" {
+					t.Fatalf("Allow-Credentials = %q, want true", got)
+				}
+			} else if acao != "" {
+				t.Fatalf("非白名单不应回显 Allow-Origin, got %q", acao)
+			}
+
+			if tt.method == http.MethodOptions && w.Code != http.StatusNoContent {
+				t.Fatalf("预检状态码 = %d, want 204", w.Code)
+			}
+			if tt.method == http.MethodGet && w.Code != http.StatusOK {
+				t.Fatalf("业务请求状态码 = %d, want 200", w.Code)
+			}
+		})
+	}
+}
+
+// TestCORSMiddlewareEmptyDefault 未配置白名单（默认空）不下发任何 CORS 头（T-043）
+func TestCORSMiddlewareEmptyDefault(t *testing.T) {
+	prev := config.AppConfig
+	config.AppConfig = &config.Config{}
+	t.Cleanup(func() { config.AppConfig = prev })
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(CORSMiddleware())
+	r.GET("/ping", func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+	req.Header.Set("Origin", "http://localhost:5173")
+	r.ServeHTTP(w, req)
+
+	if acao := w.Header().Get("Access-Control-Allow-Origin"); acao != "" {
+		t.Fatalf("默认空白名单不应下发 Allow-Origin, got %q", acao)
+	}
+	if w.Code != http.StatusOK {
+		t.Fatalf("同源无 Origin 语义的请求状态码 = %d, want 200", w.Code)
 	}
 }

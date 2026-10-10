@@ -117,7 +117,7 @@ go/
 │   │   └── websocket.go           # WebSocket IP 探测通道
 │   │
 │   ├── middleware/
-│   │   ├── jwt.go                 # JWT 认证中间件 + CORS 中间件 + ValidateToken（T-022）
+│   │   ├── jwt.go                 # JWT 认证中间件 + CORS 白名单中间件 + ValidateToken（T-022/T-043）
 │   │   └── jwt_test.go            # ValidateToken 单测（有效/过期/伪造/none 算法，T-022）
 │   │
 │   ├── services/
