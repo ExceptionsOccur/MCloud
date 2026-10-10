@@ -24,7 +24,8 @@
 | `backend/config/config.go` | 配置加载 | `Config` 结构体、`Load()`（从环境变量/`.env` 读取） |
 | `backend/database/postgres.go` | 数据库连接与迁移 | `Connect()`、`Migrate()`（goose.Up + AutoMigrate 兜底 + seedAdmin）、`seedAdmin()` |
 | `backend/migrations/embed.go` | 迁移 SQL embed FS | `//go:embed *.sql` → `migrations.FS`，供 goose 加载 |
-| `backend/routes/routes.go` | 路由注册 | `SetupRoutes()`，公开路由 + JWT 鉴权分组 + WebSocket |
+| `backend/routes/routes.go` | 路由协调 | `SetupRoutes()`：CORS + JWT 受保护组统一收口 + 分发各域 |
+| `backend/routes/{auth,host,data_exchange,cloud_resource,stats,subnet,person,public_ip,zero_trust,port_mapping,websocket}.go` | 各域路由注册 | `registerX(g)`；公开域仅登录/登出 + WS probe |
 
 ### 数据模型（models/）
 
@@ -211,11 +212,13 @@
 
 ## 请求链路
 
+> 路由按域拆分（T-010）：JWT 统一挂载收口于 `routes/routes.go` 受保护组，各域注册在 `routes/<域>.go`；下文链路行标注域注册文件。
+
 ### 主机列表查询
 
 ```
 GET /api/hosts
-  → routes/routes.go（JWT 鉴权）
+  → routes/host.go                 （JWT，收口 routes.go）
   → controllers/host.go           Filter()
   → services/host_service.go      Filter()（动态 WHERE + applicant_empty 分支 + Preload Application/Person + 分页）
   → models/host.go                返回 []Host
@@ -226,7 +229,7 @@ GET /api/hosts
 ```
 前端点击格子
   → ws://.../api/ws/probe?token=xxx
-  → routes/routes.go（校验 query token）
+  → routes/websocket.go            （校验 query token）
   → controllers/websocket.go      HandleProbeWS() → handleProbeMessage()（每请求独立 goroutine）
   → services/stats_service.go     Probe()（ICMP + TCP22/3389 → 颜色状态机，仅返回颜色不写库）
   → 回推 { ip, color }
@@ -255,13 +258,13 @@ PUT /api/cloud-resources
 
 ```
 POST /api/import（multipart file）
-  → routes/routes.go（JWT 鉴权）
+  → routes/host.go                 （JWT，收口 routes.go）
   → controllers/csv.go               Import()（绑定文件 + 读入字节 + 错误码映射）
   → services/host_csv_service.go     ImportCSV()（后缀校验 + DetectAndDecode 识别编码 + ParseCSV + 行循环）
   → services/host_csv_service.go     ParseCSVRowToCreateHost() → Create()（成功/跳过/错误计数）
 
 GET /api/export
-  → routes/routes.go（JWT 鉴权）
+  → routes/host.go                 （JWT，收口 routes.go）
   → controllers/csv.go               Export()
   → services/host_csv_service.go     ExportCSV()（Preload Application 读全表）
   → services/host_csv_service.go     ExportToCSVRows() → utils/csv.go BuildCSVOutput()（BOM + CSVHeaders 表头）
@@ -271,7 +274,7 @@ GET /api/export
 
 ```
 GET/POST /api/zero-trusts、PUT/DELETE /api/zero-trusts/:id、POST /api/zero-trusts/batch
-  → routes/routes.go（JWT 鉴权）
+  → routes/zero_trust.go           （JWT，收口 routes.go）
   → controllers/zero_trust.go        List()/Create()/Update()/Delete()/BatchCreateText()
   → services/zero_trust_service.go
        ├─ List()（keyword 模糊 + parseStoredTargets 回填主机简要 + 公网IP资源池带出接入地区）
