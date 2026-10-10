@@ -83,7 +83,7 @@ MCloud 是一个面向运维人员的资产信息管理系统，提供 Web 网�
 | 实时通信 | gorilla/websocket |
 | Excel 处理 | github.com/xuri/excelize/v2（xlsx 导出/导入） |
 | 认证 | JWT (golang-jwt/v5) |
-| 密码哈希 | SHA-256 + 盐（`salt$hash`） |
+| 密码哈希 | bcrypt（旧 `salt$hash` 登录兼容并自动升级） |
 
 ## 快速开始
 

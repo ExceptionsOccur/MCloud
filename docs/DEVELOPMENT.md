@@ -444,7 +444,7 @@ docker-compose -f docker-compose.prod.yml up -d --build
 
 ## 安全准则
 
-- 密码哈希使用 SHA-256 + 盐（格式 `salt$hash`），生产环境建议升级 bcrypt
+- 密码哈希使用 bcrypt（`golang.org/x/crypto/bcrypt`，cost 10）；存量旧 SHA-256 `salt$hash` 登录兼容并自动升级（T-009），禁止新增明文/快速哈希存储
 - JWT 密钥从环境变量读取，禁止硬编码
 - `.env` 不提交到 Git
 - API 输入必须校验，SQL 通过 GORM 参数化查询防注入

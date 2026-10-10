@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"mcloud/config"
@@ -49,6 +48,11 @@ func (s *AuthService) Login(username, password string) (*LoginResponse, *models.
 		return nil, nil, errors.New("用户名或密码错误")
 	}
 
+	// 旧 SHA-256 格式登录成功后平滑升级为 bcrypt（T-009）
+	if utils.IsLegacyHash(user.PasswordHash) {
+		user.PasswordHash = utils.FormatPasswordHash(password)
+	}
+
 	user.FailedAttempts = 0
 	user.LockedUntil = nil
 	now := time.Now()
@@ -91,9 +95,7 @@ func (s *AuthService) ChangePassword(userID uint, oldPassword, newPassword strin
 		return errors.New("原密码错误")
 	}
 
-	salt := utils.GenerateSalt()
-	hash := utils.HashPassword(newPassword, salt)
-	user.PasswordHash = fmt.Sprintf("%s$%s", salt, hash)
+	user.PasswordHash = utils.FormatPasswordHash(newPassword)
 	database.DB.Save(&user)
 	return nil
 }

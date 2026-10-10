@@ -1,13 +1,13 @@
 package database
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"log"
 
 	"mcloud/config"
 	"mcloud/migrations"
 	"mcloud/models"
+	"mcloud/utils"
 
 	"github.com/pressly/goose/v3"
 	"gorm.io/driver/postgres"
@@ -75,14 +75,9 @@ func seedAdmin() {
 	var count int64
 	DB.Model(&models.User{}).Where("username = ?", "admin").Count(&count)
 	if count == 0 {
-		salt := "a1b2c3d4e5f6a7b8"
-		password := "Pass4MCloud"
-		hash := sha256.Sum256([]byte(salt + password))
-		storedHash := fmt.Sprintf("%s$%x", salt, hash)
-
 		admin := models.User{
 			Username:     "admin",
-			PasswordHash: storedHash,
+			PasswordHash: utils.FormatPasswordHash("Pass4MCloud"),
 		}
 		DB.Create(&admin)
 		log.Println("管理员账户已创建: admin / Pass4MCloud")

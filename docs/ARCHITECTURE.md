@@ -160,10 +160,10 @@ go/
 │   │   └── resetpw/main.go        # 密码重置工具（随机/指定密码）
 │   │
 │   ├── utils/
-│   │   ├── password.go            # 密码哈希工具（SHA-256 + 盐）
+│   │   ├── password.go            # 密码哈希工具（bcrypt，兼容旧 SHA-256 平滑升级，T-009）
 │   │   ├── csv.go                 # CSV 解析/生成
 │   │   ├── datetime.go            # 日期时间统一口径（解析/校验/格式化，T-040）
-│   │   └── password_test.go       # 密码哈希单测（T-006）
+│   │   └── password_test.go       # 密码哈希单测（bcrypt 往返/旧格式兼容，T-006/T-009）
 │   │
 │   └── migrations/                # 迁移 SQL（启动时 goose 执行，embed 进二进制；AutoMigrate 兜底）
 │
@@ -226,7 +226,7 @@ go/
 |------|------|------|------|
 | ID | `id` | BIGSERIAL | PRIMARY KEY |
 | 用户名 | `username` | VARCHAR(64) | NOT NULL, UNIQUE |
-| 密码哈希 | `password_hash` | VARCHAR(256) | NOT NULL |
+| 密码哈希 | `password_hash` | VARCHAR(256) | NOT NULL | bcrypt（登录兼容旧 `salt$hash` 自动升级，T-009） |
 | 失败尝试次数 | `failed_attempts` | BIGINT | DEFAULT 0 |
 | 锁定截止时间 | `locked_until` | TIMESTAMPTZ | |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
