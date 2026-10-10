@@ -79,7 +79,7 @@
 | todo（P1） | 无 |
 | todo（P2） | `T-009` bcrypt 升级、`T-011` ping 解耦、`T-012` 文档巡检、`T-019` 抽 Layout/AppNav（功能页已 10 个，按 10 页更新）、`T-020` config ServerPort 硬编码、`T-022` WS probe token 校验、`T-043` CORS 白名单、`T-044` CSV 上传限制、`T-052` targets 拆子表、`T-053` audit_log NOT NULL 对齐 |
 | blocked | 无 |
-| 回顾锚点 | 上次回顾至 `T-051`（`done` 自此起满 5 条触发周期回顾，见会话协议 E） |
+| 回顾锚点 | 上次回顾至 `T-008`（`done` 自此起满 5 条触发周期回顾，见会话协议 E） |
 | 功能完成度 | 功能模块 19 项：19 完成 / 0 待开发；技术债 6 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
 | 已知风险 | 密码为 SHA-256、WS 探测仅校验 token 非空（`T-022`）（详见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
 

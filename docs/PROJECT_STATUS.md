@@ -127,7 +127,7 @@
 
 | 问题 | 说明 |
 |------|------|
-| 前端大组件 | `IpStatistics.vue` 835 行等，待抽 composables |
+| 前端大组件 | `IpStatistics` 已拆（T-005，835→300 行）+ composables 抽取（T-004）；剩 `ZeroTrustLedger` 779 行、`HostFormDialog` 754 行等，导航去重见 `T-019` |
 | GORM 列名 | 缩写字段（如 `CIDR`）默认命名异常（`c_id_r`），须显式 `gorm:"column:xxx"` |
 | 探测依赖 ping | 依赖宿主机 `ping` 命令；Linux `-W` 单位为秒，已改用 context 控制 100ms 超时 |
 | 密码哈希强度 | SHA-256 + 盐，非慢哈希，生产环境建议升级 bcrypt |
