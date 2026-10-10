@@ -36,6 +36,7 @@
 
 ### 2026-10-10
 
+- `dfd2ac7` `feat:` **T-011** 探测去宿主机 ping 依赖：纯 Go ICMP（`x/net/icmp`，udp4→raw socket→TCP 22/3389 兜底）替代 `exec ping`，状态机单测覆盖，技术债「探测依赖 ping」关闭
 - `c27e306` `feat:` **T-009** 密码哈希升级 bcrypt：旧 `salt$hash` 登录兼容并自动升级（cost 10），`seedAdmin`/`resetpw` 统一新格式，无需迁移 SQL（VARCHAR(256) 兼容），技术债「密码哈希强度」关闭
 - `c71d422` `feat:` **T-008** 主机 CSV 按筛选条件导出：`ExportCSV` 复用列表筛选（抽 `applyHostFilter` 共享），前端导出传当前 filters，导出与列表所见一致（API.md 同步）
 - `894e93b` `test:` **T-006** 测试骨架：后端 services 表驱动单测（主机 CRUD/登录锁定，sqlite 内存库注入 `database.DB`）+ utils 密码校验，前端 Vitest 冒烟 6 例（`npm run test`）
