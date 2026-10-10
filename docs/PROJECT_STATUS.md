@@ -36,7 +36,7 @@
 
 ### 2026-10-10
 
-- `-` `test:` **T-006** 测试骨架：后端 services 表驱动单测（主机 CRUD/登录锁定，sqlite 内存库注入 `database.DB`）+ utils 密码校验，前端 Vitest 冒烟 6 例（`npm run test`）
+- `894e93b` `test:` **T-006** 测试骨架：后端 services 表驱动单测（主机 CRUD/登录锁定，sqlite 内存库注入 `database.DB`）+ utils 密码校验，前端 Vitest 冒烟 6 例（`npm run test`）
 - `baa8e2e` `refactor:` **T-005** `IpStatistics` 拆分：`components/ip/`（探测面板/网段卡片/网段管理）+ `useProbeGrid` 状态机，主文件 778→300 行
 - `c1d4618` `refactor:` **T-004** 前端抽 composables（探测 WS / ECharts 注册 / 分页表），`stores/host` 组合改造对外 API 不变，IpStatistics 841→778 行
 - `6b62e8d` `feat:` **T-050** `hosts.disk` 补录入口：表单磁盘输入框+校验，CSV 尾列/`xlsx hosts` sheet 补磁盘列（旧 26 列兼容）
