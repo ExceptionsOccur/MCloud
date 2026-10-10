@@ -1,0 +1,99 @@
+package services
+
+import (
+	"encoding/csv"
+	"fmt"
+	"strconv"
+	"strings"
+
+	"mcloud/models"
+)
+
+// parseCSVLine 按 CSV 规则解析单行（支持双引号包裹含逗号的字段）
+func parseCSVLine(line string) ([]string, error) {
+	reader := csv.NewReader(strings.NewReader(line))
+	reader.LazyQuotes = true
+	reader.FieldsPerRecord = -1
+	return reader.Read()
+}
+
+// atoiOrZero 解析 CSV 数字列，非数字或超范围时返回 0（保持既有导入容错语义）
+func atoiOrZero(s string) int {
+	n, err := strconv.Atoi(strings.TrimSpace(s))
+	if err != nil {
+		return 0
+	}
+	return n
+}
+
+func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, error) {
+	if len(row) < 26 {
+		return CreateHostRequest{}, fmt.Errorf("列数不足，需要26列，实际%d列", len(row))
+	}
+
+	cpu := atoiOrZero(row[7])
+	memory := atoiOrZero(row[9])
+	systemDisk := atoiOrZero(row[10])
+	dataDisk := atoiOrZero(row[11])
+
+	isDB := strings.TrimSpace(row[13]) == "是" || strings.TrimSpace(row[13]) == "true" || strings.TrimSpace(row[13]) == "1"
+
+	return CreateHostRequest{
+		Region:            strings.TrimSpace(row[0]),
+		InstanceID:        strings.TrimSpace(row[1]),
+		Name:              strings.TrimSpace(row[2]),
+		PrivateIP:         strings.TrimSpace(row[3]),
+		AssetType:         strings.TrimSpace(row[5]),
+		OS:                strings.TrimSpace(row[6]),
+		CPU:               cpu,
+		CPUArch:           strings.TrimSpace(row[8]),
+		Memory:            memory,
+		SystemDisk:        systemDisk,
+		DataDisk:          dataDisk,
+		EnvType:           strings.TrimSpace(row[12]),
+		IsDBServer:        &isDB,
+		Status:            strings.TrimSpace(row[14]),
+		OpenPorts:         strings.TrimSpace(row[15]),
+		Tags:              strings.TrimSpace(row[16]),
+		ApplyUnit:         strings.TrimSpace(row[17]),
+		Applicant:         strings.TrimSpace(row[18]),
+		ApplicantContact:  strings.TrimSpace(row[19]),
+		Project:           strings.TrimSpace(row[20]),
+		ApplyReason:       strings.TrimSpace(row[21]),
+		ApplyConfig:       strings.TrimSpace(row[22]),
+		ApplyTime:         strings.TrimSpace(row[23]),
+		ObjectStorageSize: strings.TrimSpace(row[24]),
+		Remark:            strings.TrimSpace(row[25]),
+	}, nil
+}
+
+func (s *HostService) ExportToCSVRows(hosts []models.Host) [][]string {
+	var rows [][]string
+	for _, h := range hosts {
+		isDB := "否"
+		if h.IsDBServer {
+			isDB = "是"
+		}
+		ipMapped := "否"
+		if h.IPMapped {
+			ipMapped = "是"
+		}
+		row := []string{
+			h.Region, h.InstanceID, h.Name, h.PrivateIP, ipMapped,
+			h.AssetType, h.OS, strconv.Itoa(h.CPU), h.CPUArch, strconv.Itoa(h.Memory),
+			strconv.Itoa(h.SystemDisk), strconv.Itoa(h.DataDisk), h.EnvType, isDB,
+			h.Status, h.OpenPorts, h.Tags,
+		}
+		if h.Application != nil {
+			row = append(row,
+				h.Application.ApplyUnit, h.Application.Applicant, h.Application.ApplicantContact,
+				h.Application.Project, h.Application.ApplyReason, h.Application.ApplyConfig,
+				h.Application.ApplyTime, h.Application.ObjectStorageSize, h.Application.Remark,
+			)
+		} else {
+			row = append(row, "", "", "", "", "", "", "", "", "")
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}

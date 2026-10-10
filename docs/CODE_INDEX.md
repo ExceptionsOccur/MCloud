@@ -66,7 +66,9 @@
 | 文件 | 职责 | 关键函数 |
 |------|------|----------|
 | `services/auth_service.go` | 认证逻辑、失败锁定 | `Login`（5 次失败锁定 15 分钟）、`ChangePassword` |
-| `services/host_service.go` | 主机 CRUD、筛选、批量、CSV 行解析 | `Filter`、`Create`、`BatchUpdate`、`ParseCSVRowToCreateHost` |
+| `services/host_service.go` | 主机 CRUD 与筛选 | `Filter`、`Create`、`Update`、`Delete`、`validatePersonID` |
+| `services/host_batch_service.go` | 主机批量增改（结构化 JSON + 纯文本行）与批量编辑 | `BatchCreate`、`BatchCreateFromText`、`BatchUpdate`、`parsePersonID` |
+| `services/host_csv_service.go` | 主机 CSV 行映射与导入导出 | `ParseCSVRowToCreateHost`、`ExportToCSVRows`、`parseCSVLine` |
 | `services/cloud_resource_service.go` | 云资源总览读写 | `List`、`Update`（按 region upsert） |
 | `services/stats_service.go` | IP 使用统计 + 连通性探测 | `GetIPUsage`、`Probe`、`pingICMP`、`probeTCP` |
 | `services/business_stats.go` | 业务统计聚合 | `GetBusinessStats`（项目/公司/人员三维聚合） |
@@ -189,8 +191,8 @@
 | **登录/认证** | `controllers/auth.go` `services/auth_service.go` `middleware/jwt.go` | `views/Login.vue` `stores/auth.js` `api/auth.js` |
 | **主机 CRUD** | `controllers/host.go` `services/host_service.go` | `views/HostManagement.vue` `components/HostTable.vue` `components/HostFormDialog.vue` `stores/host.js` |
 | **主机筛选/搜索** | `services/host_service.go` → `Filter` | `components/SearchToolbar.vue` |
-| **批量增改** | `controllers/batch.go` `services/host_service.go` → `BatchCreate`/`BatchUpdate` | `components/BatchAddDialog.vue` `components/BatchEditDialog.vue` |
-| **CSV 导入导出** | `controllers/csv.go` `services/host_service.go` `utils/csv.go` | `components/ImportDialog.vue` `api/csv.js` |
+| **批量增改** | `controllers/batch.go` `services/host_batch_service.go` → `BatchCreate`/`BatchUpdate` | `components/BatchAddDialog.vue` `components/BatchEditDialog.vue` |
+| **CSV 导入导出** | `controllers/csv.go` `services/host_csv_service.go` `utils/csv.go` | `components/ImportDialog.vue` `api/csv.js` |
 | **数据备份 xlsx 导出/导入** | `controllers/data_exchange.go` `services/export_service.go` `services/import_service.go` | `views/DataBackup.vue` `api/dataExchange.js` |
 | **云资源录入** | `controllers/cloud_resource.go` `services/cloud_resource_service.go` | `components/CloudResourceDialog.vue` `stores/cloudResource.js` |
 | **资源统计** | `controllers/cloud_resource.go` + `GET /api/hosts` | `views/ResourceStatistics.vue` `stores/cloudResource.js` |
@@ -255,12 +257,12 @@ PUT /api/cloud-resources
 POST /api/import（multipart file）
   → routes/routes.go（JWT 鉴权）
   → controllers/csv.go               Import()（utils.DetectAndDecode 识别编码 + utils.ParseCSV）
-  → services/host_service.go         ParseCSVRowToCreateHost() → Create()（成功/跳过/错误计数）
+  → services/host_csv_service.go   ParseCSVRowToCreateHost() → Create()（成功/跳过/错误计数）
 
 GET /api/export
   → routes/routes.go（JWT 鉴权）
   → controllers/csv.go               Export()（Preload Application 读全表）
-  → services/host_service.go         ExportToCSVRows()
+  → services/host_csv_service.go   ExportToCSVRows()
   → utils/csv.go                     BuildCSVOutput()（BOM + CSVHeaders 表头）
 ```
 

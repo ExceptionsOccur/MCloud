@@ -118,7 +118,9 @@ go/
 │   │
 │   ├── services/
 │   │   ├── auth_service.go        # 认证业务逻辑
-│   │   ├── host_service.go        # 主机业务逻辑（CRUD + 批量 + CSV，待拆分）
+│   │   ├── host_service.go        # 主机业务逻辑（CRUD + 筛选）
+│   │   ├── host_batch_service.go  # 主机批量业务逻辑（结构化/文本批量 + 批量编辑）
+│   │   ├── host_csv_service.go    # 主机 CSV 行映射与导入导出
 │   │   ├── cloud_resource_service.go # 云资源总览业务逻辑
 │   │   ├── person_service.go      # 人员业务逻辑
 │   │   ├── zero_trust_service.go  # 零信任台账业务逻辑
