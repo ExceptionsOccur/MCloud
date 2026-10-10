@@ -30,11 +30,6 @@
 
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
 
-- [ ] **T-020** 消除 `config.go` `ServerPort` 硬编码 ｜ P2 ｜ 负责: — ｜ 备注: 违反红线 3（配置外置）
-  - 内容：`ServerPort` 默认值硬编码 `"5677"`；改为环境变量（如 `SERVER_PORT`）读取，默认值是否保留由人类定口径
-  - 定位：`backend/config/config.go:43`（默认值赋值处，字段声明 `:22`）、`backend/main.go:23`（`addr := ":" + config.AppConfig.ServerPort`）、同步 `docker/.env.example`
-  - 验收标准：端口经环境变量可配；`go build` + `golangci-lint run ./...` 通过；PROJECT_STATUS 技术债表该行删除
-  - 分支：`fix/config-server-port`
 - [ ] **T-022** WS 探测通道 token 有效性校验 ｜ P2 ｜ 负责: — ｜ 备注: 2026-10-06 人类立队（安全问题，后面处理）
   - 内容：`/api/ws/probe` 当前**只校验 `token` query 参数非空**（空则 `40101`），不校验 JWT 有效性——任何非空字符串即可建立 WebSocket 连接并发起探测；需复用 `middleware/jwt.go` 的校验逻辑，无效/过期/伪造 token 拒绝升级
   - 定位：`backend/routes/websocket.go`（`registerWS` 内仅 `c.Query("token") != ""` 判断；T-010 拆分前在 `routes.go`）、`backend/controllers/websocket.go`（`HandleProbeWS`；`upgrader.CheckOrigin` 恒 `true`，同链路可一并评估是否收紧）、`backend/middleware/jwt.go`（`JWTAuth()` 校验逻辑参考）、`docs/API.md`「WebSocket 探测帧协议」章节（同步改）
@@ -84,6 +79,7 @@
 | T-011 | IP 探测去宿主机 ping 依赖 | 2026-10-10 | `dfd2ac7` | 验收：纯 Go ICMP（`x/net/icmp`，udp4 ping socket → ip4:icmp 原始 socket → TCP 22/3389 兜底，100ms 超时）替代 `exec ping`；颜色状态机单测覆盖 dead 分支 + alive 分支（环境无 ICMP socket 时跳过）；BUSINESS_LOGIC「探测方式」回写；门禁全绿 |
 | T-012 | 文档一致性巡检 | 2026-10-10 | `aba8246` | 验收：check_docs 0/0；人工抽查路由 47/47 全匹配（gin Routes() dump 对照）、错误码 5/5、CSV 27 列三方一致、筛选参数 10 项、T-id 引用 53/53、页面路由 11/11、表/模型 10/10、关键常量（5次/15分/100ms/32并发/3s重连/10×26）；修复 2 处口径偏差（AGENTS 位图术语、T-019 定位处数） |
 | T-019 | 前端抽 Layout/AppNav | 2026-10-10 | `481477e` | 验收：`components/AppNav.vue` 承载 7 Tab 导航，10 页重复结构仅剩一处；`variant` prop（default/audit/backup）保留三套历史样式实现视觉零变化；导航项 10 页本就同为 7 项（统计三页硬编码 active 改为动态等价）；`lint:check`+`build`+`vitest 6/6` 全绿 |
+| T-020 | config ServerPort 硬编码消除 | 2026-10-10 | `-` | 验收：`SERVER_PORT` 环境变量可配（`getEnv` 模式，保留默认 `5677`——推荐口径，与 DB_* 等其余字段一致、开发零配置；docker-compose.dev 已传该变量、`.env.example` 已同步）；技术债表该行删除；`go build`+`golangci-lint`+`check_docs` 全绿 |
 | T-006 | 测试骨架 | 2026-10-10 | `894e93b` | 验收：`go test` services 表驱动（主机CRUD/登录锁定）+ utils 密码全绿（sqlite 内存库注入）；vitest 冒烟 6 例；门禁全绿 |
 | T-005 | `IpStatistics.vue` 拆分 | 2026-10-10 | `baa8e2e` | 验收：778→300 行（≤400）；拆 components/ip/（ProbePanel/SubnetCard/SubnetManageDialog 移入）+ composables/useProbeGrid；lint+build+check 全绿 |
 | T-004 | 前端 composables 抽取 | 2026-10-10 | `c1d4618` | 验收：抽 useProbeWebSocket/useChartOption/usePagedTable 三件，IpStatistics 841→778 行；lint:check + build + check_docs 全绿，页面行为不变 |
