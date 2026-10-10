@@ -4,9 +4,9 @@ import "time"
 
 type PortMapping struct {
 	ID            uint      `json:"id" gorm:"primaryKey"`
-	PublicIP      string    `json:"public_ip" gorm:"type:varchar(45);not null"`
-	HostID        uint      `json:"host_id" gorm:"index;not null"`
-	ExternalPorts string    `json:"external_ports" gorm:"type:text;not null"`
+	PublicIP      string    `json:"public_ip" gorm:"type:varchar(45);not null;uniqueIndex:idx_port_mappings_host_ip_ports"`
+	HostID        uint      `json:"host_id" gorm:"index;not null;uniqueIndex:idx_port_mappings_host_ip_ports"`
+	ExternalPorts string    `json:"external_ports" gorm:"type:text;not null;uniqueIndex:idx_port_mappings_host_ip_ports"`
 	InternalPorts string    `json:"internal_ports" gorm:"type:text;not null"`
 	Domain        string    `json:"domain" gorm:"type:varchar(255);uniqueIndex:idx_port_mappings_domain"`
 	Remark        string    `json:"remark" gorm:"type:text"`

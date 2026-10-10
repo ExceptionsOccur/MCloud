@@ -41,6 +41,10 @@ func (ctrl *PortMappingController) Create(c *gin.Context) {
 			Error(c, 40001, err.Error())
 			return
 		}
+		if errors.Is(err, services.ErrPortMappingExists) {
+			Error(c, 40901, err.Error())
+			return
+		}
 		Error(c, 40001, err.Error())
 		return
 	}
@@ -62,6 +66,10 @@ func (ctrl *PortMappingController) Update(c *gin.Context) {
 	if err := ctrl.service.Update(uint(id), req, op, requestID); err != nil {
 		if errors.Is(err, services.ErrPortMappingNotFound) {
 			Error(c, 40401, err.Error())
+			return
+		}
+		if errors.Is(err, services.ErrPortMappingExists) {
+			Error(c, 40901, err.Error())
 			return
 		}
 		Error(c, 40001, err.Error())

@@ -372,6 +372,7 @@ go/
 - 系统**不预置默认网段**，由用户在「IP统计 → 管理网段」中维护
 - `zero_trusts.targets` 为 `host_id:port` 多组配对（无数据库外键）；主机被零信任台账引用时禁止删除（应用层包含式匹配校验，返回 `40901`）；`public_ip` 须在公网IP资源池，接入地区（`exit_location`）读时带出不落库
 - `port_mappings.host_id` 外键关联 `hosts.id`；外网/内网端口列表长度必须一致；主机被映射引用时禁止删除
+- `port_mappings` 整组唯一 `(host_id, public_ip, external_ports)`（唯一索引 `idx_port_mappings_host_ip_ports`，迁移先清历史重复再落索引；应用层 Create/Update 判重返回 `40901`，`T-051`）
 - `hosts.ip_mapped` 由映射台账自动重算（有映射=true，无=false），主机表单不可手改
-- `public_ips.ip` 唯一约束，公网 IP 资源池录入；允许直接删除（无外键引用校验）
+- `public_ips.ip` 唯一约束，公网 IP 资源池录入；删除/修改 IP 时若被 `port_mappings`/`zero_trusts` 引用（应用层值引用校验）返回 `40901`（`T-051`）
 - **GORM 列名陷阱**：`CIDR` 字段默认会被命名为 `c_id_r`，模型已显式指定 `gorm:"column:cidr"`

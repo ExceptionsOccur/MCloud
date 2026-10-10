@@ -155,8 +155,8 @@
 |------|------|-----------|------|
 | GET | `/api/public-ips` | `publicIP.List` | 公网IP列表，`keyword` 模糊匹配 IP/运营商/出口位置/备注 |
 | POST | `/api/public-ips` | `publicIP.Create` | 新增公网IP（`ip` 必填、唯一、格式校验；`isp`/`exit_location`/`remark` 选填） |
-| PUT | `/api/public-ips/:id` | `publicIP.Update` | 修改公网IP记录 |
-| DELETE | `/api/public-ips/:id` | `publicIP.Delete` | 删除公网IP记录（允许直接删除） |
+| PUT | `/api/public-ips/:id` | `publicIP.Update` | 修改公网IP记录；**修改 IP 值**且该 IP 已被映射/零信任台账引用时返回 `40901` |
+| DELETE | `/api/public-ips/:id` | `publicIP.Delete` | 删除公网IP记录；被 `port_mappings`/`zero_trusts` 引用时返回 `40901`（`T-051`） |
 
 ### 零信任台账（需 JWT）
 
@@ -173,9 +173,9 @@
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
 | GET | `/api/port-mappings` | `portMapping.List` | 映射列表，`keyword` 模糊匹配公网IP/域名/端口/备注/主机名/IP，以及资源池运营商/出口位置；`isp`/`exit_location` 为派生字段（`T-049` 起 `port_mappings` 不存列），响应值恒等于 `public_ips` 资源池 |
-| POST | `/api/port-mappings` | `portMapping.Create` | 新增映射（公网IP须在资源池、内网主机、外网/内网端口必填；端口列表等长；域名可选；请求体传入的 `isp`/`exit_location` 被忽略） |
-| POST | `/api/port-mappings/batch` | `portMapping.BatchCreateText` | 批量添加（文本粘贴；列：公网IP,内网IP,外网端口,内网端口,域名,备注） |
-| PUT | `/api/port-mappings/:id` | `portMapping.Update` | 修改映射记录 |
+| POST | `/api/port-mappings` | `portMapping.Create` | 新增映射（公网IP须在资源池、内网主机、外网/内网端口必填；端口列表等长；域名可选；请求体传入的 `isp`/`exit_location` 被忽略）；整组 `(host_id, public_ip, external_ports)` 重复返回 `40901`（`T-051`） |
+| POST | `/api/port-mappings/batch` | `portMapping.BatchCreateText` | 批量添加（文本粘贴；列：公网IP,内网IP,外网端口,内网端口,域名,备注）；重复整组计入 skipped |
+| PUT | `/api/port-mappings/:id` | `portMapping.Update` | 修改映射记录；整组冲突返回 `40901` |
 | DELETE | `/api/port-mappings/:id` | `portMapping.Delete` | 删除映射记录；删除后重算主机 `ip_mapped` |
 
 ---

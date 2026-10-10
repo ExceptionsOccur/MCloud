@@ -60,6 +60,10 @@ func (ctrl *PublicIPController) Update(c *gin.Context) {
 			Error(c, 40401, err.Error())
 			return
 		}
+		if errors.Is(err, services.ErrPublicIPReferenced) {
+			Error(c, 40901, err.Error())
+			return
+		}
 		Error(c, 40001, err.Error())
 		return
 	}
@@ -76,6 +80,10 @@ func (ctrl *PublicIPController) Delete(c *gin.Context) {
 	if err := ctrl.service.Delete(uint(id), op, requestID); err != nil {
 		if errors.Is(err, services.ErrPublicIPNotFound) {
 			Error(c, 40401, err.Error())
+			return
+		}
+		if errors.Is(err, services.ErrPublicIPReferenced) {
+			Error(c, 40901, err.Error())
 			return
 		}
 		Error(c, 40001, err.Error())
