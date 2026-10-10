@@ -151,7 +151,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
-| T-010 | `routes/routes.go` 按域拆分 | 2026-10-10 | `-` | 验收：12 文件域拆分、JWT 收口受保护组；路由全表 A/B 67/67 一致；ARCHITECTURE/CODE_INDEX/T-022 定位已回写 |
+| T-010 | `routes/routes.go` 按域拆分 | 2026-10-10 | `1f0b6a3` | 验收：12 文件域拆分、JWT 收口受保护组；路由全表 A/B 67/67 一致；ARCHITECTURE/CODE_INDEX/T-022 定位已回写 |
 | T-003 | `controllers/csv.go` 业务逻辑下沉 | 2026-10-10 | `f0643f8` | 验收：后缀/解析/行循环/去重/裸查全下沉 service，controller 仅绑定+错误码映射；A/B 8 场景字节一致；门禁全绿 |
 | T-002 | 后端 `services/host_service.go` 拆分 | 2026-10-10 | `e039190` | 验收：拆为 CRUD/批量/CSV 三文件（9/5/4 函数）；签名零变化、API 行为不变；build+lint+check_docs 全绿 |
 | T-046 | 零信任列表「申请主机+申请端口」合并为「申请资源」标签列 | 2026-10-09 | `9c1cbfa` | 验收：两列并一列标签 `主机名(ip:port)` 按主机名排序；前端门禁+check_docs 全绿；API/DB 零改动 |
