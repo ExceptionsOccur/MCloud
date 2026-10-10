@@ -36,6 +36,8 @@
 
 ### 2026-10-10
 
+- `8535979` `fix:` **T-020** `ServerPort` 改 `SERVER_PORT` 环境变量（保留默认 5677），`.env.example` 同步，技术债「ServerPort 硬编码」关闭
+
 - `481477e` `refactor:` **T-019** 抽 AppNav 顶部导航：7 Tab 导航 10 页共用（净删 605 行重复），variant prop 保留 AuditLog/DataBackup 样式变体，视觉零变化
 
 - `aba8246` `docs:` **T-012** 文档一致性巡检：路由/错误码/CSV 列/筛选参数/T-id/页面路由等全量对照通过，修复位图术语与 T-019 定位处数 2 处口径偏差，check_docs 0/0
