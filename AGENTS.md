@@ -71,15 +71,15 @@
 
 | 字段 | 值 |
 |------|-----|
-| last_updated | 2026-10-09 |
+| last_updated | 2026-10-10 |
 | in_progress | 无 |
-| next_task | `T-002` 后端 `host_service.go` 拆分（= ROADMAP todo 首条，P1 最高优先级） |
-| todo（P1） | `T-002` host_service 拆分 → `T-003` csv controller 下沉 → `T-010` 路由拆分（升 P1，T-047 前置）→ `T-042` 批量日期错误码修复 → `T-047` 审计日志 → `T-048` DB 漂移修复 → `T-049` 删 port_mappings 冗余列 → `T-051` 公网IP引用保护+映射防重 → `T-050` hosts.disk 补录入口 → `T-004` composables 抽取 → `T-005` IpStatistics 拆分 → `T-006` 测试骨架 |
+| next_task | `T-003` 后端 `csv.go` 业务逻辑下沉（= ROADMAP todo 首条，P1 最高优先级） |
+| todo（P1） | `T-003` csv controller 下沉 → `T-010` 路由拆分（升 P1，T-047 前置）→ `T-042` 批量日期错误码修复 → `T-047` 审计日志 → `T-048` DB 漂移修复 → `T-049` 删 port_mappings 冗余列 → `T-051` 公网IP引用保护+映射防重 → `T-050` hosts.disk 补录入口 → `T-004` composables 抽取 → `T-005` IpStatistics 拆分 → `T-006` 测试骨架 |
 | todo（P2） | `T-008` 报表导出、`T-009` bcrypt 升级、`T-011` ping 解耦、`T-012` 文档巡检、`T-019` 抽 Layout/AppNav（T-047 后按 10 页更新）、`T-020` config ServerPort 硬编码、`T-022` WS probe token 校验、`T-043` CORS 白名单、`T-044` CSV 上传限制、`T-052` targets 拆子表 |
 | blocked | 无 |
 | 回顾锚点 | 上次回顾至 `T-041`（`done` 自此起满 5 条触发周期回顾，见会话协议 E） |
-| 功能完成度 | 功能模块 18 项：16 完成 / 2 待开发；技术债 9 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
-| 已知风险 | 无测试、`host_service.go` 待拆分、`csv.go` 违反红线 1、密码为 SHA-256、WS 探测仅校验 token 非空（`T-022`）（详见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
+| 功能完成度 | 功能模块 18 项：16 完成 / 2 待开发；技术债 8 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
+| 已知风险 | 无测试、`csv.go` 违反红线 1、密码为 SHA-256、WS 探测仅校验 token 非空（`T-022`）（详见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
 
 > T-036~T-041 各批次均已合并 main（提交号见 ROADMAP done 表）；全量回顾偏差修复与锚点推进见 ROADMAP「回顾锚点」。
 
