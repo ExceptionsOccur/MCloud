@@ -36,6 +36,8 @@
 
 ### 2026-10-10
 
+- `d12f354` `feat:` **T-052** `targets` 拆 `zero_trust_targets` 子表（双 FK RESTRICT+回填），转派生字段 API 零变化，搜索/删引用/导入导出改子表，回灌+40901 单测覆盖
+
 - `d487b0b` `fix:` **T-054** docker-compose dev/prod backend 透传 `CORS_ALLOWED_ORIGINS`，容器内可配 CORS 白名单（T-043 收尾缺口）
 
 - `176563c` `fix:` **T-044** CSV 导入加后端 16MB 上限（`MaxBytesReader`，对齐前端提示），超限返回 40001，未超限行为不变（3 例单测）
