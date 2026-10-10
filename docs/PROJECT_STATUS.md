@@ -36,6 +36,7 @@
 
 ### 2026-10-10
 
+- `c27e306` `feat:` **T-009** 密码哈希升级 bcrypt：旧 `salt$hash` 登录兼容并自动升级（cost 10），`seedAdmin`/`resetpw` 统一新格式，无需迁移 SQL（VARCHAR(256) 兼容），技术债「密码哈希强度」关闭
 - `c71d422` `feat:` **T-008** 主机 CSV 按筛选条件导出：`ExportCSV` 复用列表筛选（抽 `applyHostFilter` 共享），前端导出传当前 filters，导出与列表所见一致（API.md 同步）
 - `894e93b` `test:` **T-006** 测试骨架：后端 services 表驱动单测（主机 CRUD/登录锁定，sqlite 内存库注入 `database.DB`）+ utils 密码校验，前端 Vitest 冒烟 6 例（`npm run test`）
 - `baa8e2e` `refactor:` **T-005** `IpStatistics` 拆分：`components/ip/`（探测面板/网段卡片/网段管理）+ `useProbeGrid` 状态机，主文件 778→300 行
