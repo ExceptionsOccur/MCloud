@@ -148,9 +148,11 @@ var CSVHeaders = []string{
 
 ### 探测方式
 
-ICMP（`ping -c 1`，context 超时 100ms）+ TCP 22/3389（超时 100ms），任一有回包即视为 alive。
+纯 Go ICMP Echo（T-011，`golang.org/x/net/icmp`）+ TCP 22/3389（超时均 100ms），任一有回包即视为 alive。
 
-> 注意：Linux `ping -W` 单位为**秒**，故超时改用 `exec.CommandContext` + 100ms context 控制。
+- ICMP 建连顺序：非特权 `udp4` ping socket → `ip4:icmp` 原始 socket（需 `CAP_NET_RAW`，容器内 root 默认具备）；环境均拒绝时 ICMP 判不通，由 TCP 22/3389 兜底
+- 回包校验：`Echo Reply` + 来源 IP 等于探测目标，在 100ms 超时窗口内循环读取过滤（原始 socket 可能混入他进程回包）
+- **不再依赖宿主机 `ping` 命令**，消除平台差异（Linux `-W` 单位问题随之消除）
 
 ### 结果处理逻辑（后端 `Probe`）
 

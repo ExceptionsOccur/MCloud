@@ -102,6 +102,7 @@
 | `services/testdb_test.go` | 测试基建：sqlite 内存库注入 `database.DB`、JWT 配置注入、种子辅助 |
 | `services/host_service_test.go` | 主机 CRUD/筛选表驱动（IP 判重/申请时间/人员校验/零信任引用删除保护/Filter 分页） |
 | `services/auth_service_test.go` | 登录表驱动（成功签发/用户不存在/失败计数/锁定拒绝/成功清零）+ 旧格式登录自动升级 bcrypt（T-009） |
+| `services/stats_service_test.go` | 探测颜色状态机（dead/alive 分支）、`probeTCP` 开/闭端口、ICMP 回环/不可达（环境无 ICMP socket 时跳过，T-011） |
 | `utils/password_test.go` | bcrypt 往返、旧 `salt$hash` 兼容、非法存储拒绝、盐唯一性 |
 | `frontend/src/utils/__tests__/index.spec.js` | Vitest 冒烟（`npm run test`，日期格式化/常量） |
 
