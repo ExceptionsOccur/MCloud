@@ -26,17 +26,15 @@
 
 ## in_progress
 
-无
-
-## todo（按优先级；同级按依赖序，见各条「依赖」字段）
-
-- [ ] **T-048** 数据库迁移 SQL ↔ 实际库漂移修复 ｜ P1 ｜ 负责: — ｜ 备注: 人类 2026-10-09 立队；范围已确认（不做软删除/CHECK/索引补齐）
-  - 依赖：T-047 后执行（同为 P1 串行合并；两者仅共享 `migrations/` 目录，按时间戳排序）
+- [ ] **T-048** 数据库迁移 SQL ↔ 实际库漂移修复 ｜ P1 ｜ 负责: opencode mimo-v2.6-flash-free 2026-10-10 ｜ 备注: 人类 2026-10-09 立队；范围已确认（不做软删除/CHECK/索引补齐）
+  - 依赖：T-047 后执行（同为 P1 串行合并；两者仅共享 `migrations/` 目录，按时间戳排序）——已满足（T-047 已合并）
   - 内容：`port_mappings`/`public_ips` 主键 `integer`→`bigint`；为缺省值的 `created_at` 列补 `DEFAULT now()`（共 6 列）；`uni_port_mappings_domain` 改 `idx_` 前缀且 `models/port_mapping.go` 补 `uniqueIndex`；`users.failed_attempts`、`host_applications.host_id` 类型按实库对齐；`host_applications` 补 `created_at`/`updated_at`；旧迁移 `ON DELETE CASCADE` 与实库 `NO ACTION` 的口径用新增对齐迁移修正（Up 块不可变）。不做：软删除、CHECK 约束、普通索引补齐、`people_pkey` 改名（后两项记入 PROJECT_STATUS 备注）
   - 定位：`backend/migrations/`（新增对齐迁移）、`backend/models/{port_mapping,host_application,user}.go`、`backend/database/postgres.go`、`docs/ARCHITECTURE.md`
   - 验收标准：对齐迁移在 dev 库执行成功且重跑幂等；`information_schema` 核对主键均 bigint、`created_at` 均有默认值、唯一索引全为 `idx_` 前缀；模型与实库列类型一致；`go build` + `golangci-lint run ./...` + `check_docs.sh` 全绿
   - 回写：ARCHITECTURE 数据模型字段口径、PROJECT_STATUS 变更记录
   - 分支：`refactor/db-align`
+
+## todo（按优先级；同级按依赖序，见各条「依赖」字段）
 - [ ] **T-049** 删除 `port_mappings` 冗余列 `isp`/`exit_location` ｜ P1 ｜ 负责: — ｜ 备注: 人类 2026-10-09 确认删列（分析修订版结论）
   - 依赖：T-048 合并后（同为 `migrations/` 改动，串行）
   - 内容：两列系历史遗留的传递依赖（全项目唯一 3NF/BCNF 违反），且前端表单/批量文本/xlsx 导入导出均不写入，仅裸 API 可写，实测已与 `public_ips` 值漂移。删除两列，读取统一从 `public_ips` JOIN 带出（对齐 `zero_trusts` 的正确做法）；移除 `List` 内存回填与双表 LIKE 搜索；`PortMappingRequest` 删对应字段。口径变更：映射台账 API 的运营商/出口位置恒为派生字段。新增 goose 迁移 `DROP COLUMN`（Up 块不可变）

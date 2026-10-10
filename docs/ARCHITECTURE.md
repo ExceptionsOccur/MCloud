@@ -190,6 +190,7 @@ go/
 ```
 
 > **迁移索引口径（T-039）**：唯一索引统一采用 GORM 期望的 `idx_` 前缀命名（`idx_<表>_<列>`），历史 `*_key` / `uni_` 重复约束由迁移收敛（`backend/migrations/20261009000001_align_unique_indexes_and_fks.sql`）。
+> **迁移↔实库对齐（T-048）**：`port_mappings`/`public_ips` 主键 `integer`→`bigint`（含序列）、6 表 `created_at` 补 `DEFAULT now()`、`uni_port_mappings_domain`→`idx_port_mappings_domain`、`users.failed_attempts`/`host_applications.host_id` 对齐 `bigint`、`host_applications` 补 `created_at`/`updated_at`、FK 口径统一实库 `NO ACTION`（对齐迁移 `20261010000002_align_schema_drift.sql`，幂等可重跑）。**不做**：软删除、CHECK、普通索引补齐、`people_pkey` 改名。
 
 ---
 
@@ -216,10 +217,10 @@ go/
 
 | 字段 | 列名 | 类型 | 约束 |
 |------|------|------|------|
-| ID | `id` | SERIAL | PRIMARY KEY |
+| ID | `id` | BIGSERIAL | PRIMARY KEY |
 | 用户名 | `username` | VARCHAR(64) | NOT NULL, UNIQUE |
 | 密码哈希 | `password_hash` | VARCHAR(256) | NOT NULL |
-| 失败尝试次数 | `failed_attempts` | INTEGER | DEFAULT 0 |
+| 失败尝试次数 | `failed_attempts` | BIGINT | DEFAULT 0 |
 | 锁定截止时间 | `locked_until` | TIMESTAMPTZ | |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 | 最后登录时间 | `last_login` | TIMESTAMPTZ | |
@@ -228,7 +229,7 @@ go/
 
 | 字段 | 列名 | 类型 | 约束 |
 |------|------|------|------|
-| ID | `id` | SERIAL | PRIMARY KEY |
+| ID | `id` | BIGSERIAL | PRIMARY KEY |
 | 姓名 | `name` | VARCHAR(64) | NOT NULL |
 | 联系方式 | `contact` | VARCHAR(64) | |
 | 单位名称 | `unit` | VARCHAR(128) | |
@@ -238,7 +239,7 @@ go/
 
 | 字段 | 列名 | 类型 | 约束 |
 |------|------|------|------|
-| ID | `id` | SERIAL | PRIMARY KEY |
+| ID | `id` | BIGSERIAL | PRIMARY KEY |
 | 区域 | `region` | VARCHAR(64) | NOT NULL |
 | 实例ID | `instance_id` | VARCHAR(128) | |
 | 主机名称 | `name` | VARCHAR(128) | NOT NULL |
@@ -264,8 +265,8 @@ go/
 
 | 字段 | 列名 | 类型 | 约束 |
 |------|------|------|------|
-| ID | `id` | SERIAL | PRIMARY KEY |
-| 主机ID | `host_id` | INTEGER | NOT NULL, UNIQUE, FK → hosts(id)（**无 ON DELETE 动作**，不级联） |
+| ID | `id` | BIGSERIAL | PRIMARY KEY |
+| 主机ID | `host_id` | BIGINT | NOT NULL, UNIQUE（`idx_host_applications_host_id`），FK → hosts(id)（**无 ON DELETE 动作**，不级联） |
 | 申请单位 | `apply_unit` | VARCHAR(128) | |
 | 申请人 | `applicant` | VARCHAR(64) | |
 | 申请人联系方式 | `applicant_contact` | VARCHAR(64) | |
@@ -275,12 +276,14 @@ go/
 | 申请时间 | `apply_time` | VARCHAR(32) | |
 | 对象存储大小 | `object_storage_size` | VARCHAR(32) | 如 "500GB"、"1TB" |
 | 备注 | `remark` | TEXT | |
+| 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
+| 更新时间 | `updated_at` | TIMESTAMPTZ | DEFAULT NOW() |
 
 ### cloud_resources 表（云资源总览）
 
 | 字段 | 列名 | 类型 | 约束 |
 |------|------|------|------|
-| ID | `id` | SERIAL | PRIMARY KEY |
+| ID | `id` | BIGSERIAL | PRIMARY KEY |
 | 区域 | `region` | VARCHAR(64) | NOT NULL, UNIQUE |
 | 物理CPU(核) | `physical_cpu` | INTEGER | DEFAULT 0 |
 | vCPU(核) | `vcpu` | INTEGER | DEFAULT 0 |
@@ -295,7 +298,7 @@ go/
 
 | 字段 | 列名 | 类型 | 约束 |
 |------|------|------|------|
-| ID | `id` | SERIAL | PRIMARY KEY |
+| ID | `id` | BIGSERIAL | PRIMARY KEY |
 | 网段 | `cidr` | VARCHAR(32) | NOT NULL, UNIQUE |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 
@@ -303,7 +306,7 @@ go/
 
 | 字段 | 列名 | 类型 | 约束 |
 |------|------|------|------|
-| ID | `id` | SERIAL | PRIMARY KEY |
+| ID | `id` | BIGSERIAL | PRIMARY KEY |
 | 申请单位 | `apply_unit` | VARCHAR(128) | NOT NULL |
 | 账户名 | `account_name` | VARCHAR(64) | NOT NULL |
 | 申请人联系方式 | `contact` | VARCHAR(64) | |
@@ -318,12 +321,12 @@ go/
 
 | 字段 | 列名 | 类型 | 约束 |
 |------|------|------|------|
-| ID | `id` | SERIAL | PRIMARY KEY |
+| ID | `id` | BIGSERIAL | PRIMARY KEY |
 | 公网IP | `public_ip` | VARCHAR(45) | NOT NULL |
 | 内网主机 | `host_id` | BIGINT | NOT NULL, FK → hosts(id) |
 | 外网端口 | `external_ports` | TEXT | NOT NULL（默认 `''`），逗号分隔多端口 |
 | 内网端口 | `internal_ports` | TEXT | NOT NULL（默认 `''`），与外网端口数量/顺序一一对应 |
-| 域名 | `domain` | VARCHAR(255) | 可选；非空时唯一 |
+| 域名 | `domain` | VARCHAR(255) | 可选；非空时唯一（唯一索引 `idx_port_mappings_domain`） |
 | 运营商 | `isp` | VARCHAR(128) | |
 | 出口位置 | `exit_location` | VARCHAR(128) | IP 所在地，选填 |
 | 备注 | `remark` | TEXT | |
@@ -334,7 +337,7 @@ go/
 
 | 字段 | 列名 | 类型 | 约束 |
 |------|------|------|------|
-| ID | `id` | SERIAL | PRIMARY KEY |
+| ID | `id` | BIGSERIAL | PRIMARY KEY |
 | 公网IP | `ip` | VARCHAR(45) | NOT NULL, UNIQUE |
 | 运营商 | `isp` | VARCHAR(128) | |
 | 出口位置 | `exit_location` | VARCHAR(128) | IP 所在地，选填 |
