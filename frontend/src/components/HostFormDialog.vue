@@ -241,7 +241,7 @@
             <el-col :span="12" />
           </el-row>
           <el-row :gutter="16">
-            <el-col :span="8">
+            <el-col :span="6">
               <el-form-item label="内存(GB)">
                 <el-input
                   v-model="form.memory"
@@ -249,7 +249,15 @@
                 />
               </el-form-item>
             </el-col>
-            <el-col :span="8">
+            <el-col :span="6">
+              <el-form-item label="磁盘(GB)">
+                <el-input
+                  v-model="form.disk"
+                  placeholder="请输入磁盘"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="6">
               <el-form-item label="系统盘(GB)">
                 <el-input
                   v-model="form.system_disk"
@@ -257,7 +265,7 @@
                 />
               </el-form-item>
             </el-col>
-            <el-col :span="8">
+            <el-col :span="6">
               <el-form-item label="数据盘(GB)">
                 <el-input
                   v-model="form.data_disk"
@@ -574,6 +582,7 @@ const rules = {
   private_ip: [{ required: true, message: '请输入内网IP', trigger: 'blur' }],
   cpu: [{ pattern: /^\d*$/, message: '请输入数字', trigger: 'blur' }],
   memory: [{ pattern: /^\d*$/, message: '请输入数字', trigger: 'blur' }],
+  disk: [{ pattern: /^\d*$/, message: '请输入数字', trigger: 'blur' }],
   system_disk: [{ pattern: /^\d*$/, message: '请输入数字', trigger: 'blur' }],
   data_disk: [{ pattern: /^\d*$/, message: '请输入数字', trigger: 'blur' }]
 }

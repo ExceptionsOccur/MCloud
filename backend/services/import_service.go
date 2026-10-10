@@ -554,6 +554,11 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 			fail(report, c, fmt.Errorf("内存: %v", err))
 			return
 		}
+		disk, err := parseIntCell(c.get("磁盘"))
+		if err != nil {
+			fail(report, c, fmt.Errorf("磁盘: %v", err))
+			return
+		}
 		systemDisk, err := parseIntCell(c.get("系统盘"))
 		if err != nil {
 			fail(report, c, fmt.Errorf("系统盘: %v", err))
@@ -592,14 +597,14 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 		updates := map[string]interface{}{
 			"region": region, "instance_id": f.instanceID, "name": name,
 			"asset_type": f.assetType, "os": f.os, "cpu": cpu, "cpu_arch": f.cpuArch,
-			"memory": memory, "system_disk": systemDisk, "data_disk": dataDisk,
+			"memory": memory, "disk": disk, "system_disk": systemDisk, "data_disk": dataDisk,
 			"env_type": f.envType, "is_db_server": isDB, "status": f.status,
 			"open_ports": f.openPorts, "tags": f.tags, "person_id": personID,
 		}
 		if cur, ok := byKey[privateIP]; ok {
 			if cur.Region == f.region && cur.InstanceID == f.instanceID && cur.Name == name &&
 				cur.AssetType == f.assetType && cur.OS == f.os && cur.CPU == cpu &&
-				cur.CPUArch == f.cpuArch && cur.Memory == memory &&
+				cur.CPUArch == f.cpuArch && cur.Memory == memory && cur.Disk == disk &&
 				cur.SystemDisk == systemDisk && cur.DataDisk == dataDisk &&
 				cur.EnvType == f.envType && cur.IsDBServer == isDB &&
 				cur.Status == f.status && cur.OpenPorts == f.openPorts && cur.Tags == f.tags &&
@@ -617,7 +622,7 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 		h := models.Host{
 			Region: region, InstanceID: f.instanceID, Name: name, PrivateIP: privateIP,
 			AssetType: f.assetType, OS: f.os, CPU: cpu, CPUArch: f.cpuArch, Memory: memory,
-			SystemDisk: systemDisk, DataDisk: dataDisk, EnvType: f.envType,
+			Disk: disk, SystemDisk: systemDisk, DataDisk: dataDisk, EnvType: f.envType,
 			IsDBServer: isDB, Status: f.status, OpenPorts: f.openPorts, Tags: f.tags,
 			PersonID: personID,
 		}

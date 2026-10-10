@@ -29,12 +29,6 @@
 无
 
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
-- [ ] **T-050** `hosts.disk` 补录入口（语义：分配的对象存储大小） ｜ P1 ｜ 负责: — ｜ 备注: 人类 2026-10-09 确认语义为独立字段（非系统盘+数据盘之和），**不删列**
-  - 内容：`disk` 与系统盘/数据盘无关，是独立事实；但当前表单无输入框、CSV 导入导出/xlsx 导入导出均不含该列，三条主流录入通道写不进值。补录入口：`HostFormDialog` 加输入框与校验；CSV 导出列与导入表头解析补 `disk`；xlsx hosts sheet 导出/导入补列。字段名暂不更名（避免 API 字段名破坏性变更）
-  - 定位：`frontend/src/components/HostFormDialog.vue`（disk 输入框，现仅初始值 ~:458,607,699）、`backend/services/host_service.go`（CSV 导出 ~:809、导入解析 ~:761-777）、`backend/services/export_service.go`（hosts sheet ~:103-120）、`backend/services/import_service.go`（hosts sheet ~:555-618）
-  - 验收标准：表单可编辑 disk 并回显；CSV/xlsx 导出含 disk 列且导入可回写；导出→导入往返该列值不变；`go build` + `golangci-lint` + `lint:check` + `build` + `check_docs.sh` 全绿
-  - 回写：ARCHITECTURE（hosts 字段说明）、API.md（CSV/xlsx 列序）
-  - 分支：`feat/host-disk-entry`
 - [ ] **T-004** 前端 composables 抽取 ｜ P1 ｜ 负责: —
   - 内容：新建 `frontend/src/composables/`，抽 `useProbeWebSocket` / `useChartOption` / `usePagedTable`
   - 定位：抽取源 —— `views/IpStatistics.vue`（WebSocket+探测）、`views/ResourceStatistics.vue` / `views/BusinessStatistics.vue`（ECharts 配置）、`views/HostManagement.vue` + `stores/host.js`（分页）
@@ -120,6 +114,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-050 | `hosts.disk` 补录入口 | 2026-10-10 | `-` | 验收：表单磁盘输入框+校验回显；CSV 27 列导出/导入与 xlsx hosts sheet 含磁盘列，27 列往返值不变、旧 26 列兼容 disk=0；门禁全绿 |
 | T-051 | 公网 IP 引用保护 + 端口映射防重 | 2026-10-10 | `a3a19ec` | 验收：被引用公网IP删/改IP返回 40901；重复整组映射 Create 返回 40901 且唯一索引存在；dev 库迁移幂等实测；门禁全绿 |
 | T-049 | 删除 `port_mappings` 冗余列 `isp`/`exit_location` | 2026-10-10 | `f325d4d` | 验收：dev 库 DROP COLUMN 重跑幂等实测；List 响应 isp/exit_location 恒等于资源池；模型 gorm:"-" 派生字段；回填与双表 LIKE 已移除；门禁全绿 |
 | T-048 | 数据库迁移 SQL ↔ 实际库漂移修复 | 2026-10-10 | `266bf66` | 验收：对齐迁移 dev 库执行+重跑幂等实测；主键全 bigint、created_at 全有默认、唯一索引全 idx_ 前缀、FK 全 NO ACTION；模型/ARCHITECTURE 口径同步；门禁全绿 |
