@@ -36,6 +36,7 @@
 
 ### 2026-10-10
 
+- `266bf66` `refactor:` **T-048** 迁移 SQL↔实库漂移对齐（主键 bigint、created_at 默认值、idx_ 唯一索引、FK NO ACTION；对齐迁移幂等实测）
 - `76d4e8a` `feat:` **T-047** 全资源增删改审计日志（`audit_logs` 快照+diff+request_id，26 个 CUD 方法写入，`GET /api/audit-logs` + `/audit-logs` 页；表数 9→10、页面 9→10）
 - `8a3940e` `fix:` **T-042** 批量编辑 `apply_time` null 与省略同义放行，非字符串/非法日期统一 40001（对齐单条口径；API.md 日期章节同步）
 - `e039190` `refactor:` **T-002** 后端 `host_service.go` 拆分为 CRUD/批量/CSV 三文件（同包零签名变化，对外 API 行为不变；技术债「单文件过大」关闭）

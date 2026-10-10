@@ -26,13 +26,7 @@
 
 ## in_progress
 
-- [ ] **T-048** 数据库迁移 SQL ↔ 实际库漂移修复 ｜ P1 ｜ 负责: opencode mimo-v2.6-flash-free 2026-10-10 ｜ 备注: 人类 2026-10-09 立队；范围已确认（不做软删除/CHECK/索引补齐）
-  - 依赖：T-047 后执行（同为 P1 串行合并；两者仅共享 `migrations/` 目录，按时间戳排序）——已满足（T-047 已合并）
-  - 内容：`port_mappings`/`public_ips` 主键 `integer`→`bigint`；为缺省值的 `created_at` 列补 `DEFAULT now()`（共 6 列）；`uni_port_mappings_domain` 改 `idx_` 前缀且 `models/port_mapping.go` 补 `uniqueIndex`；`users.failed_attempts`、`host_applications.host_id` 类型按实库对齐；`host_applications` 补 `created_at`/`updated_at`；旧迁移 `ON DELETE CASCADE` 与实库 `NO ACTION` 的口径用新增对齐迁移修正（Up 块不可变）。不做：软删除、CHECK 约束、普通索引补齐、`people_pkey` 改名（后两项记入 PROJECT_STATUS 备注）
-  - 定位：`backend/migrations/`（新增对齐迁移）、`backend/models/{port_mapping,host_application,user}.go`、`backend/database/postgres.go`、`docs/ARCHITECTURE.md`
-  - 验收标准：对齐迁移在 dev 库执行成功且重跑幂等；`information_schema` 核对主键均 bigint、`created_at` 均有默认值、唯一索引全为 `idx_` 前缀；模型与实库列类型一致；`go build` + `golangci-lint run ./...` + `check_docs.sh` 全绿
-  - 回写：ARCHITECTURE 数据模型字段口径、PROJECT_STATUS 变更记录
-  - 分支：`refactor/db-align`
+无
 
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
 - [ ] **T-049** 删除 `port_mappings` 冗余列 `isp`/`exit_location` ｜ P1 ｜ 负责: — ｜ 备注: 人类 2026-10-09 确认删列（分析修订版结论）
@@ -133,6 +127,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-048 | 数据库迁移 SQL ↔ 实际库漂移修复 | 2026-10-10 | `266bf66` | 验收：对齐迁移 dev 库执行+重跑幂等实测；主键全 bigint、created_at 全有默认、唯一索引全 idx_ 前缀、FK 全 NO ACTION；模型/ARCHITECTURE 口径同步；门禁全绿 |
 | T-047 | 全资源增删改审计日志 | 2026-10-10 | `76d4e8a` | 验收：audit_logs 只增不删（普通索引、无 UNIQUE/users 外键）；26 个 CUD 方法经 operator+request_id 写入、detail 前后 diff 无敏感明文；GET /api/audit-logs 分页筛选 + /audit-logs 页；门禁全绿 |
 | T-042 | 批量编辑 `apply_time` 错误码与空值语义修复 | 2026-10-10 | `8a3940e` | 验收：null 与省略同义放行；非字符串/非法日期统一 40001；API.md 同步；门禁全绿 |
 | T-010 | `routes/routes.go` 按域拆分 | 2026-10-10 | `1f0b6a3` | 验收：12 文件域拆分、JWT 收口受保护组；路由全表 A/B 67/67 一致；ARCHITECTURE/CODE_INDEX/T-022 定位已回写 |
