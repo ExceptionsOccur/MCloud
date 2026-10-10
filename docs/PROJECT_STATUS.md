@@ -36,6 +36,7 @@
 
 ### 2026-10-10
 
+- `6b62e8d` `feat:` **T-050** `hosts.disk` 补录入口：表单磁盘输入框+校验，CSV 尾列/`xlsx hosts` sheet 补磁盘列（旧 26 列兼容）
 - `a3a19ec` `feat:` **T-051** 公网IP引用保护（删/改IP 被映射或零信任引用 40901）+ `port_mappings` 整组唯一防重（迁移清重+唯一索引）
 - `f325d4d` `refactor:` **T-049** 删 `port_mappings` 冗余列 `isp`/`exit_location`（派生字段恒从资源池带出，API 响应不变）
 - `266bf66` `refactor:` **T-048** 迁移 SQL↔实库漂移对齐（主键 bigint、created_at 默认值、idx_ 唯一索引、FK NO ACTION；对齐迁移幂等实测）

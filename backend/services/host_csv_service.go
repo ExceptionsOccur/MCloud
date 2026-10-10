@@ -47,13 +47,18 @@ func atoiOrZero(s string) int {
 
 func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, error) {
 	if len(row) < 26 {
-		return CreateHostRequest{}, fmt.Errorf("列数不足，需要26列，实际%d列", len(row))
+		return CreateHostRequest{}, fmt.Errorf("列数不足，至少26列，实际%d列", len(row))
 	}
 
 	cpu := atoiOrZero(row[7])
 	memory := atoiOrZero(row[9])
 	systemDisk := atoiOrZero(row[10])
 	dataDisk := atoiOrZero(row[11])
+	// 磁盘为 27 列新文件可选尾列（T-050）；旧 26 列文件无该列，保持 0
+	disk := 0
+	if len(row) >= 27 {
+		disk = atoiOrZero(row[26])
+	}
 
 	isDB := strings.TrimSpace(row[13]) == "是" || strings.TrimSpace(row[13]) == "true" || strings.TrimSpace(row[13]) == "1"
 
@@ -67,6 +72,7 @@ func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, 
 		CPU:               cpu,
 		CPUArch:           strings.TrimSpace(row[8]),
 		Memory:            memory,
+		Disk:              disk,
 		SystemDisk:        systemDisk,
 		DataDisk:          dataDisk,
 		EnvType:           strings.TrimSpace(row[12]),
@@ -164,6 +170,7 @@ func (s *HostService) ExportToCSVRows(hosts []models.Host) [][]string {
 		} else {
 			row = append(row, "", "", "", "", "", "", "", "", "")
 		}
+		row = append(row, strconv.Itoa(h.Disk))
 		rows = append(rows, row)
 	}
 	return rows

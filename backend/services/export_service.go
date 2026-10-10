@@ -100,7 +100,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 		return nil, err
 	}
 
-	// hosts（不含 id/ip_mapped/created_at/disk；人员用姓名+联系方式关联）
+	// hosts（不含 id/ip_mapped/created_at；人员用姓名+联系方式关联）
 	hostRows := make([][]interface{}, 0, len(hosts))
 	for _, h := range hosts {
 		isDB := "否"
@@ -114,7 +114,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 		}
 		hostRows = append(hostRows, []interface{}{
 			h.Region, h.InstanceID, h.Name, h.PrivateIP, h.AssetType, h.OS,
-			h.CPU, h.CPUArch, h.Memory, h.SystemDisk, h.DataDisk,
+			h.CPU, h.CPUArch, h.Memory, h.Disk, h.SystemDisk, h.DataDisk,
 			h.EnvType, isDB, h.Status, h.OpenPorts, h.Tags,
 			personName, personContact,
 		})

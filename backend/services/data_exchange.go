@@ -19,7 +19,7 @@ var dataExchangeSheets = []sheetSpec{
 	{Name: "ip_subnets", Headers: []string{"网段CIDR"}},
 	{Name: "hosts", Headers: []string{
 		"区域", "实例ID", "主机名称", "内网IP", "资产类型", "操作系统",
-		"CPU核数", "CPU架构", "内存", "系统盘", "数据盘",
+		"CPU核数", "CPU架构", "内存", "磁盘", "系统盘", "数据盘",
 		"环境类型", "是否数据库服务器", "状态", "开放端口", "标签",
 		"人员姓名", "人员联系方式",
 	}},
