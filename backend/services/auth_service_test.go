@@ -135,3 +135,35 @@ func TestLoginResetsFailedCount(t *testing.T) {
 		t.Fatalf("成功登录未清零: attempts=%d locked=%v", user.FailedAttempts, user.LockedUntil)
 	}
 }
+
+// TestLoginUpgradesLegacyHash 旧 SHA-256 用户登录成功后平滑升级为 bcrypt（T-009 验收）
+func TestLoginUpgradesLegacyHash(t *testing.T) {
+	newTestDB(t)
+	newTestConfig(t)
+	s := NewAuthService()
+
+	salt := utils.GenerateSalt()
+	legacy := salt + "$" + utils.HashPassword("legacy-pass", salt)
+	u := models.User{Username: "olduser", PasswordHash: legacy}
+	if err := database.DB.Create(&u).Error; err != nil {
+		t.Fatalf("种子旧格式用户失败: %v", err)
+	}
+
+	if _, _, err := s.Login("olduser", "legacy-pass"); err != nil {
+		t.Fatalf("旧格式登录失败: %v", err)
+	}
+	var after models.User
+	if err := database.DB.Where("username = ?", "olduser").First(&after).Error; err != nil {
+		t.Fatalf("回查用户失败: %v", err)
+	}
+	if utils.IsLegacyHash(after.PasswordHash) {
+		t.Fatalf("登录后未升级为 bcrypt: %q", after.PasswordHash)
+	}
+	if !utils.VerifyPassword("legacy-pass", after.PasswordHash) {
+		t.Fatal("升级后密码校验失败")
+	}
+	// 升级后走 bcrypt 路径再次登录
+	if _, _, err := s.Login("olduser", "legacy-pass"); err != nil {
+		t.Fatalf("升级后登录失败: %v", err)
+	}
+}

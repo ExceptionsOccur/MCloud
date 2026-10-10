@@ -23,11 +23,11 @@
 
 1. 前端提交 `{ username, password }` 到 `POST /api/auth/login`
 2. 后端验证用户名存在 → 检查是否锁定 → 验证密码
-3. 密码验证成功：重置 `failed_attempts`，更新 `last_login`，签发 JWT
+3. 密码验证成功：重置 `failed_attempts`，更新 `last_login`，签发 JWT；存储为旧 SHA-256 格式时**平滑升级为 bcrypt** 后落库（T-009）
 4. 密码验证失败：`failed_attempts++`，达到 5 次锁定 15 分钟
 5. 返回 `{ code: 0, data: { access_token, expires_in, user: { id, username } } }`
 
-密码存储格式为 `salt$hash`，其中 `hash = SHA-256(salt + password)`。
+密码存储格式为 **bcrypt**（`$2a$…`，`golang.org/x/crypto/bcrypt`，cost 10）；存量旧格式 `salt$hash`（`hash = SHA-256(salt + password)`）登录校验兼容，成功后自动升级为 bcrypt（T-009）。`password_hash VARCHAR(256)` 两种格式均放得下，无 schema 变更。
 
 ## JWT 中间件
 
