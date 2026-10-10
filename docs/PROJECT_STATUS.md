@@ -36,6 +36,7 @@
 
 ### 2026-10-10
 
+- `c1d4618` `refactor:` **T-004** 前端抽 composables（探测 WS / ECharts 注册 / 分页表），`stores/host` 组合改造对外 API 不变，IpStatistics 841→778 行
 - `6b62e8d` `feat:` **T-050** `hosts.disk` 补录入口：表单磁盘输入框+校验，CSV 尾列/`xlsx hosts` sheet 补磁盘列（旧 26 列兼容）
 - `a3a19ec` `feat:` **T-051** 公网IP引用保护（删/改IP 被映射或零信任引用 40901）+ `port_mappings` 整组唯一防重（迁移清重+唯一索引）
 - `f325d4d` `refactor:` **T-049** 删 `port_mappings` 冗余列 `isp`/`exit_location`（派生字段恒从资源池带出，API 响应不变）
