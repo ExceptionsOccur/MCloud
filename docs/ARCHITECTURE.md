@@ -139,7 +139,8 @@ go/
 │   │   ├── testdb_test.go         # 测试基建：sqlite 内存库注入 database.DB（T-006）
 │   │   ├── host_service_test.go   # 主机 CRUD/筛选表驱动单测（T-006）
 │   │   ├── auth_service_test.go   # 登录/锁定表驱动单测（T-006）
-│   │   └── host_csv_service_test.go # 筛选导出行数一致性单测（T-008）
+│   │   ├── host_csv_service_test.go # 筛选导出行数一致性单测（T-008）
+│   │   └── stats_service_test.go  # 探测状态机/TCP/ICMP 单测（T-011）
 │   │
 │   ├── routes/
 │   │   ├── routes.go              # 路由协调：CORS + JWT 受保护组收口 + 分发各域

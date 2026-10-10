@@ -1,15 +1,16 @@
 package services
 
 import (
-	"context"
 	"fmt"
 	"net"
-	"os/exec"
-	"strings"
+	"os"
 	"time"
 
 	"mcloud/database"
 	"mcloud/models"
+
+	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
 )
 
 type StatsService struct{}
@@ -95,19 +96,74 @@ func (s *StatsService) GetIPUsage() ([]IPUsageSubnet, error) {
 	return result2, nil
 }
 
+// probeTimeout 单次探测（ICMP/TCP）超时，与前端 100ms 预期一致
+const probeTimeout = 100 * time.Millisecond
+
+// listenICMP 依次尝试非特权 ICMP socket（udp4 ping socket，无需 CAP_NET_RAW）
+// → ip4:icmp 原始 socket（需 CAP_NET_RAW，容器内 root 默认具备）；均失败由调用方走 TCP 兜底。
+func listenICMP() (net.PacketConn, error) {
+	if conn, err := icmp.ListenPacket("udp4", "0.0.0.0"); err == nil {
+		return conn, nil
+	}
+	return icmp.ListenPacket("ip4:icmp", "0.0.0.0")
+}
+
+// pingICMP 纯 Go ICMP Echo 探测（T-011，替代宿主机 ping 命令，消除平台差异）
 func pingICMP(ip string) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, "ping", "-c", "1", "-W", "1", ip)
-	output, err := cmd.CombinedOutput()
+	dst, err := net.ResolveIPAddr("ip4", ip)
 	if err != nil {
 		return false
 	}
-	return strings.Contains(string(output), "bytes from")
+	conn, err := listenICMP()
+	if err != nil {
+		return false
+	}
+	defer conn.Close()
+
+	msg := icmp.Message{
+		Type: ipv4.ICMPTypeEcho,
+		Code: 0,
+		Body: &icmp.Echo{
+			ID:   os.Getpid() & 0xffff, // 非特权 socket 下内核会改写 ID，回包按类型 + 来源 IP 过滤
+			Seq:  1,
+			Data: []byte("mcloud"),
+		},
+	}
+	b, err := msg.Marshal(nil)
+	if err != nil {
+		return false
+	}
+	if err := conn.SetDeadline(time.Now().Add(probeTimeout)); err != nil {
+		return false
+	}
+	if _, err := conn.WriteTo(b, dst); err != nil {
+		return false
+	}
+
+	// 在超时窗口内循环读回包，过滤出目标来源的 Echo Reply
+	//（原始 socket 可能收到他进程回包，非特权 socket 可能先收到其他消息）
+	buf := make([]byte, 1500)
+	for {
+		n, peer, err := conn.ReadFrom(buf)
+		if err != nil {
+			return false
+		}
+		var reply *icmp.Message
+		reply, err = icmp.ParseMessage(1, buf[:n]) // protocol 1 = ICMP (IPv4)
+		if err != nil {
+			continue
+		}
+		if reply.Type != ipv4.ICMPTypeEchoReply {
+			continue
+		}
+		if addr, ok := peer.(*net.IPAddr); ok && addr.IP.Equal(dst.IP) {
+			return true
+		}
+	}
 }
 
 func probeTCP(ip string, port int) bool {
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, port), 100*time.Millisecond)
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, port), probeTimeout)
 	if err != nil {
 		return false
 	}

@@ -29,11 +29,6 @@
 无
 
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
-- [ ] **T-011** IP 探测去宿主机 `ping` 依赖 ｜ P2 ｜ 负责: —
-  - 内容：评估纯 Go ICMP/TCP 方案，消除平台差异
-  - 定位：`backend/services/stats_service.go` L101（`exec.CommandContext(ctx, "ping", ...)`）、`pingICMP`/`probeTCP`；调用链 `controllers/stats.go` → `Probe`、`controllers/websocket.go`
-  - 验收标准：探测颜色状态机行为与 `docs/BUSINESS_LOGIC.md` 描述一致
-  - 回写：BUSINESS_LOGIC「探测方式」
 - [ ] **T-012** 文档一致性巡检 ｜ P2 ｜ 负责: — ｜ 备注: 适合小型会话
   - 定位：`docs/*.md`、`README.md`、`AGENTS.md`（协议条文部分需人类授权，见红线 7）；校验器 `scripts/check_docs.sh`（T-021 已交付）
   - 验收标准：`bash scripts/check_docs.sh` 退出码 0（links/tree/snapshot/counts/shas 全绿）；warn 一并处理；发现的错误全部修复
@@ -93,6 +88,7 @@
 |----|------|----------|------|------|
 | T-008 | 数据导出报表（按筛选导出） | 2026-10-10 | `c71d422` | 验收：ExportCSV 复用列表筛选（applyHostFilter 共享），导出行数=列表 total 单测覆盖；前端传当前 filters；API.md 同步；门禁全绿 |
 | T-009 | 密码哈希升级 bcrypt | 2026-10-10 | `c27e306` | 验收：旧 `salt$hash` 用户登录成功后自动升级 bcrypt（单测覆盖）；bcrypt cost 10，`seedAdmin`/`resetpw` 同步新格式；**无需迁移 SQL**（`password_hash VARCHAR(256)` 兼容两种格式，平滑升级在登录时完成，技术选型推荐结论）；门禁全绿 |
+| T-011 | IP 探测去宿主机 ping 依赖 | 2026-10-10 | `-` | 验收：纯 Go ICMP（`x/net/icmp`，udp4 ping socket → ip4:icmp 原始 socket → TCP 22/3389 兜底，100ms 超时）替代 `exec ping`；颜色状态机单测覆盖 dead 分支 + alive 分支（环境无 ICMP socket 时跳过）；BUSINESS_LOGIC「探测方式」回写；门禁全绿 |
 | T-006 | 测试骨架 | 2026-10-10 | `894e93b` | 验收：`go test` services 表驱动（主机CRUD/登录锁定）+ utils 密码全绿（sqlite 内存库注入）；vitest 冒烟 6 例；门禁全绿 |
 | T-005 | `IpStatistics.vue` 拆分 | 2026-10-10 | `baa8e2e` | 验收：778→300 行（≤400）；拆 components/ip/（ProbePanel/SubnetCard/SubnetManageDialog 移入）+ composables/useProbeGrid；lint+build+check 全绿 |
 | T-004 | 前端 composables 抽取 | 2026-10-10 | `c1d4618` | 验收：抽 useProbeWebSocket/useChartOption/usePagedTable 三件，IpStatistics 841→778 行；lint:check + build + check_docs 全绿，页面行为不变 |
