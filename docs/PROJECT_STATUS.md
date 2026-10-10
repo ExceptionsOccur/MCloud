@@ -6,7 +6,7 @@
 
 ## 功能完成度
 
-> 计数（2026-10-10）：功能模块 **19** 项（**18** 完成 / **1** 待开发）；技术债 **6** 项。
+> 计数（2026-10-10）：功能模块 **19** 项（**19** 完成 / **0** 待开发）；技术债 **6** 项。
 
 | 模块 | 状态 | 说明 |
 |------|------|------|
@@ -21,7 +21,7 @@
 | 密码重置工具 | ✅ 完成 | `cmd/resetpw` 支持随机高熵密码或指定密码 |
 | 容器化部署 | ✅ 完成 | Dockerfile（多阶段）+ docker-compose（dev/prod）+ Nginx 反代 |
 | 协作文档体系 | ✅ 完成 | `T-001` AGENTS/ROADMAP 改造为 AI 协作协议（状态快照、任务队列、回写协议） |
-| 数据导出报表 | ⏳ 待开发 | 预留 Excel/CSV 报表导出 |
+| 数据导出报表 | ✅ 完成 | `T-008` 主机 CSV 按列表同名筛选参数导出（全量/`/api/export/all` 8 表 xlsx 已由 T-038 覆盖） |
 | 域名台账 | ✅ 完成 | `T-034` 已升级为**端口映射台账** `/mapping-ledger`（公网IP↔内网多端口，域名可选）；`hosts.ip_mapped` 自动重算 |
 | 公网 IP 关联 | ✅ 完成 | `T-015`/`T-034` `hosts.ip_mapped` 由映射台账自动重算；主机详情展示映射/零信任关联 |
 | 自动化测试 | ✅ 完成 | `T-006` 测试骨架：后端 services 表驱动单测（主机 CRUD/登录锁定，sqlite 内存库注入 `database.DB`）+ utils 密码；前端 Vitest 冒烟（`npm run test`） |
@@ -36,6 +36,7 @@
 
 ### 2026-10-10
 
+- `-` `feat:` **T-008** 主机 CSV 按筛选条件导出：`ExportCSV` 复用列表筛选（抽 `applyHostFilter` 共享），前端导出传当前 filters，导出与列表所见一致（API.md 同步）
 - `894e93b` `test:` **T-006** 测试骨架：后端 services 表驱动单测（主机 CRUD/登录锁定，sqlite 内存库注入 `database.DB`）+ utils 密码校验，前端 Vitest 冒烟 6 例（`npm run test`）
 - `baa8e2e` `refactor:` **T-005** `IpStatistics` 拆分：`components/ip/`（探测面板/网段卡片/网段管理）+ `useProbeGrid` 状态机，主文件 778→300 行
 - `c1d4618` `refactor:` **T-004** 前端抽 composables（探测 WS / ECharts 注册 / 分页表），`stores/host` 组合改造对外 API 不变，IpStatistics 841→778 行

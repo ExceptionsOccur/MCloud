@@ -52,7 +52,14 @@ func (ctrl *CSVController) Import(c *gin.Context) {
 }
 
 func (ctrl *CSVController) Export(c *gin.Context) {
-	csvContent, err := ctrl.hostService.ExportCSV()
+	// 复用列表筛选参数（keyword/env_type/... 同名同义），不带分页（T-008）
+	var req services.FilterHostRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		Error(c, 40001, "筛选参数不合法")
+		return
+	}
+
+	csvContent, err := ctrl.hostService.ExportCSV(req)
 	if err != nil {
 		Error(c, 50001, "生成CSV导出失败")
 		return

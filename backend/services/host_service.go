@@ -9,6 +9,8 @@ import (
 	"mcloud/database"
 	"mcloud/models"
 	"mcloud/utils"
+
+	"gorm.io/gorm"
 )
 
 type HostService struct{}
@@ -50,16 +52,8 @@ type FilterHostRequest struct {
 	ApplicantEmpty string `form:"applicant_empty"`
 }
 
-func (s *HostService) Filter(req FilterHostRequest) (*ListHostResponse, error) {
-	if req.Page < 1 {
-		req.Page = 1
-	}
-	if req.PageSize < 1 || req.PageSize > 100 {
-		req.PageSize = 20
-	}
-
-	db := database.DB.Model(&models.Host{})
-
+// applyHostFilter 按筛选条件动态拼 WHERE（列表 Filter 与导出 ExportCSV 共用，T-008）
+func applyHostFilter(db *gorm.DB, req FilterHostRequest) *gorm.DB {
 	if req.Keyword != "" {
 		like := "%" + req.Keyword + "%"
 		subQuery := database.DB.Model(&models.HostApplication{}).
@@ -108,6 +102,18 @@ func (s *HostService) Filter(req FilterHostRequest) (*ListHostResponse, error) {
 			`)
 		}
 	}
+	return db
+}
+
+func (s *HostService) Filter(req FilterHostRequest) (*ListHostResponse, error) {
+	if req.Page < 1 {
+		req.Page = 1
+	}
+	if req.PageSize < 1 || req.PageSize > 100 {
+		req.PageSize = 20
+	}
+
+	db := applyHostFilter(database.DB.Model(&models.Host{}), req)
 
 	var total int64
 	db.Count(&total)

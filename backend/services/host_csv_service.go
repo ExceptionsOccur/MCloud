@@ -176,10 +176,11 @@ func (s *HostService) ExportToCSVRows(hosts []models.Host) [][]string {
 	return rows
 }
 
-// ExportCSV 生成全量主机 CSV 文本（含 BOM 与表头）
-func (s *HostService) ExportCSV() (string, error) {
+// ExportCSV 生成主机 CSV 文本（含 BOM 与表头）；按筛选条件导出（T-008，无分页，行序与列表一致）
+func (s *HostService) ExportCSV(req FilterHostRequest) (string, error) {
 	var hosts []models.Host
-	if err := database.DB.Preload("Application").Find(&hosts).Error; err != nil {
+	db := applyHostFilter(database.DB.Model(&models.Host{}), req)
+	if err := db.Preload("Application").Order("id ASC").Find(&hosts).Error; err != nil {
 		return "", err
 	}
 	return utils.BuildCSVOutput(utils.CSVHeaders, s.ExportToCSVRows(hosts))
