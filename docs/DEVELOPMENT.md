@@ -448,5 +448,5 @@ docker-compose -f docker-compose.prod.yml up -d --build
 - JWT 密钥从环境变量读取，禁止硬编码
 - `.env` 不提交到 Git
 - API 输入必须校验，SQL 通过 GORM 参数化查询防注入
-- CORS：仅对白名单 Origin 回显 `Access-Control-Allow-Origin` + `Access-Control-Allow-Credentials: true`（`backend/middleware/jwt.go` `CORSMiddleware`，**精确匹配**、不支持通配符）；白名单经环境变量 `CORS_ALLOWED_ORIGINS`（逗号分隔）配置，**默认空 = 不下发任何 CORS 头**，同源部署（Vite 代理 / Nginx 反代）不受影响；非白名单 Origin 无 CORS 头（预检/带凭证请求被浏览器拦截）（T-043）
+- CORS：仅对白名单 Origin 回显 `Access-Control-Allow-Origin` + `Access-Control-Allow-Credentials: true`（`backend/middleware/jwt.go` `CORSMiddleware`，**精确匹配**、不支持通配符）；白名单经环境变量 `CORS_ALLOWED_ORIGINS`（逗号分隔）配置，**默认空 = 不下发任何 CORS 头**，同源部署（Vite 代理 / Nginx 反代）不受影响；非白名单 Origin 无 CORS 头（预检/带凭证请求被浏览器拦截）；docker-compose dev/prod 的 backend `environment:` 已透传该变量，容器内可配（T-043/T-054）
 - 文件上传限制：CSV 导入（`backend/controllers/csv.go` `Import`）由 `http.MaxBytesReader` 强制请求体 ≤16MB（对齐前端 `ImportDialog` 提示），超限返回 `40001`「文件大小超过 16MB 限制」；数据备份 xlsx 导入（`backend/controllers/data_exchange.go`）由 `MaxBytesReader` 强制 ≤20MB 且仅接受 `.xlsx`（T-044）
