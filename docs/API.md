@@ -172,8 +172,8 @@
 
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
-| GET | `/api/port-mappings` | `portMapping.List` | 映射列表，`keyword` 模糊匹配公网IP/域名/端口/备注/主机名/IP，以及资源池运营商/出口位置；ISP/出口位置优先映射表、为空时从 `public_ips` 带出 |
-| POST | `/api/port-mappings` | `portMapping.Create` | 新增映射（公网IP须在资源池、内网主机、外网/内网端口必填；端口列表等长；域名可选） |
+| GET | `/api/port-mappings` | `portMapping.List` | 映射列表，`keyword` 模糊匹配公网IP/域名/端口/备注/主机名/IP，以及资源池运营商/出口位置；`isp`/`exit_location` 为派生字段（`T-049` 起 `port_mappings` 不存列），响应值恒等于 `public_ips` 资源池 |
+| POST | `/api/port-mappings` | `portMapping.Create` | 新增映射（公网IP须在资源池、内网主机、外网/内网端口必填；端口列表等长；域名可选；请求体传入的 `isp`/`exit_location` 被忽略） |
 | POST | `/api/port-mappings/batch` | `portMapping.BatchCreateText` | 批量添加（文本粘贴；列：公网IP,内网IP,外网端口,内网端口,域名,备注） |
 | PUT | `/api/port-mappings/:id` | `portMapping.Update` | 修改映射记录 |
 | DELETE | `/api/port-mappings/:id` | `portMapping.Delete` | 删除映射记录；删除后重算主机 `ip_mapped` |
@@ -407,7 +407,7 @@ POST /api/port-mappings/batch
 `persons` → `public_ips` → `cloud_resources` → `ip_subnets` → `hosts` → `host_applications` → `zero_trusts` → `port_mappings`
 
 - 不含 `users`，不含自增 id/时间戳列；关联一律用自然键表达：`hosts` 用「人员姓名/人员联系方式」列、`host_applications` 与 `port_mappings` 用宿主「内网IP」、`zero_trusts` 的「接入目标」为 `内网IP:端口`（多组逗号分隔）
-- `hosts.ip_mapped`、`port_mappings` 的运营商/出口位置为派生列，不导出（导入后由后端重算/从资源池带出）
+- `hosts.ip_mapped` 为派生列不导出（导入后由后端重算）；`port_mappings` 无运营商/出口位置列（`T-049` 起派生字段，库中不存），从资源池带出
 - 导入按各表复合自然键 upsert：`persons`=姓名+联系方式、`public_ips`=公网IP、`cloud_resources`=区域、`ip_subnets`=网段CIDR、`hosts`=内网IP、`host_applications`=宿主内网IP、`zero_trusts`=申请单位+账户名+系统名称、`port_mappings`=公网IP+宿主内网IP+外网端口
 - 语义：**仅新增与更新，不删除**已有数据；sheet 与列头按名匹配（列顺序可变），全空行跳过
 - `POST /api/import/all`：`multipart/form-data`，字段 `file`，仅 `.xlsx`，≤ 20MB
