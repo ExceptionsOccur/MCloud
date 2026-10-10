@@ -5,57 +5,9 @@
         <h1>MCloud</h1>
         <span>云平台资产管理</span>
       </div>
-      <div class="header-center">
-        <router-link
-          to="/"
-          class="nav-tab"
-          :class="{ active: $route.path === '/' }"
-        >
-          主机管理
-        </router-link>
-        <router-link
-          to="/statistics"
-          class="nav-tab"
-          :class="{ active: $route.path === '/statistics' }"
-        >
-          资源统计
-        </router-link>
-        <router-link
-          to="/ip-statistics"
-          class="nav-tab"
-          :class="{ active: $route.path === '/ip-statistics' }"
-        >
-          IP统计
-        </router-link>
-        <router-link
-          to="/business-statistics"
-          class="nav-tab"
-          :class="{ active: $route.path === '/business-statistics' }"
-        >
-          业务统计
-        </router-link>
-        <router-link
-          to="/zero-trust"
-          class="nav-tab"
-          :class="{ active: $route.path === '/zero-trust' }"
-        >
-          零信任
-        </router-link>
-        <router-link
-          to="/mapping-ledger"
-          class="nav-tab"
-          :class="{ active: $route.path === '/mapping-ledger' }"
-        >
-          映射
-        </router-link>
-        <router-link
-          to="/audit-logs"
-          class="nav-tab"
-          :class="{ active: $route.path === '/audit-logs' }"
-        >
-          审计日志
-        </router-link>
-      </div>
+      <AppNav
+        variant="audit"
+      />
       <div class="header-right">
         <span
           v-if="authStore.user"
@@ -275,6 +227,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { Setting } from '@element-plus/icons-vue'
 import { getAuditLogs } from '../api/audit'
+import AppNav from '../components/AppNav.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -374,25 +327,6 @@ onMounted(() => loadList(1))
 .header-left span {
   font-size: 12px;
   color: #909399;
-}
-
-.header-center {
-  display: flex;
-  gap: 4px;
-}
-
-.nav-tab {
-  padding: 8px 14px;
-  color: #606266;
-  text-decoration: none;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.nav-tab.active {
-  color: #409eff;
-  background: #ecf5ff;
-  font-weight: 600;
 }
 
 .header-right {

@@ -5,57 +5,7 @@
         <h1>MCloud</h1>
         <span>云平台资产管理</span>
       </div>
-      <div class="header-center">
-        <router-link
-          to="/"
-          class="nav-tab"
-          :class="{ active: $route.path === '/' }"
-        >
-          主机管理
-        </router-link>
-        <router-link
-          to="/statistics"
-          class="nav-tab"
-          :class="{ active: $route.path === '/statistics' }"
-        >
-          资源统计
-        </router-link>
-        <router-link
-          to="/ip-statistics"
-          class="nav-tab"
-          :class="{ active: $route.path === '/ip-statistics' }"
-        >
-          IP统计
-        </router-link>
-        <router-link
-          to="/business-statistics"
-          class="nav-tab"
-          :class="{ active: $route.path === '/business-statistics' }"
-        >
-          业务统计
-        </router-link>
-        <router-link
-          to="/zero-trust"
-          class="nav-tab"
-          :class="{ active: $route.path === '/zero-trust' }"
-        >
-          零信任
-        </router-link>
-        <router-link
-          to="/mapping-ledger"
-          class="nav-tab"
-          :class="{ active: $route.path === '/mapping-ledger' }"
-        >
-          映射
-        </router-link>
-        <router-link
-          to="/audit-logs"
-          class="nav-tab"
-          :class="{ active: $route.path === '/audit-logs' }"
-        >
-          审计日志
-        </router-link>
-      </div>
+      <AppNav />
       <div class="header-right">
         <span
           v-if="authStore.user"
@@ -286,6 +236,7 @@ import { getPersons, createPerson, updatePerson, deletePerson } from '../api/per
 import { formatTime } from '../utils'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
+import AppNav from '../components/AppNav.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -424,31 +375,6 @@ function handleCommand(command) {
 .header-left span {
   font-size: 14px;
   color: #909399;
-}
-
-.header-center {
-  display: flex;
-  gap: 4px;
-}
-
-.nav-tab {
-  padding: 6px 16px;
-  font-size: 14px;
-  color: #606266;
-  text-decoration: none;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.nav-tab:hover {
-  color: #409eff;
-  background: #ecf5ff;
-}
-
-.nav-tab.active {
-  color: #409eff;
-  font-weight: 600;
-  background: #ecf5ff;
 }
 
 .header-right {

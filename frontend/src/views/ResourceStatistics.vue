@@ -8,50 +8,7 @@
         <h1>MCloud</h1>
         <span>云平台主机资产管理</span>
       </div>
-      <div class="header-center">
-        <router-link
-          to="/"
-          class="nav-tab"
-        >
-          主机管理
-        </router-link>
-        <router-link
-          to="/statistics"
-          class="nav-tab active"
-        >
-          资源统计
-        </router-link>
-        <router-link
-          to="/ip-statistics"
-          class="nav-tab"
-        >
-          IP统计
-        </router-link>
-        <router-link
-          to="/business-statistics"
-          class="nav-tab"
-        >
-          业务统计
-        </router-link>
-        <router-link
-          to="/zero-trust"
-          class="nav-tab"
-        >
-          零信任
-        </router-link>
-        <router-link
-          to="/mapping-ledger"
-          class="nav-tab"
-        >
-          映射
-        </router-link>
-        <router-link
-          to="/audit-logs"
-          class="nav-tab"
-        >
-          审计日志
-        </router-link>
-      </div>
+      <AppNav />
       <div class="header-right">
         <span
           v-if="authStore.user"
@@ -209,6 +166,7 @@ import CloudResourceDialog from '../components/CloudResourceDialog.vue'
 import { useChartOption } from '../composables/useChartOption'
 import { PieChart } from 'echarts/charts'
 import { TitleComponent, TooltipComponent, LegendComponent } from 'echarts/components'
+import AppNav from '../components/AppNav.vue'
 
 const { VChart } = useChartOption([PieChart, TitleComponent, TooltipComponent, LegendComponent])
 
@@ -375,31 +333,6 @@ function getPieOption(region, totalField, field, label) {
 .header-left span {
   font-size: 14px;
   color: #909399;
-}
-
-.header-center {
-  display: flex;
-  gap: 4px;
-}
-
-.nav-tab {
-  padding: 6px 16px;
-  font-size: 14px;
-  color: #606266;
-  text-decoration: none;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.nav-tab:hover {
-  color: #409eff;
-  background: #ecf5ff;
-}
-
-.nav-tab.active {
-  color: #409eff;
-  font-weight: 600;
-  background: #ecf5ff;
 }
 
 .header-right {
