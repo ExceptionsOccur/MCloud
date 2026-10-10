@@ -29,10 +29,6 @@
 无
 
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
-- [ ] **T-004** 前端 composables 抽取 ｜ P1 ｜ 负责: —
-  - 内容：新建 `frontend/src/composables/`，抽 `useProbeWebSocket` / `useChartOption` / `usePagedTable`
-  - 定位：抽取源 —— `views/IpStatistics.vue`（WebSocket+探测）、`views/ResourceStatistics.vue` / `views/BusinessStatistics.vue`（ECharts 配置）、`views/HostManagement.vue` + `stores/host.js`（分页）
-  - 验收标准：`cd frontend && npm run lint:check && npm run build` 通过；抽离后各页面行为不变
 - [ ] **T-005** `IpStatistics.vue`（835 行）拆分 ｜ P1 ｜ 负责: —
   - 依赖：T-004
   - 内容：拆出 `components/ip/`（网格局部、探测面板、网段管理），单文件 ≤ 400 行
@@ -114,6 +110,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-004 | 前端 composables 抽取 | 2026-10-10 | `c1d4618` | 验收：抽 useProbeWebSocket/useChartOption/usePagedTable 三件，IpStatistics 841→778 行；lint:check + build + check_docs 全绿，页面行为不变 |
 | T-050 | `hosts.disk` 补录入口 | 2026-10-10 | `6b62e8d` | 验收：表单磁盘输入框+校验回显；CSV 27 列导出/导入与 xlsx hosts sheet 含磁盘列，27 列往返值不变、旧 26 列兼容 disk=0；门禁全绿 |
 | T-051 | 公网 IP 引用保护 + 端口映射防重 | 2026-10-10 | `a3a19ec` | 验收：被引用公网IP删/改IP返回 40901；重复整组映射 Create 返回 40901 且唯一索引存在；dev 库迁移幂等实测；门禁全绿 |
 | T-049 | 删除 `port_mappings` 冗余列 `isp`/`exit_location` | 2026-10-10 | `f325d4d` | 验收：dev 库 DROP COLUMN 重跑幂等实测；List 响应 isp/exit_location 恒等于资源池；模型 gorm:"-" 派生字段；回填与双表 LIKE 已移除；门禁全绿 |
