@@ -207,7 +207,15 @@ function openImport() {
 
 async function handleExport() {
   try {
-    const res = await exportCSV()
+    // 与列表同参导出（T-008）：仅传非空筛选，空值不参与
+    const params = {}
+    Object.keys(hostStore.filters).forEach(key => {
+      const v = hostStore.filters[key]
+      if (v !== '' && v !== null && v !== undefined) {
+        params[key] = v
+      }
+    })
+    const res = await exportCSV(params)
     downloadBlob(res, 'hosts_export.csv')
   } catch {
     // 错误提示由 axios 拦截器统一弹出

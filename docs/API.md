@@ -93,7 +93,7 @@
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
 | POST | `/api/import` | `csv.Import` | 上传 CSV 批量导入 |
-| GET | `/api/export` | `csv.Export` | 导出 CSV |
+| GET | `/api/export` | `csv.Export` | 导出 CSV（支持列表同名筛选参数，导出全部命中行、无分页） |
 | GET | `/api/template` | `csv.Template` | 下载导入模板 |
 
 ### 数据备份（需 JWT）
@@ -210,7 +210,7 @@
 
 ## 筛选参数说明
 
-`GET /api/hosts` 支持以下 query 参数：
+`GET /api/hosts` 与 `GET /api/export`（`T-008` 起同参筛选导出，导出忽略 `page`/`page_size`、返回全部命中行）支持以下 query 参数：
 
 | 参数 | 类型 | 说明 |
 |------|------|------|

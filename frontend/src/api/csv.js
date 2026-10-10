@@ -8,8 +8,8 @@ export function importCSV(file) {
   })
 }
 
-export function exportCSV() {
-  return api.get('/export', { responseType: 'blob' })
+export function exportCSV(params) {
+  return api.get('/export', { params, responseType: 'blob' })
 }
 
 export function downloadTemplate() {
