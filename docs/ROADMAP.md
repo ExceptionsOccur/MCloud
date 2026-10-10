@@ -96,7 +96,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
-| T-008 | 数据导出报表（按筛选导出） | 2026-10-10 | `-` | 验收：ExportCSV 复用列表筛选（applyHostFilter 共享），导出行数=列表 total 单测覆盖；前端传当前 filters；API.md 同步；门禁全绿 |
+| T-008 | 数据导出报表（按筛选导出） | 2026-10-10 | `c71d422` | 验收：ExportCSV 复用列表筛选（applyHostFilter 共享），导出行数=列表 total 单测覆盖；前端传当前 filters；API.md 同步；门禁全绿 |
 | T-006 | 测试骨架 | 2026-10-10 | `894e93b` | 验收：`go test` services 表驱动（主机CRUD/登录锁定）+ utils 密码全绿（sqlite 内存库注入）；vitest 冒烟 6 例；门禁全绿 |
 | T-005 | `IpStatistics.vue` 拆分 | 2026-10-10 | `baa8e2e` | 验收：778→300 行（≤400）；拆 components/ip/（ProbePanel/SubnetCard/SubnetManageDialog 移入）+ composables/useProbeGrid；lint+build+check 全绿 |
 | T-004 | 前端 composables 抽取 | 2026-10-10 | `c1d4618` | 验收：抽 useProbeWebSocket/useChartOption/usePagedTable 三件，IpStatistics 841→778 行；lint:check + build + check_docs 全绿，页面行为不变 |
