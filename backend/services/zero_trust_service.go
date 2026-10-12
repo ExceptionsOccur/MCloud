@@ -326,6 +326,107 @@ func (s *ZeroTrustService) GetByID(id uint) (*models.ZeroTrust, error) {
 	return &record, nil
 }
 
+// unionTargetPairs 两组配对并集去重（键=主机+端口表达式，保序：已有在前、新对追加）（T-058）
+func unionTargetPairs(existing, incoming []ZeroTrustTarget) []ZeroTrustTarget {
+	seen := make(map[string]struct{}, len(existing)+len(incoming))
+	out := make([]ZeroTrustTarget, 0, len(existing)+len(incoming))
+	for _, t := range existing {
+		key := strconv.FormatUint(uint64(t.HostID), 10) + "|" + t.Ports
+		if _, dup := seen[key]; dup {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, t)
+	}
+	for _, t := range incoming {
+		key := strconv.FormatUint(uint64(t.HostID), 10) + "|" + t.Ports
+		if _, dup := seen[key]; dup {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, t)
+	}
+	return out
+}
+
+// mergeZeroTrustInto 把一次新增合并进同账户名已有记录（T-058）：
+// 接入目标取并集去重；其余字段已有非空保留、新值仅补空位（公网IP同规则且补录值须在资源池）；
+// 申请时间保留已有；无实际变化时不写库
+func mergeZeroTrustInto(dst *models.ZeroTrust, req ZeroTrustRequest, newPairs []ZeroTrustTarget, op Operator, requestID string) (uint, error) {
+	curPairs, err := loadZeroTrustTargetPairs(database.DB, []uint{dst.ID})
+	if err != nil {
+		return 0, err
+	}
+	before := map[string]interface{}{
+		"apply_unit":   dst.ApplyUnit,
+		"account_name": dst.AccountName,
+		"contact":      dst.Contact,
+		"public_ip":    dst.PublicIP,
+		"targets":      joinTargetPairs(curPairs[dst.ID]),
+		"system_name":  dst.SystemName,
+		"remark":       dst.Remark,
+	}
+
+	finalPublicIP := dst.PublicIP
+	if finalPublicIP == "" {
+		finalPublicIP = req.PublicIP
+	}
+	if err := validateZeroTrustPublicIP(finalPublicIP); err != nil {
+		return 0, err
+	}
+
+	mergedPairs := unionTargetPairs(curPairs[dst.ID], newPairs)
+	changed := false
+	if dst.Contact == "" && req.Contact != "" {
+		dst.Contact = req.Contact
+		changed = true
+	}
+	if dst.PublicIP == "" && req.PublicIP != "" {
+		dst.PublicIP = req.PublicIP
+		changed = true
+	}
+	if dst.SystemName == "" && req.SystemName != "" {
+		dst.SystemName = req.SystemName
+		changed = true
+	}
+	if dst.Remark == "" && req.Remark != "" {
+		dst.Remark = req.Remark
+		changed = true
+	}
+	if !changed && targetPairsEqual(curPairs[dst.ID], mergedPairs) {
+		return dst.ID, nil
+	}
+
+	tx := database.DB.Begin()
+	if err := tx.Save(dst).Error; err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+	if err := tx.Where("zero_trust_id = ?", dst.ID).Delete(&models.ZeroTrustTarget{}).Error; err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+	if err := insertZeroTrustTargets(tx, dst.ID, mergedPairs); err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+	if err := tx.Commit().Error; err != nil {
+		return 0, err
+	}
+	after := map[string]interface{}{
+		"apply_unit":   dst.ApplyUnit,
+		"account_name": dst.AccountName,
+		"contact":      dst.Contact,
+		"public_ip":    dst.PublicIP,
+		"targets":      joinTargetPairs(mergedPairs),
+		"system_name":  dst.SystemName,
+		"remark":       dst.Remark,
+	}
+	NewAuditService().Record(op, "update", "zero_trust", &dst.ID, DetailDiff{Before: before, After: after}, requestID)
+	return dst.ID, nil
+}
+
+// Create 新增零信任；同账户名已有记录时合并进 id 最小的一条（T-058，存量同名多条不迁移）
 func (s *ZeroTrustService) Create(req ZeroTrustRequest, op Operator, requestID string) (uint, error) {
 	req, pairs, err := normalizeZeroTrust(req)
 	if err != nil {
@@ -333,6 +434,15 @@ func (s *ZeroTrustService) Create(req ZeroTrustRequest, op Operator, requestID s
 	}
 	if err := validateZeroTrustHosts(pairs); err != nil {
 		return 0, err
+	}
+
+	var existing models.ZeroTrust
+	findErr := database.DB.Where("account_name = ?", req.AccountName).Order("id ASC").First(&existing).Error
+	if findErr == nil {
+		return mergeZeroTrustInto(&existing, req, pairs, op, requestID)
+	}
+	if !errors.Is(findErr, gorm.ErrRecordNotFound) {
+		return 0, findErr
 	}
 	if err := validateZeroTrustPublicIP(req.PublicIP); err != nil {
 		return 0, err
@@ -487,8 +597,9 @@ func ZeroTrustsByHost(hostID uint) ([]models.ZeroTrust, error) {
 }
 
 // BatchCreateText 零信任批量添加：列顺序 申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注[,公网IP]
-// 内网IP与申请端口两列数量必须一致、按位置配对；公网IP第9列选填、须在资源池
-// 主机按内网IP定位，不存在则该行失败；合法行全部插入（无唯一约束，不跳过）
+// 内网IP与申请端口两列数量必须一致、按位置配对；申请端口列含 `;` 时按 `;` 分组（T-058，多IP各自多端口），
+// 单IP+整列逗号端口直接视为该主机多端口；公网IP第9列选填、须在资源池
+// 主机按内网IP定位，不存在则该行失败；合法行全部插入；同账户名行合并进已有记录（T-058）
 func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID string) (*BatchCreateResponse, error) {
 	resp := &BatchCreateResponse{}
 	headerSkipped := false
@@ -544,6 +655,10 @@ func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID s
 			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: %v", lineNo, err))
 			continue
 		}
+		// T-058：单IP+整列逗号端口（无 `;` 分组）直接视为该主机多端口表达式，无需双层引号
+		if len(ips) == 1 && len(groups) > 1 && !strings.Contains(row[4], ";") {
+			groups = []string{strings.Join(groups, ",")}
+		}
 		if len(ips) != len(groups) {
 			resp.Errors++
 			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 内网IP与申请端口数量必须一致（IP %d 个，端口组 %d 个）", lineNo, len(ips), len(groups)))
@@ -585,12 +700,25 @@ func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID s
 	return resp, nil
 }
 
-// splitPortGroups 解析批量「申请端口」列（T-056）：顶层逗号分组，双引号包裹的组允许含逗号
-// （单主机多端口表达式，如 "22,443",1000-10005）；未加引号时每 token 一组（旧文件兼容）
+// splitPortGroups 解析批量「申请端口」列（T-056/T-058）：含 `;` 时按 `;` 分组（T-058，
+// 组内逗号=同主机多端口/范围，多IP各自不同端口）；无 `;` 时顶层逗号分组，
+// 双引号包裹的组允许含逗号（旧双层引号路径，如 "22,443",8080），未加引号时每 token 一组（旧文件平铺兼容）
 func splitPortGroups(raw string) ([]string, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return nil, errors.New("申请端口不能为空")
+	}
+	if strings.Contains(raw, ";") {
+		var groups []string
+		for _, seg := range strings.Split(raw, ";") {
+			if s := strings.TrimSpace(seg); s != "" {
+				groups = append(groups, s)
+			}
+		}
+		if len(groups) == 0 {
+			return nil, errors.New("申请端口不能为空")
+		}
+		return groups, nil
 	}
 	var groups []string
 	var cur strings.Builder

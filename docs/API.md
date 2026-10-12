@@ -164,8 +164,8 @@
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
 | GET | `/api/zero-trusts` | `zeroTrust.List` | 零信任申请列表，`keyword` 模糊匹配申请单位/账户名/联系方式/系统名称/备注/公网IP/出口位置/运营商/主机名/IP |
-| POST | `/api/zero-trusts` | `zeroTrust.Create` | 新增申请（申请单位、账户名、`targets` 配对接入目标必填，`targets[]` 为 `{host_id, ports}`、`ports` 支持单口/范围/列表表达式且兼容旧 `port` 数字入参，T-056；申请时间、`system_name`、`public_ip` 选填，时间格式见[日期时间格式](#日期时间格式)） |
-| POST | `/api/zero-trusts/batch` | `zeroTrust.BatchCreateText` | 批量添加（文本粘贴，内网IP与申请端口两列等长位置配对；申请端口列支持引号包裹的多端口表达式如 `"22,443"`，T-056；合法行全部插入） |
+| POST | `/api/zero-trusts` | `zeroTrust.Create` | 新增申请（申请单位、账户名、`targets` 配对接入目标必填，`targets[]` 为 `{host_id, ports}`、`ports` 支持单口/范围/列表表达式且兼容旧 `port` 数字入参，T-056；申请时间、`system_name`、`public_ip` 选填，时间格式见[日期时间格式](#日期时间格式)）；**账户名与已有记录一致时合并进该记录**（targets 并集去重、空字段补录、非空保留，合并目标为 id 最小一条，T-058） |
+| POST | `/api/zero-trusts/batch` | `zeroTrust.BatchCreateText` | 批量添加（文本粘贴，内网IP与申请端口两列等长位置配对；申请端口列含 `;` 按 `;` 分组表达多IP各自多端口，如 `22,443;8080,9000`，单IP整列逗号直接视为该主机多端口（免双层引号），旧平铺/双层引号语义保留兼容，T-058；同账户名行合并进已有记录；合法行全部插入） |
 | PUT | `/api/zero-trusts/:id` | `zeroTrust.Update` | 修改申请记录 |
 | DELETE | `/api/zero-trusts/:id` | `zeroTrust.Delete` | 删除申请记录 |
 
@@ -365,6 +365,7 @@ POST /api/zero-trusts
 ```
 
 - `apply_unit` / `account_name` / `targets` 必填；`targets` 为「主机:端口表达式」**配对**数组（一次申请聚合多组，可表达 A 多端口、B 单端口等任意组合，存储于 `zero_trust_targets` 子表一对一行；API `targets` 为读时组装的派生字段，T-052/T-056）。`targets[].ports` 为端口表达式（T-056）：单端口 `22`、连续范围 `1000-10005`、不连续列表 `22,443,5432` 可混合，各端口 1-65535、范围起始≤结束；旧入参 `{host_id, port: 数字}` 仍兼容（ports 为空时回退），响应仅返回 `ports`；「主机+表达式」重复配对自动去重
+- **账户名合并（T-058）**：`POST` 新增时若库中已有同账户名记录（Trim 后精确匹配、存量同名多条时取 id 最小一条），则合并进该记录而非新建——接入目标取并集去重，`contact`/`public_ip`/`system_name`/`remark` 已有非空保留、新值仅补空位（`public_ip` 仅补录时校验资源池，冲突新值静默丢弃），`apply_time` 保留已有；无实际变化时仍返回原 id 且不写库；`PUT` 编辑不触发合并
 - `targets[].host_id` 对应 `hosts.id`，任一主机不存在：`POST /api/zero-trusts` 返回 `40001`，`PUT /api/zero-trusts/:id` 返回 `40401`；非法端口表达式返回 `40001`
 - `public_ip` 选填，须在公网IP资源池中（否则 `40001`）；**接入地区**（`exit_location`）由资源池读时带出，不单独存列
 - `system_name` 选填（VARCHAR 128），列表列与表单位于「申请端口」之后
@@ -383,7 +384,7 @@ POST /api/port-mappings/batch
 { "text": "公网IP,内网IP,外网端口,内网端口,域名,备注,外网协议,内网协议\n203.0.113.10,192.168.1.10,80,8080,www.example.com,业务,tcp,tcp" }
 ```
 
-- 零信任列顺序：`申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注,公网IP`（至少前 4 列，公网IP 第 9 列选填）；内网IP与申请端口两列**数量必须一致、按位置配对**，申请端口列每组为一个主机的端口表达式（T-056：支持范围/列表，多端口组用引号包裹如 `"22,443"`——列值本身含引号逗号时整列再包一层 CSV 引号），主机按内网IP定位，不存在则该行失败；公网IP须在资源池；申请时间列接受 RFC3339 带时区/无时区格式；合法行全部插入
+- 零信任列顺序：`申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注,公网IP`（至少前 4 列，公网IP 第 9 列选填）；内网IP与申请端口两列**数量必须一致、按位置配对**，申请端口列每组为一个主机的端口表达式（T-056 支持范围/列表；T-058 起列值含 `;` 时按 `;` 分组表达多IP各自不同端口，如 `22,443;8080,1000-10005`——含逗号列值整体加一层 CSV 引号即可，旧平铺与双层引号写法保留兼容；单IP+整列逗号端口视为该主机多端口，免双层引号），主机按内网IP定位，不存在则该行失败；公网IP须在资源池；申请时间列接受 RFC3339 带时区/无时区格式；账户名与已有记录一致的行合并进该记录（T-058）；合法行全部插入
 - 映射列顺序：`公网IP,内网IP,外网端口,内网端口,域名,备注,外网协议,内网协议`（至少前 4 列，协议两列选填缺省 tcp，T-055）；公网IP须在资源池；端口支持单口与 `A-B` 连续范围 token，**展开后**数量不一致该行失败
 - 映射的运营商/出口位置由公网IP资源池带出，不在批量行填写；零信任的接入地区同理由公网IP带出
 - 返回 `{success, skipped, errors, line_errors[]}`，与主机批量接口同结构
@@ -409,7 +410,7 @@ POST /api/port-mappings/batch
 
 - 不含 `users`，不含自增 id/时间戳列；关联一律用自然键表达：`hosts` 用「人员姓名/人员联系方式」列、`host_applications` 与 `port_mappings` 用宿主「内网IP」、`zero_trusts` 的「接入目标」为 `内网IP:端口表达式`（多组逗号分隔；T-056 起端口可为范围/列表，**无冒号的段续接前组**，如 `10.0.0.1:22,1000-10005,10.0.0.2:8080` 表示首主机 `22,1000-10005`，旧文件每段均带冒号完全兼容）
 - `hosts.ip_mapped` 为派生列不导出（导入后由后端重算）；`port_mappings` 无运营商/出口位置列（`T-049` 起派生字段，库中不存），从资源池带出；`port_mappings` 含「外网协议/内网协议」列（T-055，旧备份文件缺列时导入默认 tcp）
-- 导入按各表复合自然键 upsert：`persons`=姓名+联系方式、`public_ips`=公网IP、`cloud_resources`=区域、`ip_subnets`=网段CIDR、`hosts`=内网IP、`host_applications`=宿主内网IP、`zero_trusts`=申请单位+账户名+系统名称、`port_mappings`=公网IP+宿主内网IP+外网端口+外网协议
+- 导入按各表复合自然键 upsert：`persons`=姓名+联系方式、`public_ips`=公网IP、`cloud_resources`=区域、`ip_subnets`=网段CIDR、`hosts`=内网IP、`host_applications`=宿主内网IP、`zero_trusts`=账户名（T-058 合并语义：接入目标并集、空字段补录、非空保留，同文件多行同账户名同样合并）、`port_mappings`=公网IP+宿主内网IP+外网端口+外网协议
 - 语义：**仅新增与更新，不删除**已有数据；sheet 与列头按名匹配（列顺序可变），全空行跳过
 - `POST /api/import/all`：`multipart/form-data`，字段 `file`，仅 `.xlsx`，≤ 20MB
 

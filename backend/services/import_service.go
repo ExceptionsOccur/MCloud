@@ -709,24 +709,26 @@ func (s *DataExchangeService) applyHostApplications(tx *gorm.DB, sh *importSheet
 	return nil
 }
 
-// applyZeroTrusts 自然键 apply_unit+account_name+system_name；
-// 接入目标 = 内网IP:端口（导入解析回 host_id，写 zero_trust_targets 子表），公网IP须在资源池
+// applyZeroTrusts 自然键 = 账户名（T-058）；同账户名合并：接入目标并集去重、
+// 空字段补录、非空保留（申请时间保留已有）；接入目标 = 内网IP:端口（导入解析回 host_id，写 zero_trust_targets 子表），公网IP仅补录时校验须在资源池
 func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, report *ImportReport) error {
 	var existing []models.ZeroTrust
-	if err := tx.Find(&existing).Error; err != nil {
+	if err := tx.Order("id ASC").Find(&existing).Error; err != nil {
 		return err
 	}
 	byKey := make(map[string]*models.ZeroTrust, len(existing))
 	existingIDs := make([]uint, len(existing))
 	for i := range existing {
-		byKey[zeroTrustKey(existing[i])] = &existing[i]
+		k := zeroTrustKey(existing[i])
+		if _, dup := byKey[k]; !dup {
+			byKey[k] = &existing[i]
+		}
 		existingIDs[i] = existing[i].ID
 	}
 	pairsByID, err := loadZeroTrustTargetPairs(tx, existingIDs)
 	if err != nil {
 		return err
 	}
-	seen := make(map[string]int)
 
 	iterRows(sh, report, func(c *rowCtx, stat *SheetStat) {
 		applyUnit := c.get("申请单位")
@@ -740,12 +742,7 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 			fail(report, c, errors.New("账户名不能为空"))
 			return
 		}
-		key := strings.Join([]string{applyUnit, accountName, systemName}, "\x00")
-		if first, dup := seen[key]; dup {
-			fail(report, c, fmt.Errorf("与第 %d 行记录重复（申请单位+账户名+系统名称）", first))
-			return
-		}
-		seen[key] = c.rowNum
+		key := accountName
 
 		contact := c.get("联系方式")
 		publicIP := c.get("公网IP")
@@ -785,9 +782,13 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 			fail(report, c, err)
 			return
 		}
-		if err = requirePublicIP(tx, publicIP); err != nil {
-			fail(report, c, err)
-			return
+		cur, hasCur := byKey[key]
+		// 公网IP仅在会写入时校验（无已有记录或已有记录该字段为空）
+		if !hasCur || cur.PublicIP == "" {
+			if err = requirePublicIP(tx, publicIP); err != nil {
+				fail(report, c, err)
+				return
+			}
 		}
 		applyTime, err := parseTimeCell(c.get("申请时间"))
 		if err != nil {
@@ -795,21 +796,35 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 			return
 		}
 
-		updates := map[string]interface{}{
-			"contact": contact, "public_ip": publicIP, "remark": remark,
-		}
-		if !applyTime.IsZero() {
-			updates["apply_time"] = applyTime
-		}
-
-		if cur, ok := byKey[key]; ok {
+		if hasCur {
 			curPairs := pairsByID[cur.ID]
-			changed := cur.Contact != contact || cur.PublicIP != publicIP ||
-				!targetPairsEqual(curPairs, normalized) || cur.Remark != remark ||
-				(!applyTime.IsZero() && !cur.ApplyTime.Equal(applyTime))
+			merged := unionTargetPairs(curPairs, normalized)
+			newContact := cur.Contact
+			if newContact == "" {
+				newContact = contact
+			}
+			newPublicIP := cur.PublicIP
+			if newPublicIP == "" {
+				newPublicIP = publicIP
+			}
+			newSystem := cur.SystemName
+			if newSystem == "" {
+				newSystem = systemName
+			}
+			newRemark := cur.Remark
+			if newRemark == "" {
+				newRemark = remark
+			}
+			changed := cur.Contact != newContact || cur.PublicIP != newPublicIP ||
+				cur.SystemName != newSystem || cur.Remark != newRemark ||
+				!targetPairsEqual(curPairs, merged)
 			if !changed {
 				stat.Skipped++
 				return
+			}
+			updates := map[string]interface{}{
+				"contact": newContact, "public_ip": newPublicIP,
+				"system_name": newSystem, "remark": newRemark,
 			}
 			if err := tx.Model(&models.ZeroTrust{}).Where("id = ?", cur.ID).Updates(updates).Error; err != nil {
 				fail(report, c, err)
@@ -819,11 +834,11 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 				fail(report, c, err)
 				return
 			}
-			if err := insertZeroTrustTargets(tx, cur.ID, normalized); err != nil {
+			if err := insertZeroTrustTargets(tx, cur.ID, merged); err != nil {
 				fail(report, c, err)
 				return
 			}
-			pairsByID[cur.ID] = normalized
+			pairsByID[cur.ID] = merged
 			stat.Updated++
 			return
 		}
@@ -863,8 +878,9 @@ func targetPairsEqual(a, b []ZeroTrustTarget) bool {
 	return true
 }
 
+// zeroTrustKey 零信任导入自然键 = 账户名（T-058，同账户名合并）
 func zeroTrustKey(z models.ZeroTrust) string {
-	return strings.Join([]string{z.ApplyUnit, z.AccountName, z.SystemName}, "\x00")
+	return z.AccountName
 }
 
 // applyPortMappings 自然键 public_ip+宿主ID+外网端口+外网协议；公网IP须在资源池；

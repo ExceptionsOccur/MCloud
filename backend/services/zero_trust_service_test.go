@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -229,6 +230,185 @@ func TestZeroTrustMultiPortExpression(t *testing.T) {
 	}
 	if len(items[0].Targets) != 2 || items[0].Targets[0].Ports != "1000-10005,80" {
 		t.Fatalf("List 目标视图不符: %+v", items[0].Targets)
+	}
+}
+
+// TestZeroTrustBatchSemicolonGroups 申请端口列 `;` 分组：多IP各自多端口、
+// 单IP+整列逗号免双层引号直接视为多端口、组数与IP数不一致行错误、旧平铺回归（T-058）
+func TestZeroTrustBatchSemicolonGroups(t *testing.T) {
+	newTestDB(t)
+	hs := NewHostService()
+	makeHost(t, hs, "sc-a", "10.66.6.1")
+	makeHost(t, hs, "sc-b", "10.66.6.2")
+	s := NewZeroTrustService()
+
+	text := strings.Join([]string{
+		`分号单位,sc-a,,"10.66.6.1,10.66.6.2","22,443;8080,1000-10005",系统A,,,`,
+		`分号单位,sc-b,,"10.66.6.1","22,443",系统B,,,`,
+		`分号单位,sc-c,,"10.66.6.1,10.66.6.2","22;443;8080",系统C,,,`,
+		`分号单位,sc-d,,10.66.6.1,443,系统D,,,`,
+	}, "\n")
+	resp, err := s.BatchCreateText(text, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("批量添加失败: %v", err)
+	}
+	if resp.Success != 3 || resp.Errors != 1 {
+		t.Fatalf("统计期望 成功3/错误1，实际 成功%d/错误%d：%+v", resp.Success, resp.Errors, resp.LineErrors)
+	}
+
+	got := make(map[string][]string)
+	var records []models.ZeroTrust
+	if err := database.DB.Order("id ASC").Find(&records).Error; err != nil {
+		t.Fatalf("查询失败: %v", err)
+	}
+	for _, r := range records {
+		pairs, err := loadZeroTrustTargetPairs(database.DB, []uint{r.ID})
+		if err != nil {
+			t.Fatalf("读子表失败: %v", err)
+		}
+		for _, p := range pairs[r.ID] {
+			got[r.AccountName] = append(got[r.AccountName], p.Ports)
+		}
+	}
+	if v := got["sc-a"]; len(v) != 2 || v[0] != "22,443" || v[1] != "8080,1000-10005" {
+		t.Fatalf("sc-a 分号分组不符: %v", v)
+	}
+	if v := got["sc-b"]; len(v) != 1 || v[0] != "22,443" {
+		t.Fatalf("sc-b 单IP整列多端口不符: %v", v)
+	}
+	if _, ok := got["sc-c"]; ok {
+		t.Fatal("sc-c 组数与IP数不一致不应入库")
+	}
+	if v := got["sc-d"]; len(v) != 1 || v[0] != "443" {
+		t.Fatalf("sc-d 旧平铺回归不符: %v", v)
+	}
+}
+
+// TestZeroTrustCreateMergeByAccount 新增按账户名合并（T-058）：
+// 同账户名二次 Create 合并进 id 最小一条，targets 并集去重、空字段补录、非空保留、
+// 无变化不重复写库；公网IP仅补录时校验资源池、已有值时丢弃新值
+func TestZeroTrustCreateMergeByAccount(t *testing.T) {
+	newTestDB(t)
+	s := NewZeroTrustService()
+	hostA := makeHost(t, NewHostService(), "mg-a", "10.66.5.1")
+	hostB := makeHost(t, NewHostService(), "mg-b", "10.66.5.2")
+	if err := database.DB.Create(&models.PublicIP{IP: "203.0.113.20", ISP: "电信", ExitLocation: "杭州"}).Error; err != nil {
+		t.Fatalf("种子公网IP失败: %v", err)
+	}
+
+	id1, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "合并单位", AccountName: "mg-acct",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
+	}, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("首次创建失败: %v", err)
+	}
+
+	// 二次新增：申请单位不同（不覆盖）、联系方式空位补录、targets 并集去重
+	id2, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "其他单位", AccountName: "mg-acct", Contact: "李四",
+		SystemName: "新系统", Remark: "备注补录",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}, {HostID: hostB, Ports: "8080"}},
+	}, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("合并创建失败: %v", err)
+	}
+	if id1 != id2 {
+		t.Fatalf("合并应返回已有记录 id：id1=%d id2=%d", id1, id2)
+	}
+
+	var n int64
+	if err := database.DB.Model(&models.ZeroTrust{}).Where("account_name = ?", "mg-acct").Count(&n).Error; err != nil {
+		t.Fatalf("计数失败: %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("同账户名应仅 1 条记录，实际 %d", n)
+	}
+	var rec models.ZeroTrust
+	if err := database.DB.First(&rec, id1).Error; err != nil {
+		t.Fatalf("查记录失败: %v", err)
+	}
+	if rec.ApplyUnit != "合并单位" || rec.Contact != "李四" || rec.SystemName != "新系统" || rec.Remark != "备注补录" {
+		t.Fatalf("合并字段不符（非空保留+空补录）: %+v", rec)
+	}
+	rows := ztTargetRows(t, id1)
+	if len(rows) != 2 || rows[0].HostID != hostA || rows[0].Ports != "22" || rows[1].HostID != hostB || rows[1].Ports != "8080" {
+		t.Fatalf("targets 并集不符: %+v", rows)
+	}
+
+	// 完全重复的新增：无变化仍返回同 id，不新增不改行
+	if id3, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "合并单位", AccountName: "mg-acct", Contact: "李四",
+		SystemName: "新系统", Remark: "备注补录",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}, {HostID: hostB, Ports: "8080"}},
+	}, testOp, NewRequestID()); err != nil || id3 != id1 {
+		t.Fatalf("重复新增应无变化返回原 id：%d / %v", id3, err)
+	}
+
+	// 公网IP：已有记录该字段为空 → 补录值须在资源池
+	if _, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "合并单位", AccountName: "mg-acct", PublicIP: "203.0.113.99",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
+	}, testOp, NewRequestID()); err == nil || !errors.Is(err, ErrPublicIPNotInPool) {
+		t.Fatalf("补录公网IP不在资源池应报错，实际 %v", err)
+	}
+	if _, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "合并单位", AccountName: "mg-acct", PublicIP: "203.0.113.20",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
+	}, testOp, NewRequestID()); err != nil {
+		t.Fatalf("公网IP补录失败: %v", err)
+	}
+	// 已有公网IP → 冲突新值丢弃（不报错、不覆盖）
+	if _, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "合并单位", AccountName: "mg-acct", PublicIP: "203.0.113.99",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
+	}, testOp, NewRequestID()); err != nil {
+		t.Fatalf("已有公网IP时新值应丢弃而非报错: %v", err)
+	}
+	if err := database.DB.First(&rec, id1).Error; err != nil {
+		t.Fatalf("查记录失败: %v", err)
+	}
+	if rec.PublicIP != "203.0.113.20" {
+		t.Fatalf("公网IP应保留已有值，实际 %q", rec.PublicIP)
+	}
+}
+
+// TestZeroTrustBatchMergeByAccount 批量文本同账户名两行合并为一条（T-058）
+func TestZeroTrustBatchMergeByAccount(t *testing.T) {
+	newTestDB(t)
+	hs := NewHostService()
+	makeHost(t, hs, "bm-a", "10.66.4.1")
+	makeHost(t, hs, "bm-b", "10.66.4.2")
+	s := NewZeroTrustService()
+
+	text := strings.Join([]string{
+		`批量单位,ba-merge,,"10.66.4.1",22,系统X,,,`,
+		`批量单位,ba-merge,,10.66.4.2,443,系统Y,,,`,
+	}, "\n")
+	resp, err := s.BatchCreateText(text, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("批量添加失败: %v", err)
+	}
+	if resp.Success != 2 || resp.Errors != 0 {
+		t.Fatalf("统计期望 成功2/失败0，实际 %+v：%+v", resp, resp.LineErrors)
+	}
+	var n int64
+	if err := database.DB.Model(&models.ZeroTrust{}).Where("account_name = ?", "ba-merge").Count(&n).Error; err != nil {
+		t.Fatalf("计数失败: %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("同账户名两行应合并为 1 条，实际 %d", n)
+	}
+	var rec models.ZeroTrust
+	if err := database.DB.Where("account_name = ?", "ba-merge").First(&rec).Error; err != nil {
+		t.Fatalf("查记录失败: %v", err)
+	}
+	if rec.SystemName != "系统X" {
+		t.Fatalf("系统名称非空应保留首行值，实际 %q", rec.SystemName)
+	}
+	rows := ztTargetRows(t, rec.ID)
+	if len(rows) != 2 {
+		t.Fatalf("targets 应并集为 2 行，实际 %+v", rows)
 	}
 }
 

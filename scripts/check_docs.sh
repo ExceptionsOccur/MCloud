@@ -197,9 +197,9 @@ check_snapshot() {
   else
     local next_id
     next_id="$(first_task_id "$ag_next")"
-    if [[ -z "$next_id" ]]; then
+    if [[ -z "$next_id" && -n "$rm_first" ]]; then
       err "[snapshot] AGENTS next_task 字段无法解析出 T-xxx"
-    elif [[ "$next_id" != "$rm_first" ]]; then
+    elif [[ -n "$next_id" && "$next_id" != "$rm_first" ]]; then
       err "[snapshot] next_task=$next_id 与 ROADMAP todo 首条 ${rm_first:-无} 不一致"
     fi
   fi

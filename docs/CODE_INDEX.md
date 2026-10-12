@@ -79,13 +79,13 @@
 | `services/business_stats.go` | 业务统计聚合 | `GetBusinessStats`（项目/公司/人员三维聚合） |
 | `services/subnet_service.go` | IP 网段管理 | `List`/`Create`/`Update`/`Delete`、`normalizeCIDR`（/24 校验） |
 | `services/person_service.go` | 人员管理 | `List`/`Create`/`Update`/`Delete`、`normalizePerson`；删除时校验关联主机数 |
-| `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`normalizeTargetPairs`（端口表达式校验+去重，兼容旧 `port` 数字入参，T-056）；`splitPortGroups`（批量申请端口引号包裹分组，T-056）；`loadZeroTrustTargetPairs`/`insertZeroTrustTargets`（接入目标子表读写，T-052）；`joinTargetPairs`（派生串 `host_id:ports` 以 `;` 分隔，T-056）；`HostReferencedByZeroTrust`（子表去重计数）/`ZeroTrustsByHost` |
+| `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`normalizeTargetPairs`（端口表达式校验+去重，兼容旧 `port` 数字入参，T-056）；`splitPortGroups`（批量申请端口分组：`;` 分组表达多IP各自多端口，无 `;` 时顶层逗号+引号分组，T-056/T-058）；`mergeZeroTrustInto`/`unionTargetPairs`（同账户名新增合并：targets 并集去重+空字段补录，T-058）；`loadZeroTrustTargetPairs`/`insertZeroTrustTargets`（接入目标子表读写，T-052）；`joinTargetPairs`（派生串 `host_id:ports` 以 `;` 分隔，T-056）；`HostReferencedByZeroTrust`（子表去重计数）/`ZeroTrustsByHost` |
 | `services/port_mapping_service.go` | 端口映射台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`parsePortExpr`/`expandPortCount`/`parseProtocols`（端口 token 含 `A-B` 范围与协议归一化、展开后配对，T-055）；`ErrPortMappingExists` 整组判重（`host_id+public_ip+external_ports+external_protocols`）；`refreshHostIPMapped` |
 | `services/public_ip_service.go` | 公网IP资源台账 | `List`/`Create`/`Update`/`Delete`、`normalizePublicIP`（IP 唯一/格式校验）、`countPublicIPRefs`/`ErrPublicIPReferenced` 引用保护 |
 | `services/audit_service.go` | 审计日志 | `Record`（写入，失败不阻断业务）、`List`（分页筛选）、`GetOperator`、`NewRequestID` |
 | `services/data_exchange.go` | 数据备份公共定义 | `dataExchangeSheets`（8 sheet + 中文列头）、`ImportReport`/`SheetStat`/`RowError` |
 | `services/export_service.go` | 数据备份导出 | `Export`（8 sheet 依赖序写入）、`ExportFilename` |
-| `services/import_service.go` | 数据备份导入 | `Import`（单事务 + 回滚）、`parseWorkbook`（结构校验）、`apply*`（按自然键 upsert） |
+| `services/import_service.go` | 数据备份导入 | `Import`（单事务 + 回滚）、`parseWorkbook`（结构校验）、`apply*`（按自然键 upsert；`zero_trusts` 自然键=账户名合并，T-058）、`zeroTrustKey` |
 
 ### 中间件与工具
 
@@ -102,11 +102,12 @@
 |------|------|
 | `services/testdb_test.go` | 测试基建：sqlite 内存库注入 `database.DB`、JWT 配置注入、种子辅助 |
 | `services/host_service_test.go` | 主机 CRUD/筛选表驱动（IP 判重/申请时间/人员校验/零信任引用删除保护/Filter 分页） |
+| `services/host_csv_service_test.go` | CSV 导入行映射 + 导出复用列表筛选、导出行数=列表 total 一致性（T-008） |
 | `services/auth_service_test.go` | 登录表驱动（成功签发/用户不存在/失败计数/锁定拒绝/成功清零）+ 旧格式登录自动升级 bcrypt（T-009） |
 | `services/stats_service_test.go` | 探测颜色状态机（dead/alive 分支）、`probeTCP` 开/闭端口、ICMP 回环/不可达（环境无 ICMP socket 时跳过，T-011） |
-| `services/zero_trust_service_test.go` | 接入目标子表 CRUD/替换/反查、`zero_trusts` 无 `targets` 列、按主机名/内网IP 搜索（sqlite ILIKE 降级，T-052）；多端口表达式/旧 port 兼容/批量端口组（T-056） |
+| `services/zero_trust_service_test.go` | 接入目标子表 CRUD/替换/反查、`zero_trusts` 无 `targets` 列、按主机名/内网IP 搜索（sqlite ILIKE 降级，T-052）；多端口表达式/旧 port 兼容/批量端口组（T-056）；`;` 分号分组/单IP整列多端口、按账户名合并（并集/补录/公网IP 规则/批量合并，T-058） |
 | `services/port_mapping_service_test.go` | 端口协议归一化（缺省补 tcp/大小写/数量不一致/非法值）+ 范围 token（规范化、展开配对、非法范围）+ 整组判重含外网协议维度（同端口不同协议放行，T-055） |
-| `services/data_exchange_test.go` | 空库 xlsx 回灌：零信任字段+子表往返、二次导入幂等 skip（T-052）；端口映射协议列往返+含协议自然键 skip（T-055） |
+| `services/data_exchange_test.go` | 空库 xlsx 回灌：零信任字段+子表往返、二次导入幂等 skip（T-052）；端口映射协议列往返+含协议自然键 skip（T-055）；零信任同账户名合并（字段补录+targets 并集，T-058） |
 | `utils/password_test.go` | bcrypt 往返、旧 `salt$hash` 兼容、非法存储拒绝、盐唯一性 |
 | `middleware/jwt_test.go` | `ValidateToken` 表驱动：有效/过期/伪造签名/非法串/缺 user_id/none 算法（T-022） |
 | `routes/websocket_test.go` | WS 探测通道：缺失/无效 token 升级前 `40101` 拒绝 + 有效 token 建连（T-022） |
@@ -305,7 +306,7 @@ POST /api/import（multipart file）
 GET /api/export
   → routes/host.go                 （JWT，收口 routes.go）
   → controllers/csv.go               Export()
-  → services/host_csv_service.go     ExportCSV()（Preload Application 读全表）
+  → services/host_csv_service.go     ExportCSV()（applyHostFilter 与列表筛选共享，无分页，T-008）
   → services/host_csv_service.go     ExportToCSVRows() → utils/csv.go BuildCSVOutput()（BOM + CSVHeaders 表头）
 ```
 
@@ -316,9 +317,9 @@ GET/POST /api/zero-trusts、PUT/DELETE /api/zero-trusts/:id、POST /api/zero-tru
   → routes/zero_trust.go           （JWT，收口 routes.go）
   → controllers/zero_trust.go        List()/Create()/Update()/Delete()/BatchCreateText()
   → services/zero_trust_service.go
-       ├─ List()（keyword 模糊 + parseStoredTargets 回填主机简要 + 公网IP资源池带出接入地区）
-       ├─ Create()/Update()（normalizeTargetPairs 配对校验 + 主机存在校验 + 公网IP须在资源池）
-       └─ BatchCreateText()（逐行 9 列：内网IP 定位主机、IP 与端口等长配对、合法行全量插入）
+       ├─ List()（keyword 模糊 + loadZeroTrustTargetPairs 子表回填主机简要 + 公网IP资源池带出接入地区）
+       ├─ Create()（normalizeTargetPairs 配对校验 + 主机存在校验 + 公网IP须在资源池 + 同账户名 mergeZeroTrustInto 合并，T-058）/Update()（同前但不合并）
+       └─ BatchCreateText()（逐行 9 列：内网IP 定位主机、IP 与端口等长配对（`;` 分组/单IP整列多端口，T-058）、同账户名行合并、合法行全量插入）
 ```
 
 ---

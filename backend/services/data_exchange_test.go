@@ -122,6 +122,76 @@ func TestZeroTrustXLSXRoundtrip(t *testing.T) {
 	}
 }
 
+// TestZeroTrustXLSXMergeByAccount xlsx 导入按账户名合并（T-058）：
+// 自然键=账户名（非三元组），目标库已有同账户名记录 → 行并入：
+// 字段空补录/非空保留、接入目标并集，不新增记录
+func TestZeroTrustXLSXMergeByAccount(t *testing.T) {
+	newTestDB(t)
+	s := NewZeroTrustService()
+	hs := NewHostService()
+	srcHost := makeHost(t, hs, "mgx-src", "10.68.1.1")
+	if _, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "乙单位", AccountName: "mgx2", Contact: "王五", SystemName: "系统乙",
+		Targets: []ZeroTrustTarget{{HostID: srcHost, Ports: "443"}},
+	}, testOp, NewRequestID()); err != nil {
+		t.Fatalf("种子零信任失败: %v", err)
+	}
+	data, expErr := NewDataExchangeService().Export()
+	if expErr != nil {
+		t.Fatalf("导出失败: %v", expErr)
+	}
+
+	// 目标库：同账户名、不同单位/系统、联系方式为空；文件引用的主机与已有目标主机均在
+	openTestDB(t, t.Name()+"_target")
+	makeHost(t, hs, "mgx-file", "10.68.1.1")
+	dstHost := makeHost(t, hs, "mgx-dst", "10.68.1.2")
+	dstID, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "甲单位", AccountName: "mgx2", SystemName: "系统甲",
+		Targets: []ZeroTrustTarget{{HostID: dstHost, Ports: "22"}},
+	}, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("目标库种子失败: %v", err)
+	}
+
+	report, impErr := NewDataExchangeService().Import(data, testOp, NewRequestID())
+	if impErr != nil {
+		t.Fatalf("导入失败: %v", impErr)
+	}
+	if !report.Committed || len(report.Errors) != 0 {
+		t.Fatalf("导入被回滚或有行错误: committed=%v errors=%+v", report.Committed, report.Errors)
+	}
+	ztStat := report.stat("zero_trusts")
+	if ztStat == nil || ztStat.Created != 0 || ztStat.Updated != 1 || ztStat.Skipped != 0 {
+		t.Fatalf("zero_trusts 合并统计不符: %+v", ztStat)
+	}
+
+	var n int64
+	if err = database.DB.Model(&models.ZeroTrust{}).Where("account_name = ?", "mgx2").Count(&n).Error; err != nil {
+		t.Fatalf("计数失败: %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("同账户名应仅 1 条，实际 %d", n)
+	}
+	var rec models.ZeroTrust
+	if err = database.DB.First(&rec, dstID).Error; err != nil {
+		t.Fatalf("查记录失败: %v", err)
+	}
+	if rec.ApplyUnit != "甲单位" || rec.SystemName != "系统甲" || rec.Contact != "王五" {
+		t.Fatalf("合并字段不符（非空保留+空补录）: %+v", rec)
+	}
+	rows := ztTargetRows(t, dstID)
+	if len(rows) != 2 {
+		t.Fatalf("targets 应并集为 2 行，实际 %+v", rows)
+	}
+	fileHost, err := resolveHostIP(database.DB, "10.68.1.1")
+	if err != nil {
+		t.Fatalf("解析文件主机失败: %v", err)
+	}
+	if rows[0].HostID != dstHost || rows[0].Ports != "22" || rows[1].HostID != fileHost || rows[1].Ports != "443" {
+		t.Fatalf("targets 并集顺序不符: %+v", rows)
+	}
+}
+
 // TestPortMappingXLSXProtocolRoundtrip 端口映射协议列随 xlsx 往返：
 // 导出含外网/内网协议 → 空库回灌保留 → 二次导入按含协议自然键 skip（T-055）
 func TestPortMappingXLSXProtocolRoundtrip(t *testing.T) {
