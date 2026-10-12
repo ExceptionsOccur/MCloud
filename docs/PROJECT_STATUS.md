@@ -34,6 +34,10 @@
 
 > 按日期倒序，保留最近 3 个月；每条注明提交号，完整历史用 `git log --oneline`。文风：每条 ≤ 120 字一行摘要，禁止枚举（见 [DEVELOPMENT.md](./DEVELOPMENT.md) 文档回写文风）。
 
+### 2026-10-12
+
+- `81b0eb0` `fix:` **T-057** 零信任 ports 迁移 DO 块包裹 goose `StatementBegin/End`，修复切分截断致后端启动崩溃；fresh 全量回放、down/up 往返、dev 重启三路实测恢复
+
 ### 2026-10-10
 
 - `28d829c` `feat:` **T-056** 零信任接入目标端口改表达式列 `ports`（迁移幂等实测），API `targets` 改 `{host_id, ports}` 兼容旧 `port` 数字入参，批量引号分组、xlsx 无冒号续接，全链路回归+门禁全绿
