@@ -412,6 +412,66 @@ func TestZeroTrustBatchMergeByAccount(t *testing.T) {
 	}
 }
 
+// TestZeroTrustBatchSingleGroupBroadcast 多IP相同端口（T-059）：无 `;` 单端口组广播到全部 IP、
+// 重复分组与 `;` 按位配对回归、`;` 单组+多IP 与组数仍不匹配行报错
+func TestZeroTrustBatchSingleGroupBroadcast(t *testing.T) {
+	newTestDB(t)
+	hs := NewHostService()
+	makeHost(t, hs, "bc-a", "10.66.3.1")
+	makeHost(t, hs, "bc-b", "10.66.3.2")
+	makeHost(t, hs, "bc-c", "10.66.3.3")
+	s := NewZeroTrustService()
+
+	text := strings.Join([]string{
+		`广播单位,bc-1,,"10.66.3.1,10.66.3.2",22,系统1,,,`,
+		`广播单位,bc-2,,"10.66.3.1,10.66.3.2","22,443;22,443",系统2,,,`,
+		`广播单位,bc-3,,"10.66.3.1,10.66.3.2",22;22,系统3,,,`,
+		`广播单位,bc-4,,"10.66.3.1,10.66.3.2",55;80,系统4,,,`,
+		`广播单位,bc-5,,"10.66.3.1,10.66.3.2","22;",系统5,,,`,
+		`广播单位,bc-6,,"10.66.3.1,10.66.3.2,10.66.3.3","22,443",系统6,,,`,
+	}, "\n")
+	resp, err := s.BatchCreateText(text, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("批量添加失败: %v", err)
+	}
+	if resp.Success != 4 || resp.Errors != 2 {
+		t.Fatalf("统计期望 成功4/错误2，实际 成功%d/错误%d：%+v", resp.Success, resp.Errors, resp.LineErrors)
+	}
+
+	got := make(map[string][]string)
+	var records []models.ZeroTrust
+	if err := database.DB.Order("id ASC").Find(&records).Error; err != nil {
+		t.Fatalf("查询失败: %v", err)
+	}
+	for _, r := range records {
+		pairs, err := loadZeroTrustTargetPairs(database.DB, []uint{r.ID})
+		if err != nil {
+			t.Fatalf("读子表失败: %v", err)
+		}
+		for _, p := range pairs[r.ID] {
+			got[r.AccountName] = append(got[r.AccountName], p.Ports)
+		}
+	}
+	if v := got["bc-1"]; len(v) != 2 || v[0] != "22" || v[1] != "22" {
+		t.Fatalf("bc-1 单组广播不符: %v", v)
+	}
+	if v := got["bc-2"]; len(v) != 2 || v[0] != "22,443" || v[1] != "22,443" {
+		t.Fatalf("bc-2 重复分组不符: %v", v)
+	}
+	if v := got["bc-3"]; len(v) != 2 || v[0] != "22" || v[1] != "22" {
+		t.Fatalf("bc-3 分号重复不符: %v", v)
+	}
+	if v := got["bc-4"]; len(v) != 2 || v[0] != "55" || v[1] != "80" {
+		t.Fatalf("bc-4 `;` 按位配对不符: %v", v)
+	}
+	if _, ok := got["bc-5"]; ok {
+		t.Fatal("bc-5 `;` 单组+多IP 不应入库")
+	}
+	if _, ok := got["bc-6"]; ok {
+		t.Fatal("bc-6 组数与IP数不一致不应入库")
+	}
+}
+
 // TestZeroTrustBatchPortGroups 批量添加端口组：引号包裹多端口列表、旧平铺兼容、
 // IP/端口组数量不一致行错误、非法表达式行错误（T-056）
 func TestZeroTrustBatchPortGroups(t *testing.T) {
@@ -424,7 +484,7 @@ func TestZeroTrustBatchPortGroups(t *testing.T) {
 	text := strings.Join([]string{
 		`批量单位,acct-a,,"10.66.7.1,10.66.7.2","""1000-10005,22"",8080",系统A,,,`,
 		`批量单位,acct-b,,10.66.7.1,443,系统B,,,`,
-		`批量单位,acct-c,,"10.66.7.1,10.66.7.2",55,系统C,,,`,
+		`批量单位,acct-c,,"10.66.7.1,10.66.7.2","55;80;90",系统C,,,`,
 		`批量单位,acct-d,,10.66.7.1,10005-1000,系统D,,,`,
 	}, "\n")
 	resp, err := s.BatchCreateText(text, testOp, NewRequestID())

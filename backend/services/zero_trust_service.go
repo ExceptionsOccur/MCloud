@@ -598,8 +598,9 @@ func ZeroTrustsByHost(hostID uint) ([]models.ZeroTrust, error) {
 
 // BatchCreateText 零信任批量添加：列顺序 申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注[,公网IP]
 // 内网IP与申请端口两列数量必须一致、按位置配对；申请端口列含 `;` 时按 `;` 分组（T-058，多IP各自多端口），
-// 单IP+整列逗号端口直接视为该主机多端口；公网IP第9列选填、须在资源池
-// 主机按内网IP定位，不存在则该行失败；合法行全部插入；同账户名行合并进已有记录（T-058）
+// 无 `;` 且仅 1 个端口组时广播到全部 IP（T-059，多IP相同端口）；单IP+整列逗号端口视为该主机多端口；
+// 公网IP第9列选填、须在资源池；主机按内网IP定位，不存在则该行失败；
+// 合法行全部插入；同账户名行合并进已有记录（T-058）
 func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID string) (*BatchCreateResponse, error) {
 	resp := &BatchCreateResponse{}
 	headerSkipped := false
@@ -658,6 +659,14 @@ func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID s
 		// T-058：单IP+整列逗号端口（无 `;` 分组）直接视为该主机多端口表达式，无需双层引号
 		if len(ips) == 1 && len(groups) > 1 && !strings.Contains(row[4], ";") {
 			groups = []string{strings.Join(groups, ",")}
+		}
+		// T-059：无 `;` 且仅 1 个端口组 → 广播到全部 IP（多IP相同端口；此前报数不一致）
+		if len(groups) == 1 && len(ips) > 1 && !strings.Contains(row[4], ";") {
+			broadcast := make([]string, len(ips))
+			for i := range ips {
+				broadcast[i] = groups[0]
+			}
+			groups = broadcast
 		}
 		if len(ips) != len(groups) {
 			resp.Errors++
