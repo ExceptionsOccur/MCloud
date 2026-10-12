@@ -756,28 +756,29 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 			fail(report, c, errors.New("接入目标不能为空"))
 			return
 		}
+		// T-056：带冒号的段开新组（内网IP:端口表达式），纯端口段续接前组（逗号内多端口），
+		// 旧文件每段均带冒号 → 每段独立成组，兼容
 		parts := make([]ZeroTrustTarget, 0)
 		for _, seg := range strings.Split(targetsRaw, ",") {
 			seg = strings.TrimSpace(seg)
 			if seg == "" {
 				continue
 			}
-			ip, portStr, ok := strings.Cut(seg, ":")
+			ip, portsPart, ok := strings.Cut(seg, ":")
 			if !ok {
-				fail(report, c, fmt.Errorf("接入目标格式错误 %q（应为 内网IP:端口）", seg))
-				return
-			}
-			port, err := strconv.Atoi(strings.TrimSpace(portStr))
-			if err != nil || port < 1 || port > 65535 {
-				fail(report, c, fmt.Errorf("接入目标端口不合法 %q（范围 1-65535）", seg))
-				return
+				if len(parts) == 0 {
+					fail(report, c, fmt.Errorf("接入目标格式错误 %q（应为 内网IP:端口，首段须带冒号）", seg))
+					return
+				}
+				parts[len(parts)-1].Ports += "," + seg
+				continue
 			}
 			hostID, err := resolveHostIP(tx, strings.TrimSpace(ip))
 			if err != nil {
 				fail(report, c, err)
 				return
 			}
-			parts = append(parts, ZeroTrustTarget{HostID: hostID, Port: port})
+			parts = append(parts, ZeroTrustTarget{HostID: hostID, Ports: strings.TrimSpace(portsPart)})
 		}
 		normalized, err := normalizeTargetPairs(parts)
 		if err != nil {

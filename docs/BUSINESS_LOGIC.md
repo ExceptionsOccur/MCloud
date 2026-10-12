@@ -124,13 +124,13 @@ var CSVHeaders = []string{
 ### 导出
 
 - `GET /api/export/all` 返回单个 `.xlsx`（excelize），8 个 sheet 按导入依赖序排列：`persons` → `public_ips` → `cloud_resources` → `ip_subnets` → `hosts` → `host_applications` → `zero_trusts` → `port_mappings`
-- 列头为中文、按名匹配；不导出 `users`、自增 id 与时间戳；关联用自然键表达：`hosts` 人员列（姓名+联系方式，由 `person_id` 解析）、宿主一律用「内网IP」、零信任「接入目标」由 `zero_trust_targets` 子表配对（`host_id` → 内网IP）拼出 `内网IP:端口`（T-052，对外格式不变）
+- 列头为中文、按名匹配；不导出 `users`、自增 id 与时间戳；关联用自然键表达：`hosts` 人员列（姓名+联系方式，由 `person_id` 解析）、宿主一律用「内网IP」、零信任「接入目标」由 `zero_trust_targets` 子表配对（`host_id` → 内网IP）拼出 `内网IP:端口表达式`（T-056 起端口可为范围/列表，**无冒号的段续接前组**，如 `10.0.0.1:22,1000-10005,10.0.0.2:8080`，旧文件每段带冒号完全兼容；导入解析与 `normalizeTargetPairs` 归一化后写子表）
 - 派生列不导出：`hosts.ip_mapped`、`port_mappings` 的运营商/出口位置（由公网IP资源池带出）；`port_mappings` 导出「外网协议/内网协议」列（与端口等长并行，T-055）
 
 ### 导入（upsert）
 
 - 结构校验先行：非 `.xlsx`、缺 sheet、缺列、表头重复直接返回结构错误（`40001`），不进入事务
-- 逐行解析复用既有规范化：`normalizeCIDR`（/24）、`parsePortExpr`（单端口或 `A-B` 连续范围 token 规范化，T-055；`expandPortCount` 展开后数量等长校验在 `applyPortMappings` 与 `normalizePortMapping`，范围可与单口混搭）、`parseProtocols`（协议列缺省 tcp、仅 tcp/udp、与端口 **token** 等长，T-055）、`parsePortList`（零信任批量申请端口单口校验，范围待 T-056）、`normalizeTargetPairs`（配对去重）、`ValidateDateOnly`（`host_applications.申请时间` 严格 `YYYY-MM-DD`）；人员按姓名(+联系方式)解析 `person_id`、主机按内网IP解析 `host_id`、填写公网IP时必须在 `public_ips` 资源池（空值合法放行）
+- 逐行解析复用既有规范化：`normalizeCIDR`（/24）、`parsePortExpr`（单端口或 `A-B` 连续范围 token 规范化，T-055/T-056；`expandPortCount` 展开后数量等长校验在 `applyPortMappings` 与 `normalizePortMapping`，范围可与单口混搭）、`parseProtocols`（协议列缺省 tcp、仅 tcp/udp、与端口 **token** 等长，T-055）、`normalizeTargetPairs`（配对去重，端口为表达式并兼容旧 `port` 数字入参，T-056）、`splitPortGroups`（零信任批量申请端口列引号包裹分组，T-056）、`ValidateDateOnly`（`host_applications.申请时间` 严格 `YYYY-MM-DD`）；人员按姓名(+联系方式)解析 `person_id`、主机按内网IP解析 `host_id`、填写公网IP时必须在 `public_ips` 资源池（空值合法放行）
 - 申请时间两套口径：`host_applications` 走严格 `YYYY-MM-DD`（`utils.ValidateDateOnly`）；`zero_trusts` 走宽松 `parseTimeCell`（依次尝试 `YYYY-MM-DD HH:MM:SS` / `YYYY-MM-DDTHH:MM:SS` / RFC3339 / `YYYY-MM-DD HH:MM` / `YYYY-MM-DD` / `YYYY/MM/DD HH:MM:SS` / `YYYY/MM/DD`，空值保持零值）
 - 每个 sheet 按复合自然键定位已有记录：值一致 → `skipped`，不一致 → `updated`，不存在 → `created`；**仅新增与更新，不执行删除**
 - 单事务：任一行错误累计到 `errors` 并回滚（`errImportRolledBack`），返回 `committed=false` 与逐行明细，库数据不变；全部通过后重算 `hosts.ip_mapped`

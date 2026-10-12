@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -61,7 +62,7 @@ func TestZeroTrustTargetSubtableCRUD(t *testing.T) {
 	id, err := s.Create(ZeroTrustRequest{
 		ApplyUnit: "测试单位", AccountName: "acct", Contact: "张三",
 		SystemName: "sys", ApplyTime: applyTime,
-		Targets: []ZeroTrustTarget{{HostID: hostA, Port: 22}, {HostID: hostB, Port: 443}},
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}, {HostID: hostB, Ports: "443"}},
 	}, testOp, NewRequestID())
 	if err != nil {
 		t.Fatalf("创建失败: %v", err)
@@ -71,10 +72,10 @@ func TestZeroTrustTargetSubtableCRUD(t *testing.T) {
 	if len(rows) != 2 {
 		t.Fatalf("子表期望 2 行，实际 %d", len(rows))
 	}
-	if rows[0].HostID != hostA || rows[0].Port != 22 || rows[0].ZeroTrustID != id {
+	if rows[0].HostID != hostA || rows[0].Ports != "22" || rows[0].ZeroTrustID != id {
 		t.Fatalf("子表行0不符: %+v", rows[0])
 	}
-	if rows[1].HostID != hostB || rows[1].Port != 443 || rows[1].ZeroTrustID != id {
+	if rows[1].HostID != hostB || rows[1].Ports != "443" || rows[1].ZeroTrustID != id {
 		t.Fatalf("子表行1不符: %+v", rows[1])
 	}
 
@@ -82,7 +83,7 @@ func TestZeroTrustTargetSubtableCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	wantTargets := fmt.Sprintf("%d:22,%d:443", hostA, hostB)
+	wantTargets := fmt.Sprintf("%d:22;%d:443", hostA, hostB)
 	if got.Targets != wantTargets {
 		t.Fatalf("派生 targets 期望 %q，实际 %q", wantTargets, got.Targets)
 	}
@@ -91,13 +92,13 @@ func TestZeroTrustTargetSubtableCRUD(t *testing.T) {
 	err = s.Update(id, ZeroTrustRequest{
 		ApplyUnit: "测试单位", AccountName: "acct", Contact: "李四",
 		SystemName: "sys", ApplyTime: applyTime,
-		Targets: []ZeroTrustTarget{{HostID: hostB, Port: 8080}},
+		Targets: []ZeroTrustTarget{{HostID: hostB, Ports: "8080"}},
 	}, testOp, NewRequestID())
 	if err != nil {
 		t.Fatalf("更新失败: %v", err)
 	}
 	rows = ztTargetRows(t, id)
-	if len(rows) != 1 || rows[0].HostID != hostB || rows[0].Port != 8080 {
+	if len(rows) != 1 || rows[0].HostID != hostB || rows[0].Ports != "8080" {
 		t.Fatalf("更新后子表不符: %+v", rows)
 	}
 	got, err = s.GetByID(id)
@@ -146,7 +147,7 @@ func TestZeroTrustListSearchByHost(t *testing.T) {
 
 	if _, err := s.Create(ZeroTrustRequest{
 		ApplyUnit: "搜索单位", AccountName: "search-acct",
-		Targets: []ZeroTrustTarget{{HostID: linked, Port: 22}},
+		Targets: []ZeroTrustTarget{{HostID: linked, Ports: "22"}},
 	}, testOp, NewRequestID()); err != nil {
 		t.Fatalf("创建失败: %v", err)
 	}
@@ -172,5 +173,112 @@ func TestZeroTrustListSearchByHost(t *testing.T) {
 		if tc.want == 1 && len(items[0].Targets) != 1 {
 			t.Fatalf("List(%q) 目标视图期望 1 条，实际 %+v", tc.keyword, items[0].Targets)
 		}
+	}
+}
+
+// TestZeroTrustMultiPortExpression 单主机多端口表达式：范围/列表混合、旧 port 数字入参兼容、
+// 非法表达式报错、派生 targets 以 ; 分隔对间、List 视图 ports 字段（T-056）
+func TestZeroTrustMultiPortExpression(t *testing.T) {
+	newTestDB(t)
+	s := NewZeroTrustService()
+	hostA := makeHost(t, NewHostService(), "zt-mp", "10.66.8.1")
+
+	legacyPort := 22
+	id, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "多端口单位", AccountName: "mp-acct",
+		Targets: []ZeroTrustTarget{
+			{HostID: hostA, Ports: "1000-10005,80"},
+			{HostID: hostA, Port: &legacyPort},
+		},
+	}, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("创建失败: %v", err)
+	}
+	rows := ztTargetRows(t, id)
+	if len(rows) != 2 {
+		t.Fatalf("子表期望 2 行，实际 %+v", rows)
+	}
+	if rows[0].Ports != "1000-10005,80" {
+		t.Fatalf("表达式落库不符: %q", rows[0].Ports)
+	}
+	if rows[1].Ports != "22" {
+		t.Fatalf("旧 port 入参应归一为单口表达式: %q", rows[1].Ports)
+	}
+
+	got, err := s.GetByID(id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	wantTargets := fmt.Sprintf("%d:1000-10005,80;%d:22", hostA, hostA)
+	if got.Targets != wantTargets {
+		t.Fatalf("派生 targets 期望 %q，实际 %q", wantTargets, got.Targets)
+	}
+
+	// 非法范围表达式 → 校验错误（40001 路径）
+	if _, err = s.Create(ZeroTrustRequest{
+		ApplyUnit: "多端口单位", AccountName: "mp-bad",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "10005-1000"}},
+	}, testOp, NewRequestID()); err == nil || !strings.Contains(err.Error(), "不合法端口范围") {
+		t.Fatalf("期望范围校验错误，实际 %v", err)
+	}
+
+	// List 视图携带 ports 表达式
+	items, err := s.List("")
+	if err != nil || len(items) != 1 {
+		t.Fatalf("List: %v / %d 条", err, len(items))
+	}
+	if len(items[0].Targets) != 2 || items[0].Targets[0].Ports != "1000-10005,80" {
+		t.Fatalf("List 目标视图不符: %+v", items[0].Targets)
+	}
+}
+
+// TestZeroTrustBatchPortGroups 批量添加端口组：引号包裹多端口列表、旧平铺兼容、
+// IP/端口组数量不一致行错误、非法表达式行错误（T-056）
+func TestZeroTrustBatchPortGroups(t *testing.T) {
+	newTestDB(t)
+	hs := NewHostService()
+	makeHost(t, hs, "bg-a", "10.66.7.1")
+	makeHost(t, hs, "bg-b", "10.66.7.2")
+	s := NewZeroTrustService()
+
+	text := strings.Join([]string{
+		`批量单位,acct-a,,"10.66.7.1,10.66.7.2","""1000-10005,22"",8080",系统A,,,`,
+		`批量单位,acct-b,,10.66.7.1,443,系统B,,,`,
+		`批量单位,acct-c,,"10.66.7.1,10.66.7.2",55,系统C,,,`,
+		`批量单位,acct-d,,10.66.7.1,10005-1000,系统D,,,`,
+	}, "\n")
+	resp, err := s.BatchCreateText(text, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("批量添加失败: %v", err)
+	}
+	if resp.Success != 2 || resp.Errors != 2 {
+		t.Fatalf("统计期望 成功2/错误2，实际 成功%d/错误%d：%+v", resp.Success, resp.Errors, resp.LineErrors)
+	}
+
+	byAccount := make(map[string][]string)
+	var records []models.ZeroTrust
+	if err := database.DB.Order("id ASC").Find(&records).Error; err != nil {
+		t.Fatalf("查询失败: %v", err)
+	}
+	for _, r := range records {
+		pairs, err := loadZeroTrustTargetPairs(database.DB, []uint{r.ID})
+		if err != nil {
+			t.Fatalf("读子表失败: %v", err)
+		}
+		for _, p := range pairs[r.ID] {
+			byAccount[r.AccountName] = append(byAccount[r.AccountName], p.Ports)
+		}
+	}
+	if got := byAccount["acct-a"]; len(got) != 2 || got[0] != "1000-10005,22" || got[1] != "8080" {
+		t.Fatalf("acct-a 端口组不符: %v", got)
+	}
+	if got := byAccount["acct-b"]; len(got) != 1 || got[0] != "443" {
+		t.Fatalf("acct-b 旧平铺兼容不符: %v", got)
+	}
+	if _, ok := byAccount["acct-c"]; ok {
+		t.Fatal("acct-c 数量不一致不应入库")
+	}
+	if _, ok := byAccount["acct-d"]; ok {
+		t.Fatal("acct-d 非法表达式不应入库")
 	}
 }

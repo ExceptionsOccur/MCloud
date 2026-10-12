@@ -642,17 +642,18 @@ function fillFormFromHost(h) {
 
 function ztPortsForHost(record) {
   if (!record?.targets) return ''
-  const ports = String(record.targets)
-    .split(',')
+  // 派生 targets：host_id:ports 表达式，对间以 ; 分隔（T-056）
+  return String(record.targets)
+    .split(';')
     .map(seg => seg.trim())
     .filter(Boolean)
     .map(seg => {
-      const [hid, port] = seg.split(':')
-      return { hostId: Number(hid), port }
+      const [hid, ports] = seg.split(':')
+      return { hostId: Number(hid), ports }
     })
-    .filter(p => p.hostId === editId.value && p.port)
-    .map(p => p.port)
-  return ports.join(', ')
+    .filter(p => p.hostId === editId.value && p.ports)
+    .map(p => p.ports)
+    .join(', ')
 }
 
 // 映射端口/协议配对展示，协议缺省 tcp（T-055）

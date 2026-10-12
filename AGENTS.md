@@ -75,8 +75,8 @@
 |------|-----|
 | last_updated | 2026-10-10 |
 | in_progress | 无 |
-| next_task | `T-056` 零信任单主机多端口（= ROADMAP todo 首条 P1；存储口径已确认，待认领） |
-| todo（P1） | `T-056` 零信任单主机多端口 |
+| next_task | `T-053` audit_log NOT NULL 对齐（= ROADMAP todo 首条 P2） |
+| todo（P1） | 无 |
 | todo（P2） | `T-053` audit_log NOT NULL 对齐 |
 | blocked | 无 |
 | 回顾锚点 | 上次回顾至 `T-052`（批次 T-022/T-043/T-044/T-054/T-052 核查无偏差，人类确认推进，2026-10-10） |

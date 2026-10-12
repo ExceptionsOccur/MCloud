@@ -25,7 +25,8 @@ func TestZeroTrustXLSXRoundtrip(t *testing.T) {
 		PublicIP:   "203.0.113.10",
 		SystemName: "rt-sys", Remark: "回灌备注",
 		ApplyTime: &utils.FlexibleTime{Time: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)},
-		Targets:   []ZeroTrustTarget{{HostID: hostA, Port: 22}, {HostID: hostB, Port: 3389}},
+		// T-056：hostA 为多端口表达式（导出 ip:22,1000-10005，导入按「无冒号续接前组」解析）
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22,1000-10005"}, {HostID: hostB, Ports: "3389"}},
 	}, testOp, NewRequestID())
 	if seedErr != nil {
 		t.Fatalf("种子零信任失败: %v", seedErr)
@@ -81,23 +82,20 @@ func TestZeroTrustXLSXRoundtrip(t *testing.T) {
 	if len(rows) != 2 {
 		t.Fatalf("子表期望 2 行，实际 %+v", rows)
 	}
-	wantPairs := [][2]interface{}{
-		{hostIDs[0], 22},
-		{hostIDs[1], 3389},
-	}
-	for i, want := range wantPairs {
-		if rows[i].ZeroTrustID != zt.ID || rows[i].HostID != want[0].(uint) || rows[i].Port != want[1].(int) {
+	wantPorts := []string{"22,1000-10005", "3389"}
+	for i, want := range wantPorts {
+		if rows[i].ZeroTrustID != zt.ID || rows[i].HostID != hostIDs[i] || rows[i].Ports != want {
 			t.Fatalf("子表行%d不符: %+v", i, rows[i])
 		}
 	}
 
-	// 派生字段按目标库自身主机 ID 组装
+	// 派生字段按目标库自身主机 ID 组装（T-056 对间以 ; 分隔）
 	got, err := s.GetByID(zt.ID)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
 	wantTargets := joinTargetPairs([]ZeroTrustTarget{
-		{HostID: hostIDs[0], Port: 22}, {HostID: hostIDs[1], Port: 3389},
+		{HostID: hostIDs[0], Ports: "22,1000-10005"}, {HostID: hostIDs[1], Ports: "3389"},
 	})
 	if got.Targets != wantTargets {
 		t.Fatalf("派生 targets 期望 %q，实际 %q", wantTargets, got.Targets)

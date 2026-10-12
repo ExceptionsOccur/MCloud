@@ -131,8 +131,7 @@
               >
                 {{ t.host_name || `#${t.host_id}` }}<span
                   v-if="t.private_ip"
-                  class="host-ip"
-                >({{ t.private_ip }}:{{ t.port }})</span>
+                >({{ t.private_ip }}:{{ t.ports }})</span>
               </el-tag>
             </div>
             <span v-else>-</span>
@@ -283,11 +282,9 @@
                   :value="h.id"
                 />
               </el-select>
-              <el-input-number
-                v-model="t.port"
-                :min="1"
-                :max="65535"
-                controls-position="right"
+              <el-input
+                v-model="t.ports"
+                placeholder="端口或范围，如 22、1000-10005、22,443,5432"
                 class="target-port"
               />
               <el-button
@@ -425,7 +422,7 @@ const form = reactive({
   apply_unit: '',
   account_name: '',
   contact: '',
-  targets: [{ host_id: null, port: 22 }],
+  targets: [{ host_id: null, ports: '22' }],
   system_name: '',
   public_ip: '',
   apply_time: '',
@@ -502,7 +499,7 @@ async function loadPublicIPs() {
 }
 
 function addTargetRow() {
-  form.targets.push({ host_id: null, port: 22 })
+  form.targets.push({ host_id: null, ports: '22' })
 }
 
 function sortTargets(targets) {
@@ -511,7 +508,7 @@ function sortTargets(targets) {
     const bn = b.host_name || `#${b.host_id}`
     return (
       an.localeCompare(bn, 'zh-CN', { numeric: true, sensitivity: 'base' }) ||
-      a.port - b.port
+      String(a.ports || '').localeCompare(String(b.ports || ''))
     )
   })
 }
@@ -521,8 +518,8 @@ function openDialog(row) {
   form.apply_unit = row?.apply_unit || ''
   form.account_name = row?.account_name || ''
   form.contact = row?.contact || ''
-  form.targets = (row?.targets || []).map(t => ({ host_id: t.host_id, port: t.port }))
-  if (!form.targets.length) form.targets = [{ host_id: null, port: 22 }]
+  form.targets = (row?.targets || []).map(t => ({ host_id: t.host_id, ports: t.ports || '' }))
+  if (!form.targets.length) form.targets = [{ host_id: null, ports: '22' }]
   form.system_name = row?.system_name || ''
   form.public_ip = row?.public_ip || ''
   form.apply_time = row?.apply_time ? toLocalPickerValue(row.apply_time) : ''
@@ -541,8 +538,8 @@ async function handleSubmit() {
       ElMessage.warning(`第 ${i + 1} 组请选择主机`)
       return
     }
-    if (!t.port || t.port < 1 || t.port > 65535) {
-      ElMessage.warning(`第 ${i + 1} 组端口必须在 1-65535 之间`)
+    if (!t.ports || !String(t.ports).trim()) {
+      ElMessage.warning(`第 ${i + 1} 组请输入端口或范围表达式（如 22、1000-10005、22,443）`)
       return
     }
   }
@@ -553,7 +550,7 @@ async function handleSubmit() {
       apply_unit: form.apply_unit.trim(),
       account_name: form.account_name.trim(),
       contact: form.contact.trim(),
-      targets: form.targets.map(t => ({ host_id: t.host_id, port: t.port })),
+      targets: form.targets.map(t => ({ host_id: t.host_id, ports: String(t.ports).trim() })),
       system_name: form.system_name.trim(),
       public_ip: form.public_ip || '',
       apply_time: toRFC3339(form.apply_time),
