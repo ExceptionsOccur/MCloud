@@ -43,7 +43,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
-| T-053 | `models/audit_log.go` NOT NULL 口径对齐 | 2026-10-12 | `-` | 验收：六字段 tag 与迁移逐字段一致（`resource_id`/`detail` 保持可空）；ARCHITECTURE 已是 NOT NULL 口径无需改；门禁全绿 |
+| T-053 | `models/audit_log.go` NOT NULL 口径对齐 | 2026-10-12 | `39b8539` | 验收：六字段 tag 与迁移逐字段一致（`resource_id`/`detail` 保持可空）；ARCHITECTURE 已是 NOT NULL 口径无需改；门禁全绿 |
 | T-057 | 修复零信任 ports 迁移 goose DO 块切分失败 | 2026-10-12 | `81b0eb0` | 验收：StatementBegin/End 包裹；fresh 全量回放+down/up 往返+dev 后端重启三路实测恢复；门禁全绿 |
 | T-056 | 零信任接入目标改单主机多端口表达式 | 2026-10-10 | `28d829c` | 验收：`ports` 列迁移 dev 库幂等实测；targets 结构+旧 port 兼容；批量引号分组、xlsx 续接；搜索/删引用回归+门禁全绿 |
 | T-055 | 映射端口区分 TCP/UDP 协议并支持 A-B 连续范围 | 2026-10-10 | `afada3d` | 验收：并列协议列缺省 tcp、范围展开后配对、唯一索引含外网协议列、判重含协议维度；xlsx/批量全链路；门禁全绿 |
