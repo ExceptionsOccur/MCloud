@@ -36,6 +36,7 @@
 
 ### 2026-10-12
 
+- `dea43d5` `fix:` **T-059** 零信任批量申请端口无 `;` 且单端口组时广播到全部 IP（多IP相同端口，此前报数不一致），`;` 分组严格等长与按位配对不变；弹窗提示与 API/BUSINESS_LOGIC 同步；门禁全绿
 - `22a6fcf` `feat:` **T-058** 零信任批量申请端口列 `;` 分组（多IP各自不同端口，单IP整列免双层引号）+ 新增/批量/xlsx 按账户名合并（targets 并集、空字段补录，自然键改账户名单键）；门禁全绿
 - `39b8539` `fix:` **T-053** `audit_log` 六字段补 `not null` gorm tag，与迁移 NOT NULL 口径逐字段对齐（`resource_id`/`detail` 保持可空），消除 AutoMigrate 兜底建可空列漂移
 - `81b0eb0` `fix:` **T-057** 零信任 ports 迁移 DO 块包裹 goose `StatementBegin/End`，修复切分截断致后端启动崩溃；fresh 全量回放、down/up 往返、dev 重启三路实测恢复
