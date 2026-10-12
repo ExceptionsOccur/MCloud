@@ -343,7 +343,7 @@ go/
 | 主机ID | `host_id` | BIGINT | NOT NULL，索引 `idx_zero_trust_targets_host_id`，FK → hosts(id)，**ON DELETE RESTRICT** |
 | 端口 | `ports` | TEXT | NOT NULL，端口表达式（单口 `22`/范围 `1000-10005`/列表 `22,443,5432` 可混合，各端口 1-65535，T-056；T-052~055 期间为 INTEGER 单口 `port` 列） |
 
-> 一对「主机:端口表达式」一行；迁移 `20261010000005_zero_trust_targets.sql` 建表并回填存量 `targets` 串（格式非法或主机不存在的行跳过），随后删除 `zero_trusts.targets` 列；迁移 `20261010000007_zero_trust_targets_ports.sql`（T-056）把 `port` INTEGER 列改名并转为 `ports` TEXT 表达式列（条件守卫幂等）。删除被引用主机/台账记录时，应用层经子表计数校验返回 `40901`，数据库层双 FK RESTRICT 兜底（本表按 T-052 规格用 RESTRICT，晚于 T-048 的既有 NO ACTION 口径）。
+> 一对「主机:端口表达式」一行；迁移 `20261010000005_zero_trust_targets.sql` 建表并回填存量 `targets` 串（格式非法或主机不存在的行跳过），随后删除 `zero_trusts.targets` 列；迁移 `20261010000007_zero_trust_targets_ports.sql`（T-056）把 `port` INTEGER 列改名并转为 `ports` TEXT 表达式列（条件守卫幂等；DO 块须包裹 `-- +goose StatementBegin/End`，否则 goose 切分器按体内分号截断导致启动失败，T-057）。删除被引用主机/台账记录时，应用层经子表计数校验返回 `40901`，数据库层双 FK RESTRICT 兜底（本表按 T-052 规格用 RESTRICT，晚于 T-048 的既有 NO ACTION 口径）。
 
 ### port_mappings 表（端口映射台账）
 

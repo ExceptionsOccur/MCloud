@@ -73,9 +73,9 @@
 
 | 字段 | 值 |
 |------|-----|
-| last_updated | 2026-10-10 |
+| last_updated | 2026-10-12 |
 | in_progress | 无 |
-| next_task | `T-053` audit_log NOT NULL 对齐（= ROADMAP todo 首条 P2） |
+| next_task | `T-053` audit_log NOT NULL 对齐（= ROADMAP todo 首条 P2；代码已完成待提交，分支 `fix/audit-log-not-null`，stash 保留） |
 | todo（P1） | 无 |
 | todo（P2） | `T-053` audit_log NOT NULL 对齐 |
 | blocked | 无 |

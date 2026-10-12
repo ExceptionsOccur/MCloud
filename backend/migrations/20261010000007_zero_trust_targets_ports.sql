@@ -1,6 +1,8 @@
 -- +goose Up
 -- T-056：接入目标端口列改表达式（单端口/范围/列表，如 `22` 或 `1000-10005,22`），
 -- integer → text，列名 port → ports；条件守卫保证重复执行 no-op
+-- StatementBegin/End：DO 块含内部语句分号，须整块交给 goose，否则会被切分器截断（T-057）
+-- +goose StatementBegin
 DO $$
 BEGIN
     IF EXISTS (
@@ -13,9 +15,11 @@ BEGIN
         ALTER TABLE zero_trust_targets RENAME COLUMN port TO ports;
     END IF;
 END $$;
+-- +goose StatementEnd
 
 -- +goose Down
 -- 尽力还原：取表达式开头的数字段回 integer（多端口行退化为首端口，需人工核对）
+-- +goose StatementBegin
 DO $$
 BEGIN
     IF EXISTS (
@@ -31,3 +35,4 @@ BEGIN
         ALTER TABLE zero_trust_targets ALTER COLUMN port SET NOT NULL;
     END IF;
 END $$;
+-- +goose StatementEnd
