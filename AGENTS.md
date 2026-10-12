@@ -75,9 +75,8 @@
 |------|-----|
 | last_updated | 2026-10-12 |
 | in_progress | 无 |
-| next_task | `T-053` audit_log NOT NULL 对齐（= ROADMAP todo 首条 P2；代码已完成待提交，分支 `fix/audit-log-not-null`，stash 保留） |
 | todo（P1） | 无 |
-| todo（P2） | `T-053` audit_log NOT NULL 对齐 |
+| todo（P2） | 无（队列已清空） |
 | blocked | 无 |
 | 回顾锚点 | 上次回顾至 `T-052`（批次 T-022/T-043/T-044/T-054/T-052 核查无偏差，人类确认推进，2026-10-10） |
 | 功能完成度 | 功能模块 19 项：19 完成 / 0 待开发；技术债 2 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |

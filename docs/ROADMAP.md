@@ -28,13 +28,6 @@
 
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
 
-- [ ] **T-053** `models/audit_log.go` NOT NULL 口径对齐 ｜ P2 ｜ 负责: — ｜ 备注: 2026-10-10 周期回顾发现（红线 9「SQL≡模型」）
-  - 内容：`operator_id`/`operator_name`/`action`/`resource_type`/`request_id`/`created_at` 六字段补 `not null` gorm tag，与迁移 `20261010000001_create_audit_logs.sql` 的 NOT NULL 口径一致（goose 主路径无运行时影响，修的是 AutoMigrate 兜底会建可空列的漂移）；`resource_id`/`detail` 保持可空
-  - 定位：`backend/models/audit_log.go`、`backend/migrations/20261010000001_create_audit_logs.sql`（对照）、`docs/ARCHITECTURE.md`（audit_logs 字段表）
-  - 验收标准：模型 tag 与迁移 SQL 逐字段一致；`go build` + `golangci-lint run ./...` + `check_docs.sh` 全绿
-  - 回写：PROJECT_STATUS 变更记录（ARCHITECTURE 已是 NOT NULL 口径则无需改）
-  - 分支：`fix/audit-log-not-null`
-
 ## blocked
 
 （无。填写格式：`- [ ] **T-xxx** … ｜ blocked 原因：具体条件` —— 泛泛的"困难"不算 blocked）
@@ -50,6 +43,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-053 | `models/audit_log.go` NOT NULL 口径对齐 | 2026-10-12 | `-` | 验收：六字段 tag 与迁移逐字段一致（`resource_id`/`detail` 保持可空）；ARCHITECTURE 已是 NOT NULL 口径无需改；门禁全绿 |
 | T-057 | 修复零信任 ports 迁移 goose DO 块切分失败 | 2026-10-12 | `81b0eb0` | 验收：StatementBegin/End 包裹；fresh 全量回放+down/up 往返+dev 后端重启三路实测恢复；门禁全绿 |
 | T-056 | 零信任接入目标改单主机多端口表达式 | 2026-10-10 | `28d829c` | 验收：`ports` 列迁移 dev 库幂等实测；targets 结构+旧 port 兼容；批量引号分组、xlsx 续接；搜索/删引用回归+门禁全绿 |
 | T-055 | 映射端口区分 TCP/UDP 协议并支持 A-B 连续范围 | 2026-10-10 | `afada3d` | 验收：并列协议列缺省 tcp、范围展开后配对、唯一索引含外网协议列、判重含协议维度；xlsx/批量全链路；门禁全绿 |
