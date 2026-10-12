@@ -188,7 +188,7 @@ func TestHostDelete(t *testing.T) {
 		if err := database.DB.Create(&zt).Error; err != nil {
 			t.Fatalf("种子零信任失败: %v", err)
 		}
-		ztTarget := models.ZeroTrustTarget{ZeroTrustID: zt.ID, HostID: id, Port: 22}
+		ztTarget := models.ZeroTrustTarget{ZeroTrustID: zt.ID, HostID: id, Ports: "22"}
 		if err := database.DB.Create(&ztTarget).Error; err != nil {
 			t.Fatalf("种子零信任接入目标失败: %v", err)
 		}

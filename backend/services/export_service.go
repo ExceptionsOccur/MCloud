@@ -147,7 +147,8 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 		return nil, err
 	}
 
-	// zero_trusts（接入目标取子表配对 host_id → 内网IP:端口）
+	// zero_trusts（接入目标取子表配对 host_id → 内网IP:端口表达式；T-056 起端口可为范围/列表，
+	// 导入按「带冒号开组、无冒号续接」解析回多端口）
 	ztRows := make([][]interface{}, 0, len(zeroTrusts))
 	for _, z := range zeroTrusts {
 		pairs := ztPairs[z.ID]
@@ -157,7 +158,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 			if !ok {
 				continue
 			}
-			parts = append(parts, fmt.Sprintf("%s:%d", ip, p.Port))
+			parts = append(parts, fmt.Sprintf("%s:%s", ip, p.Ports))
 		}
 		ztRows = append(ztRows, []interface{}{
 			z.ApplyUnit, z.AccountName, z.Contact, z.PublicIP,

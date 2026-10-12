@@ -20,10 +20,12 @@ func NewZeroTrustService() *ZeroTrustService {
 	return &ZeroTrustService{}
 }
 
-// ZeroTrustTarget 一组「主机:端口」配对
+// ZeroTrustTarget 一组接入目标配对；T-056 起端口为表达式（`22`/`1000-10005`/`22,443,5432` 可混合），
+// 兼容旧 API 入参单端口数字字段 port（ports 为空时回退，响应仅返回 ports）
 type ZeroTrustTarget struct {
-	HostID uint `json:"host_id"`
-	Port   int  `json:"port"`
+	HostID uint   `json:"host_id"`
+	Ports  string `json:"ports"`
+	Port   *int   `json:"port,omitempty"`
 }
 
 type ZeroTrustRequest struct {
@@ -37,10 +39,10 @@ type ZeroTrustRequest struct {
 	Remark      string              `json:"remark"`
 }
 
-// ZeroTrustTargetView 配对 + 主机简要信息（列表展示用）
+// ZeroTrustTargetView 配对 + 主机简要信息（列表展示用；ports 为端口表达式）
 type ZeroTrustTargetView struct {
 	HostID    uint   `json:"host_id"`
-	Port      int    `json:"port"`
+	Ports     string `json:"ports"`
 	HostName  string `json:"host_name"`
 	PrivateIP string `json:"private_ip"`
 }
@@ -70,36 +72,46 @@ type ZeroTrustHostBrief struct {
 	PrivateIP string `json:"private_ip"`
 }
 
-// normalizeTargetPairs 校验配对列表（端口范围、去重），返回归一化配对
+// normalizeTargetPairs 校验配对列表：端口列表达式（复用 parsePortExpr，单口/范围规范化）、
+// 兼容旧 port 数字入参、按「主机+表达式」去重，返回归一化配对
 func normalizeTargetPairs(list []ZeroTrustTarget) ([]ZeroTrustTarget, error) {
 	if len(list) == 0 {
 		return nil, errors.New("接入主机与端口不能为空")
 	}
-	seen := make(map[ZeroTrustTarget]struct{}, len(list))
+	seen := make(map[string]struct{}, len(list))
 	pairs := make([]ZeroTrustTarget, 0, len(list))
 	for _, t := range list {
 		if t.HostID == 0 {
 			return nil, errors.New("申请主机不能为空")
 		}
-		if t.Port < 1 || t.Port > 65535 {
-			return nil, fmt.Errorf("申请端口必须在 1-65535 之间（当前 %d）", t.Port)
+		raw := strings.TrimSpace(t.Ports)
+		if raw == "" && t.Port != nil {
+			raw = strconv.Itoa(*t.Port)
 		}
-		if _, dup := seen[t]; dup {
+		tokens, err := parsePortExpr("申请端口", raw)
+		if err != nil {
+			return nil, err
+		}
+		t.Ports = strings.Join(tokens, ",")
+		t.Port = nil
+		key := strconv.FormatUint(uint64(t.HostID), 10) + "|" + t.Ports
+		if _, dup := seen[key]; dup {
 			continue
 		}
-		seen[t] = struct{}{}
+		seen[key] = struct{}{}
 		pairs = append(pairs, t)
 	}
 	return pairs, nil
 }
 
-// joinTargetPairs 配对列表 → "host_id:port,..." 串（派生字段/审计 diff 用，口径同旧存储列）
+// joinTargetPairs 配对列表 → "host_id:ports;host_id:ports" 串（派生字段/审计 diff 用；
+// T-056 起端口为表达式，对间以 ; 分隔、对内表达式保留逗号，避免与旧逗号分隔歧义）
 func joinTargetPairs(pairs []ZeroTrustTarget) string {
 	parts := make([]string, len(pairs))
 	for i, t := range pairs {
-		parts[i] = strconv.FormatUint(uint64(t.HostID), 10) + ":" + strconv.Itoa(t.Port)
+		parts[i] = strconv.FormatUint(uint64(t.HostID), 10) + ":" + t.Ports
 	}
-	return strings.Join(parts, ",")
+	return strings.Join(parts, ";")
 }
 
 // loadZeroTrustTargetPairs 批量加载接入目标子表（zero_trust_id → 配对，按行 id 升序）；
@@ -114,7 +126,7 @@ func loadZeroTrustTargetPairs(db *gorm.DB, ids []uint) (map[uint][]ZeroTrustTarg
 		return nil, fmt.Errorf("查询零信任接入目标失败: %w", err)
 	}
 	for _, r := range rows {
-		pairs[r.ZeroTrustID] = append(pairs[r.ZeroTrustID], ZeroTrustTarget{HostID: r.HostID, Port: r.Port})
+		pairs[r.ZeroTrustID] = append(pairs[r.ZeroTrustID], ZeroTrustTarget{HostID: r.HostID, Ports: r.Ports})
 	}
 	return pairs, nil
 }
@@ -126,7 +138,7 @@ func insertZeroTrustTargets(tx *gorm.DB, zeroTrustID uint, pairs []ZeroTrustTarg
 	}
 	rows := make([]models.ZeroTrustTarget, 0, len(pairs))
 	for _, p := range pairs {
-		rows = append(rows, models.ZeroTrustTarget{ZeroTrustID: zeroTrustID, HostID: p.HostID, Port: p.Port})
+		rows = append(rows, models.ZeroTrustTarget{ZeroTrustID: zeroTrustID, HostID: p.HostID, Ports: p.Ports})
 	}
 	return tx.Create(&rows).Error
 }
@@ -288,7 +300,7 @@ func (s *ZeroTrustService) List(keyword string) ([]ZeroTrustItem, error) {
 		pairs := pairsByID[r.ID]
 		item := ZeroTrustItem{ZeroTrust: r, Targets: make([]ZeroTrustTargetView, 0, len(pairs))}
 		for _, t := range pairs {
-			view := ZeroTrustTargetView{HostID: t.HostID, Port: t.Port}
+			view := ZeroTrustTargetView{HostID: t.HostID, Ports: t.Ports}
 			if b, ok := briefs[t.HostID]; ok {
 				view.HostName = b.Name
 				view.PrivateIP = b.PrivateIP
@@ -526,31 +538,21 @@ func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID s
 			continue
 		}
 
-		ports, err := parsePortList("申请端口", row[4])
+		groups, err := splitPortGroups(row[4])
 		if err != nil {
 			resp.Errors++
 			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: %v", lineNo, err))
 			continue
 		}
-		if len(ips) != len(ports) {
+		if len(ips) != len(groups) {
 			resp.Errors++
-			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 内网IP与申请端口数量必须一致（IP %d 个，端口 %d 个）", lineNo, len(ips), len(ports)))
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 内网IP与申请端口数量必须一致（IP %d 个，端口组 %d 个）", lineNo, len(ips), len(groups)))
 			continue
 		}
 
 		targets := make([]ZeroTrustTarget, 0, len(ips))
 		for idx := range ips {
-			p, convErr := strconv.Atoi(ports[idx])
-			if convErr != nil || p < 1 || p > 65535 {
-				resp.Errors++
-				resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 申请端口必须在 1-65535 之间", lineNo))
-				targets = nil
-				break
-			}
-			targets = append(targets, ZeroTrustTarget{HostID: ips[idx], Port: p})
-		}
-		if targets == nil {
-			continue
+			targets = append(targets, ZeroTrustTarget{HostID: ips[idx], Ports: groups[idx]})
 		}
 
 		req := ZeroTrustRequest{
@@ -583,23 +585,39 @@ func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID s
 	return resp, nil
 }
 
-// parsePortList 解析单端口列表（仅单口 1-65535，不支持范围；范围表达式由 T-056 处理）
-func parsePortList(field, raw string) ([]string, error) {
+// splitPortGroups 解析批量「申请端口」列（T-056）：顶层逗号分组，双引号包裹的组允许含逗号
+// （单主机多端口表达式，如 "22,443",1000-10005）；未加引号时每 token 一组（旧文件兼容）
+func splitPortGroups(raw string) ([]string, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
-		return nil, fmt.Errorf("%s不能为空", field)
+		return nil, errors.New("申请端口不能为空")
 	}
-	parts := strings.Split(raw, ",")
-	ports := make([]string, 0, len(parts))
-	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		n, err := strconv.Atoi(p)
-		if err != nil || n < 1 || n > 65535 {
-			return nil, fmt.Errorf("%s包含不合法端口 %q（范围 1-65535）", field, p)
+	var groups []string
+	var cur strings.Builder
+	inQuote := false
+	for _, r := range raw {
+		switch {
+		case r == '"':
+			inQuote = !inQuote
+		case r == ',' && !inQuote:
+			if s := strings.TrimSpace(cur.String()); s != "" {
+				groups = append(groups, s)
+			}
+			cur.Reset()
+		default:
+			cur.WriteRune(r)
 		}
-		ports = append(ports, strconv.Itoa(n))
 	}
-	return ports, nil
+	if inQuote {
+		return nil, errors.New("申请端口引号未闭合")
+	}
+	if s := strings.TrimSpace(cur.String()); s != "" {
+		groups = append(groups, s)
+	}
+	if len(groups) == 0 {
+		return nil, errors.New("申请端口不能为空")
+	}
+	return groups, nil
 }
 
 // lookupZeroTrustHostIDs 按逗号分隔的内网IP列表查主机ID（保留顺序与重复，供位置配对），返回ID与缺失的IP

@@ -94,7 +94,7 @@ go/
 │   │   ├── cloud_resource.go      # CloudResource 模型
 │   │   ├── ip_subnet.go           # IPSubnet 模型（IP 网段管理）
 │   │   ├── zero_trust.go          # ZeroTrust 模型（零信任台账）
-│   │   ├── zero_trust_target.go   # ZeroTrustTarget 模型（接入目标子表，T-052）
+│   │   ├── zero_trust_target.go   # ZeroTrustTarget 模型（接入目标子表，T-052；端口列 ports 表达式 T-056）
 │   │   ├── port_mapping.go        # PortMapping 模型（端口映射台账）
 │   │   ├── public_ip.go           # PublicIP 模型（公网IP资源台账）
 │   │   └── audit_log.go           # AuditLog 模型（审计日志）
@@ -144,7 +144,7 @@ go/
 │   │   ├── auth_service_test.go   # 登录/锁定表驱动单测（T-006）
 │   │   ├── host_csv_service_test.go # 筛选导出行数一致性单测（T-008）
 │   │   ├── stats_service_test.go  # 探测状态机/TCP/ICMP 单测（T-011）
-│   │   ├── zero_trust_service_test.go # 接入目标子表 CRUD/按主机搜索单测（T-052）
+│   │   ├── zero_trust_service_test.go # 接入目标子表 CRUD/按主机搜索/多端口表达式/批量端口组单测（T-052/T-056）
 │   │   ├── port_mapping_service_test.go # 端口协议/范围归一化、展开配对、整组判重单测（T-055）
 │   │   └── data_exchange_test.go  # 空库 xlsx 回灌（零信任子表/映射协议列往返）单测（T-052/T-055）
 │   │
@@ -222,7 +222,7 @@ go/
 | `cloud_resources` | `models/cloud_resource.go` | 云资源总览（按区域） |
 | `ip_subnets` | `models/ip_subnet.go` | IP 网段管理 |
 | `zero_trusts` | `models/zero_trust.go` | 零信任接入申请台账 |
-| `zero_trust_targets` | `models/zero_trust_target.go` | 零信任接入目标子表（一对「主机:端口」一行，T-052） |
+| `zero_trust_targets` | `models/zero_trust_target.go` | 零信任接入目标子表（一对「主机:端口表达式」一行，T-052/T-056） |
 | `port_mappings` | `models/port_mapping.go` | 端口映射台账（公网IP↔内网主机多端口；域名可选） |
 | `public_ips` | `models/public_ip.go` | 公网IP资源台账（IP/运营商/出口位置/备注） |
 | `audit_logs` | `models/audit_log.go` | 审计日志（操作人快照/动作/资源/diff/request_id；只增不删） |
@@ -332,7 +332,7 @@ go/
 | 备注 | `remark` | TEXT | |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 
-> **接入目标已拆子表（T-052）**：原 `targets`（`host_id:port` 逗号串）列删除，接入目标以 `zero_trust_targets` 配对行存储（1NF）；API `targets` 为派生字段（模型 `gorm:"-"`，读时由子表组装为 `host_id:port` 逗号串，对齐 `port_mappings` 的 `isp`/`exit_location` 派生做法），请求/响应结构不变。
+> **接入目标已拆子表（T-052）**：原 `targets`（`host_id:port` 逗号串）列删除，接入目标以 `zero_trust_targets` 配对行存储（1NF）；API `targets` 为派生字段（模型 `gorm:"-"`，读时由子表组装，对齐 `port_mappings` 的 `isp`/`exit_location` 派生做法）。派生串格式 T-056 起为 `host_id:ports`（对间以 `;` 分隔、对内端口表达式保留逗号），T-052 期间为逗号分隔单口。
 
 ### zero_trust_targets 表（零信任接入目标）
 
@@ -341,9 +341,9 @@ go/
 | ID | `id` | BIGSERIAL | PRIMARY KEY |
 | 零信任ID | `zero_trust_id` | BIGINT | NOT NULL，索引 `idx_zero_trust_targets_zero_trust_id`，FK → zero_trusts(id)，**ON DELETE RESTRICT** |
 | 主机ID | `host_id` | BIGINT | NOT NULL，索引 `idx_zero_trust_targets_host_id`，FK → hosts(id)，**ON DELETE RESTRICT** |
-| 端口 | `port` | INTEGER | NOT NULL，1-65535 |
+| 端口 | `ports` | TEXT | NOT NULL，端口表达式（单口 `22`/范围 `1000-10005`/列表 `22,443,5432` 可混合，各端口 1-65535，T-056；T-052~055 期间为 INTEGER 单口 `port` 列） |
 
-> 一对「主机:端口」一行；迁移 `20261010000005_zero_trust_targets.sql` 建表并回填存量 `targets` 串（格式非法或主机不存在的行跳过），随后删除 `zero_trusts.targets` 列。删除被引用主机/台账记录时，应用层经子表计数校验返回 `40901`，数据库层双 FK RESTRICT 兜底（本表按 T-052 规格用 RESTRICT，晚于 T-048 的既有 NO ACTION 口径）。
+> 一对「主机:端口表达式」一行；迁移 `20261010000005_zero_trust_targets.sql` 建表并回填存量 `targets` 串（格式非法或主机不存在的行跳过），随后删除 `zero_trusts.targets` 列；迁移 `20261010000007_zero_trust_targets_ports.sql`（T-056）把 `port` INTEGER 列改名并转为 `ports` TEXT 表达式列（条件守卫幂等）。删除被引用主机/台账记录时，应用层经子表计数校验返回 `40901`，数据库层双 FK RESTRICT 兜底（本表按 T-052 规格用 RESTRICT，晚于 T-048 的既有 NO ACTION 口径）。
 
 ### port_mappings 表（端口映射台账）
 
@@ -400,7 +400,7 @@ go/
 - `persons.name` 必填，姓名 + 联系方式 + 单位完全重复视为同一人员
 - `ip_subnets.cidr` 仅允许 `/24` IPv4 网段，写入时自动规范化为网络地址（末位归 0）
 - 系统**不预置默认网段**，由用户在「IP统计 → 管理网段」中维护
-- `zero_trusts` 接入目标经 `zero_trust_targets` 子表存储（一对「主机:端口」一行，双 FK `ON DELETE RESTRICT`）；主机被零信任台账引用时禁止删除（应用层子表去重计数校验，返回 `40901`）；API `targets` 为读时组装的派生字段；`public_ip` 须在公网IP资源池，接入地区（`exit_location`）读时带出不落库
+- `zero_trusts` 接入目标经 `zero_trust_targets` 子表存储（一对「主机:端口表达式」一行，`ports` 为单口/范围/列表表达式，双 FK `ON DELETE RESTRICT`）；主机被零信任台账引用时禁止删除（应用层子表去重计数校验，返回 `40901`）；API `targets` 为读时组装的派生字段；`public_ip` 须在公网IP资源池，接入地区（`exit_location`）读时带出不落库
 - `port_mappings.host_id` 外键关联 `hosts.id`；外网/内网端口**展开后**数量必须一致（`A-B` 范围按 B-A+1 计，范围可与单口混搭配对），协议列表分别与对应端口 **token** 列表等长（仅 `tcp`/`udp`，缺省补 `tcp`）；主机被映射引用时禁止删除
 - `port_mappings` 整组唯一 `(host_id, public_ip, external_ports, external_protocols)`（唯一索引 `idx_port_mappings_host_ip_ports`：`T-051` 落前三列、`T-055` 纳入外网协议列并回填存量为 tcp，迁移 `20261010000006` 幂等；应用层 Create/Update 判重返回 `40901`，同端口不同协议不互斥）
 - `hosts.ip_mapped` 由映射台账自动重算（有映射=true，无=false），主机表单不可手改
