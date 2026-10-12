@@ -173,9 +173,9 @@
 
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
-| GET | `/api/port-mappings` | `portMapping.List` | 映射列表，`keyword` 模糊匹配公网IP/域名/端口/备注/主机名/IP，以及资源池运营商/出口位置；`isp`/`exit_location` 为派生字段（`T-049` 起 `port_mappings` 不存列），响应值恒等于 `public_ips` 资源池 |
-| POST | `/api/port-mappings` | `portMapping.Create` | 新增映射（公网IP须在资源池、内网主机、外网/内网端口必填；端口列表等长；域名可选；请求体传入的 `isp`/`exit_location` 被忽略）；整组 `(host_id, public_ip, external_ports)` 重复返回 `40901`（`T-051`） |
-| POST | `/api/port-mappings/batch` | `portMapping.BatchCreateText` | 批量添加（文本粘贴；列：公网IP,内网IP,外网端口,内网端口,域名,备注）；重复整组计入 skipped |
+| GET | `/api/port-mappings` | `portMapping.List` | 映射列表，`keyword` 模糊匹配公网IP/域名/端口/协议/备注/主机名/IP，以及资源池运营商/出口位置；`isp`/`exit_location` 为派生字段（`T-049` 起 `port_mappings` 不存列），响应值恒等于 `public_ips` 资源池 |
+| POST | `/api/port-mappings` | `portMapping.Create` | 新增映射（公网IP须在资源池、内网主机、外网/内网端口必填；端口 token 支持单口或 `A-B` 连续范围（1-65535 且起始≤结束），**展开后**外网/内网数量一致（范围可与单口混搭配对）；`external_protocols`/`internal_protocols` 选填，与对应端口 **token** 等长、仅 `tcp`/`udp`，缺省补 `tcp`，T-055；域名可选；请求体传入的 `isp`/`exit_location` 被忽略）；整组 `(host_id, public_ip, external_ports, external_protocols)` 重复返回 `40901`（`T-051`/`T-055`） |
+| POST | `/api/port-mappings/batch` | `portMapping.BatchCreateText` | 批量添加（文本粘贴；列：公网IP,内网IP,外网端口,内网端口,域名,备注[,外网协议,内网协议]，协议两列选填缺省 tcp，T-055）；重复整组计入 skipped |
 | PUT | `/api/port-mappings/:id` | `portMapping.Update` | 修改映射记录；整组冲突返回 `40901` |
 | DELETE | `/api/port-mappings/:id` | `portMapping.Delete` | 删除映射记录；删除后重算主机 `ip_mapped` |
 
@@ -380,11 +380,11 @@ POST /api/zero-trusts/batch
 
 ```json
 POST /api/port-mappings/batch
-{ "text": "公网IP,内网IP,外网端口,内网端口,域名,备注\n203.0.113.10,192.168.1.10,80,8080,www.example.com,业务" }
+{ "text": "公网IP,内网IP,外网端口,内网端口,域名,备注,外网协议,内网协议\n203.0.113.10,192.168.1.10,80,8080,www.example.com,业务,tcp,tcp" }
 ```
 
 - 零信任列顺序：`申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注,公网IP`（至少前 4 列，公网IP 第 9 列选填）；内网IP与申请端口两列**数量必须一致、按位置配对**，主机按内网IP定位，不存在则该行失败；公网IP须在资源池；申请时间列接受 RFC3339 带时区/无时区格式；合法行全部插入
-- 映射列顺序：`公网IP,内网IP,外网端口,内网端口,域名,备注`（至少前 4 列）；公网IP须在资源池；端口数量不一致该行失败
+- 映射列顺序：`公网IP,内网IP,外网端口,内网端口,域名,备注,外网协议,内网协议`（至少前 4 列，协议两列选填缺省 tcp，T-055）；公网IP须在资源池；端口支持单口与 `A-B` 连续范围 token，**展开后**数量不一致该行失败
 - 映射的运营商/出口位置由公网IP资源池带出，不在批量行填写；零信任的接入地区同理由公网IP带出
 - 返回 `{success, skipped, errors, line_errors[]}`，与主机批量接口同结构
 
@@ -408,8 +408,8 @@ POST /api/port-mappings/batch
 `persons` → `public_ips` → `cloud_resources` → `ip_subnets` → `hosts` → `host_applications` → `zero_trusts` → `port_mappings`
 
 - 不含 `users`，不含自增 id/时间戳列；关联一律用自然键表达：`hosts` 用「人员姓名/人员联系方式」列、`host_applications` 与 `port_mappings` 用宿主「内网IP」、`zero_trusts` 的「接入目标」为 `内网IP:端口`（多组逗号分隔）
-- `hosts.ip_mapped` 为派生列不导出（导入后由后端重算）；`port_mappings` 无运营商/出口位置列（`T-049` 起派生字段，库中不存），从资源池带出
-- 导入按各表复合自然键 upsert：`persons`=姓名+联系方式、`public_ips`=公网IP、`cloud_resources`=区域、`ip_subnets`=网段CIDR、`hosts`=内网IP、`host_applications`=宿主内网IP、`zero_trusts`=申请单位+账户名+系统名称、`port_mappings`=公网IP+宿主内网IP+外网端口
+- `hosts.ip_mapped` 为派生列不导出（导入后由后端重算）；`port_mappings` 无运营商/出口位置列（`T-049` 起派生字段，库中不存），从资源池带出；`port_mappings` 含「外网协议/内网协议」列（T-055，旧备份文件缺列时导入默认 tcp）
+- 导入按各表复合自然键 upsert：`persons`=姓名+联系方式、`public_ips`=公网IP、`cloud_resources`=区域、`ip_subnets`=网段CIDR、`hosts`=内网IP、`host_applications`=宿主内网IP、`zero_trusts`=申请单位+账户名+系统名称、`port_mappings`=公网IP+宿主内网IP+外网端口+外网协议
 - 语义：**仅新增与更新，不删除**已有数据；sheet 与列头按名匹配（列顺序可变），全空行跳过
 - `POST /api/import/all`：`multipart/form-data`，字段 `file`，仅 `.xlsx`，≤ 20MB
 

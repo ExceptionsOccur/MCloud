@@ -866,8 +866,8 @@ func zeroTrustKey(z models.ZeroTrust) string {
 	return strings.Join([]string{z.ApplyUnit, z.AccountName, z.SystemName}, "\x00")
 }
 
-// applyPortMappings 自然键 public_ip+宿主ID+外网端口；公网IP须在资源池；
-// 域名非空须唯一（文件内 + 库内异键冲突）
+// applyPortMappings 自然键 public_ip+宿主ID+外网端口+外网协议；公网IP须在资源池；
+// 域名非空须唯一（文件内 + 库内异键冲突）；协议列缺省 tcp（旧文件兼容，T-055）
 func (s *DataExchangeService) applyPortMappings(tx *gorm.DB, sh *importSheet, report *ImportReport) error {
 	var existing []models.PortMapping
 	if err := tx.Find(&existing).Error; err != nil {
@@ -876,7 +876,7 @@ func (s *DataExchangeService) applyPortMappings(tx *gorm.DB, sh *importSheet, re
 	byKey := make(map[string]*models.PortMapping, len(existing))
 	byDomain := make(map[string]*models.PortMapping)
 	for i := range existing {
-		byKey[portMappingKey(existing[i].PublicIP, existing[i].HostID, existing[i].ExternalPorts)] = &existing[i]
+		byKey[portMappingKey(existing[i].PublicIP, existing[i].HostID, existing[i].ExternalPorts, existing[i].ExternalProtocols)] = &existing[i]
 		if existing[i].Domain != "" {
 			byDomain[existing[i].Domain] = &existing[i]
 		}
@@ -897,22 +897,34 @@ func (s *DataExchangeService) applyPortMappings(tx *gorm.DB, sh *importSheet, re
 			fail(report, c, errors.New("内网IP不能为空"))
 			return
 		}
-		extPorts, err := parsePortList("外网端口", c.get("外网端口"))
+		extPorts, err := parsePortExpr("外网端口", c.get("外网端口"))
 		if err != nil {
 			fail(report, c, err)
 			return
 		}
-		intlPorts, err := parsePortList("内网端口", c.get("内网端口"))
+		intlPorts, err := parsePortExpr("内网端口", c.get("内网端口"))
 		if err != nil {
 			fail(report, c, err)
 			return
 		}
-		if len(extPorts) != len(intlPorts) {
-			fail(report, c, fmt.Errorf("外网端口与内网端口数量必须一致（外网 %d 个，内网 %d 个）", len(extPorts), len(intlPorts)))
+		if extCount, intlCount := expandPortCount(extPorts), expandPortCount(intlPorts); extCount != intlCount {
+			fail(report, c, fmt.Errorf("外网端口与内网端口数量必须一致（外网 %d 个，内网 %d 个）", extCount, intlCount))
+			return
+		}
+		extProtos, err := parseProtocols("外网协议", c.get("外网协议"), len(extPorts))
+		if err != nil {
+			fail(report, c, err)
+			return
+		}
+		intlProtos, err := parseProtocols("内网协议", c.get("内网协议"), len(intlPorts))
+		if err != nil {
+			fail(report, c, err)
 			return
 		}
 		extJoined := strings.Join(extPorts, ",")
 		intlJoined := strings.Join(intlPorts, ",")
+		extProtoJoined := strings.Join(extProtos, ",")
+		intlProtoJoined := strings.Join(intlProtos, ",")
 
 		hostID, err := resolveHostIP(tx, hostIP)
 		if err != nil {
@@ -923,9 +935,9 @@ func (s *DataExchangeService) applyPortMappings(tx *gorm.DB, sh *importSheet, re
 			fail(report, c, err)
 			return
 		}
-		key := portMappingKey(publicIP, hostID, extJoined)
+		key := portMappingKey(publicIP, hostID, extJoined, extProtoJoined)
 		if first, dup := seen[key]; dup {
-			fail(report, c, fmt.Errorf("与第 %d 行映射重复（公网IP+内网IP+外网端口）", first))
+			fail(report, c, fmt.Errorf("与第 %d 行映射重复（公网IP+内网IP+外网端口+外网协议）", first))
 			return
 		}
 		seen[key] = c.rowNum
@@ -936,17 +948,17 @@ func (s *DataExchangeService) applyPortMappings(tx *gorm.DB, sh *importSheet, re
 			}
 			seenDomain[domain] = c.rowNum
 			if cur, dup := byDomain[domain]; dup &&
-				portMappingKey(cur.PublicIP, cur.HostID, cur.ExternalPorts) != key {
+				portMappingKey(cur.PublicIP, cur.HostID, cur.ExternalPorts, cur.ExternalProtocols) != key {
 				fail(report, c, fmt.Errorf("域名 %q 已被其他映射记录占用", domain))
 				return
 			}
 		}
 
 		updates := map[string]interface{}{
-			"internal_ports": intlJoined, "domain": domain, "remark": remark,
+			"internal_ports": intlJoined, "internal_protocols": intlProtoJoined, "domain": domain, "remark": remark,
 		}
 		if cur, ok := byKey[key]; ok {
-			if cur.InternalPorts == intlJoined && cur.Domain == domain && cur.Remark == remark {
+			if cur.InternalPorts == intlJoined && cur.InternalProtocols == intlProtoJoined && cur.Domain == domain && cur.Remark == remark {
 				stat.Skipped++
 				return
 			}
@@ -959,7 +971,8 @@ func (s *DataExchangeService) applyPortMappings(tx *gorm.DB, sh *importSheet, re
 		}
 		m := models.PortMapping{
 			PublicIP: publicIP, HostID: hostID,
-			ExternalPorts: extJoined, InternalPorts: intlJoined,
+			ExternalPorts: extJoined, ExternalProtocols: extProtoJoined,
+			InternalPorts: intlJoined, InternalProtocols: intlProtoJoined,
 			Domain: domain, Remark: remark,
 		}
 		if err := tx.Create(&m).Error; err != nil {
@@ -975,6 +988,6 @@ func (s *DataExchangeService) applyPortMappings(tx *gorm.DB, sh *importSheet, re
 	return nil
 }
 
-func portMappingKey(publicIP string, hostID uint, externalPorts string) string {
-	return publicIP + "\x00" + strconv.FormatUint(uint64(hostID), 10) + "\x00" + externalPorts
+func portMappingKey(publicIP string, hostID uint, externalPorts, externalProtocols string) string {
+	return publicIP + "\x00" + strconv.FormatUint(uint64(hostID), 10) + "\x00" + externalPorts + "\x00" + externalProtocols
 }

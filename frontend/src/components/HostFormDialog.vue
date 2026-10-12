@@ -349,7 +349,7 @@
                 min-width="120"
               >
                 <template #default="{ row }">
-                  {{ row.external_ports || '-' }}
+                  {{ fmtPortList(row.external_ports, row.external_protocols) }}
                 </template>
               </el-table-column>
               <el-table-column
@@ -357,7 +357,7 @@
                 min-width="120"
               >
                 <template #default="{ row }">
-                  {{ row.internal_ports || '-' }}
+                  {{ fmtPortList(row.internal_ports, row.internal_protocols) }}
                 </template>
               </el-table-column>
               <el-table-column
@@ -653,6 +653,15 @@ function ztPortsForHost(record) {
     .filter(p => p.hostId === editId.value && p.port)
     .map(p => p.port)
   return ports.join(', ')
+}
+
+// 映射端口/协议配对展示，协议缺省 tcp（T-055）
+function fmtPortList(ports, protocols) {
+  if (!ports) return '-'
+  const ps = String(ports).split(',').map(s => s.trim()).filter(Boolean)
+  if (!ps.length) return '-'
+  const qs = String(protocols || '').split(',').map(s => s.trim())
+  return ps.map((p, i) => `${p}/${qs[i] || 'tcp'}`).join(', ')
 }
 
 async function open(data) {

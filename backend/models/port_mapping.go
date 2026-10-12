@@ -3,15 +3,17 @@ package models
 import "time"
 
 type PortMapping struct {
-	ID            uint      `json:"id" gorm:"primaryKey"`
-	PublicIP      string    `json:"public_ip" gorm:"type:varchar(45);not null;uniqueIndex:idx_port_mappings_host_ip_ports"`
-	HostID        uint      `json:"host_id" gorm:"index;not null;uniqueIndex:idx_port_mappings_host_ip_ports"`
-	ExternalPorts string    `json:"external_ports" gorm:"type:text;not null;uniqueIndex:idx_port_mappings_host_ip_ports"`
-	InternalPorts string    `json:"internal_ports" gorm:"type:text;not null"`
-	Domain        string    `json:"domain" gorm:"type:varchar(255);uniqueIndex:idx_port_mappings_domain"`
-	Remark        string    `json:"remark" gorm:"type:text"`
-	CreatedAt     time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt     time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	ID                uint      `json:"id" gorm:"primaryKey"`
+	PublicIP          string    `json:"public_ip" gorm:"type:varchar(45);not null;uniqueIndex:idx_port_mappings_host_ip_ports"`
+	HostID            uint      `json:"host_id" gorm:"index;not null;uniqueIndex:idx_port_mappings_host_ip_ports"`
+	ExternalPorts     string    `json:"external_ports" gorm:"type:text;not null;uniqueIndex:idx_port_mappings_host_ip_ports"`
+	ExternalProtocols string    `json:"external_protocols" gorm:"type:text;not null;uniqueIndex:idx_port_mappings_host_ip_ports"`
+	InternalPorts     string    `json:"internal_ports" gorm:"type:text;not null"`
+	InternalProtocols string    `json:"internal_protocols" gorm:"type:text;not null"`
+	Domain            string    `json:"domain" gorm:"type:varchar(255);uniqueIndex:idx_port_mappings_domain"`
+	Remark            string    `json:"remark" gorm:"type:text"`
+	CreatedAt         time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt         time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 
 	// ISP/ExitLocation 派生字段（T-049 起不落本表），List 时恒从 public_ips 资源池带出
 	ISP          string `json:"isp" gorm:"-"`
