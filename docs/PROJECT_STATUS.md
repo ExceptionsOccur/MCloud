@@ -22,7 +22,7 @@
 | 容器化部署 | ✅ 完成 | Dockerfile（多阶段）+ docker-compose（dev/prod）+ Nginx 反代 |
 | 协作文档体系 | ✅ 完成 | `T-001` AGENTS/ROADMAP 改造为 AI 协作协议（状态快照、任务队列、回写协议） |
 | 数据导出报表 | ✅ 完成 | `T-008` 主机 CSV 按列表同名筛选参数导出（全量/`/api/export/all` 8 表 xlsx 已由 T-038 覆盖） |
-| 域名台账 | ✅ 完成 | `T-034` 已升级为**端口映射台账** `/mapping-ledger`（公网IP↔内网多端口，域名可选）；`hosts.ip_mapped` 自动重算 |
+| 域名台账 | ✅ 完成 | `T-034` 已升级为**端口映射台账** `/mapping-ledger`（公网IP↔内网多端口，域名可选）；`T-055` 端口支持 TCP/UDP 协议与 `A-B` 连续范围；`hosts.ip_mapped` 自动重算 |
 | 公网 IP 关联 | ✅ 完成 | `T-015`/`T-034` `hosts.ip_mapped` 由映射台账自动重算；主机详情展示映射/零信任关联 |
 | 自动化测试 | ✅ 完成 | `T-006` 测试骨架：后端 services 表驱动单测（主机 CRUD/登录锁定，sqlite 内存库注入 `database.DB`）+ utils 密码；前端 Vitest 冒烟（`npm run test`） |
 | Goose 迁移执行器 | ✅ 完成 | `T-016` 启动时 goose 执行 `migrations/*.sql`（embed），AutoMigrate 兜底；存量 dev 库首跑+幂等已实测 |
@@ -35,6 +35,8 @@
 > 按日期倒序，保留最近 3 个月；每条注明提交号，完整历史用 `git log --oneline`。文风：每条 ≤ 120 字一行摘要，禁止枚举（见 [DEVELOPMENT.md](./DEVELOPMENT.md) 文档回写文风）。
 
 ### 2026-10-10
+
+- `afada3d` `feat:` **T-055** 映射端口区分 TCP/UDP 协议（并列协议列缺省 tcp）并支持 `A-B` 连续范围（展开后配对），唯一索引含外网协议列，xlsx/批量全链路，判重/归一化/回灌单测覆盖
 
 - `d12f354` `feat:` **T-052** `targets` 拆 `zero_trust_targets` 子表（双 FK RESTRICT+回填），API 零变化，搜索/删引用/导入导出改子表，回灌+40901 单测覆盖
 
