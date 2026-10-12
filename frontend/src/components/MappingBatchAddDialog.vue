@@ -10,15 +10,16 @@
       <p class="columns">
         {{ columnOrder }}
       </p>
-      <p>外网端口/内网端口各自用逗号分隔且数量一致；内网IP定位主机；公网IP须已在公网IP资源池登记；域名可选。运营商/出口位置由资源池自动带出。# 开头为注释；首行可粘贴表头。</p>
+      <p>外网端口/内网端口各自用逗号分隔（支持连续范围如 1000-1005），展开后数量一致；外网协议/内网协议为可选列（仅 tcp/udp，缺省 tcp，须与对应端口 token 数量一致）；内网IP定位主机；公网IP须已在公网IP资源池登记；域名可选。运营商/出口位置由资源池自动带出。# 开头为注释；首行可粘贴表头。</p>
     </div>
     <el-input
       v-model="textInput"
       type="textarea"
       :rows="12"
-      placeholder="公网IP,内网IP,外网端口,内网端口,域名,备注
-203.0.113.10,192.168.1.10,80,8080,www.example.com,业务
-203.0.113.10,192.168.1.10,443,8443,,,"
+      placeholder="公网IP,内网IP,外网端口,内网端口,域名,备注,外网协议,内网协议
+203.0.113.10,192.168.1.10,80,8080,www.example.com,业务,tcp,tcp
+203.0.113.10,192.168.1.10,443,8443,,,udp,udp
+203.0.113.10,192.168.1.10,1000-1005,1000-1005,,批量范围,tcp,tcp"
     />
     <template #footer>
       <el-button @click="visible = false">
@@ -42,7 +43,7 @@ import { ElMessage } from 'element-plus'
 
 const columnOrder = [
   '公网IP', '内网IP', '外网端口', '内网端口',
-  '域名', '备注'
+  '域名', '备注', '外网协议(可选)', '内网协议(可选)'
 ].join(' | ')
 
 const visible = ref(false)

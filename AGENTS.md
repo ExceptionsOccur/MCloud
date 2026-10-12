@@ -75,11 +75,11 @@
 |------|-----|
 | last_updated | 2026-10-10 |
 | in_progress | 无 |
-| next_task | `T-053` audit_log NOT NULL 对齐（= ROADMAP todo 首条，P2） |
-| todo（P1） | 无 |
+| next_task | `T-056` 零信任单主机多端口（= ROADMAP todo 首条 P1；存储口径已确认，待认领） |
+| todo（P1） | `T-056` 零信任单主机多端口 |
 | todo（P2） | `T-053` audit_log NOT NULL 对齐 |
 | blocked | 无 |
-| 回顾锚点 | 上次回顾至 `T-020`（`done` 自此起满 5 条触发周期回顾，见会话协议 E） |
+| 回顾锚点 | 上次回顾至 `T-052`（批次 T-022/T-043/T-044/T-054/T-052 核查无偏差，人类确认推进，2026-10-10） |
 | 功能完成度 | 功能模块 19 项：19 完成 / 0 待开发；技术债 2 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
 | 已知风险 | 无（WS 探测 token 校验漏洞已由 `T-022` 关闭；余项见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
 

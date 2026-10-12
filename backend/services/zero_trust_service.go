@@ -583,6 +583,25 @@ func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID s
 	return resp, nil
 }
 
+// parsePortList 解析单端口列表（仅单口 1-65535，不支持范围；范围表达式由 T-056 处理）
+func parsePortList(field, raw string) ([]string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, fmt.Errorf("%s不能为空", field)
+	}
+	parts := strings.Split(raw, ",")
+	ports := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		n, err := strconv.Atoi(p)
+		if err != nil || n < 1 || n > 65535 {
+			return nil, fmt.Errorf("%s包含不合法端口 %q（范围 1-65535）", field, p)
+		}
+		ports = append(ports, strconv.Itoa(n))
+	}
+	return ports, nil
+}
+
 // lookupZeroTrustHostIDs 按逗号分隔的内网IP列表查主机ID（保留顺序与重复，供位置配对），返回ID与缺失的IP
 func lookupZeroTrustHostIDs(rawIPs string) ([]uint, []string) {
 	ids := make([]uint, 0)

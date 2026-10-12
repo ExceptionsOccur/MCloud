@@ -54,7 +54,7 @@
       <div class="toolbar">
         <el-input
           v-model="keyword"
-          placeholder="搜索公网IP / 内网主机 / 端口 / 域名 / 运营商 / 出口位置"
+          placeholder="搜索公网IP / 内网主机 / 端口 / 协议 / 域名 / 运营商 / 出口位置"
           clearable
           style="width: 320px"
           @keyup.enter="loadList"
@@ -120,14 +120,14 @@
         >
           <template #default="{ row }">
             <el-tag
-              v-for="p in splitPorts(row.external_ports)"
+              v-for="p in portTags(row.external_ports, row.external_protocols)"
               :key="'e' + p"
               size="small"
               class="port-tag"
             >
               {{ p }}
             </el-tag>
-            <span v-if="!splitPorts(row.external_ports).length">-</span>
+            <span v-if="!portTags(row.external_ports, row.external_protocols).length">-</span>
           </template>
         </el-table-column>
         <el-table-column
@@ -136,7 +136,7 @@
         >
           <template #default="{ row }">
             <el-tag
-              v-for="p in splitPorts(row.internal_ports)"
+              v-for="p in portTags(row.internal_ports, row.internal_protocols)"
               :key="'i' + p"
               size="small"
               type="success"
@@ -144,7 +144,7 @@
             >
               {{ p }}
             </el-tag>
-            <span v-if="!splitPorts(row.internal_ports).length">-</span>
+            <span v-if="!portTags(row.internal_ports, row.internal_protocols).length">-</span>
           </template>
         </el-table-column>
         <el-table-column
@@ -279,7 +279,7 @@
         >
           <el-input
             v-model="form.external_ports"
-            placeholder="多个端口用逗号分隔，如 80,443"
+            placeholder="多个端口用逗号分隔，支持连续范围如 1000-1005；可带协议如 53/udp，缺省 tcp"
           />
         </el-form-item>
         <el-form-item
@@ -288,7 +288,7 @@
         >
           <el-input
             v-model="form.internal_ports"
-            placeholder="与外网端口数量一致、顺序对应，如 8080,8443"
+            placeholder="与外网端口展开后数量一致、顺序对应，支持范围如 8080-8085；可带协议如 5353/udp"
           />
         </el-form-item>
         <el-form-item label="端口对应">
@@ -301,6 +301,10 @@
               >
                 外网 {{ pair[0] }} → 内网 {{ pair[1] }}
               </el-tag>
+              <span
+                v-if="portPairTotal > portPairs.length"
+                class="muted"
+              >共 {{ portPairTotal }} 对，仅预览前 {{ portPairs.length }} 对</span>
             </template>
             <span
               v-else
@@ -411,10 +415,90 @@ function splitPorts(val) {
   return String(val).split(',').map(s => s.trim()).filter(Boolean)
 }
 
+// 列表标签：端口/协议配对展示，协议缺省 tcp（T-055）
+function portTags(ports, protocols) {
+  const ps = splitPorts(ports)
+  const qs = splitPorts(protocols)
+  return ps.map((p, i) => `${p}/${qs[i] || 'tcp'}`)
+}
+
+// 解析端口输入：逗号分隔，token 支持「端口」「起始-结束」及可选 /tcp|udp（缺省 tcp，T-055）
+function parsePortTokens(val, field) {
+  const tokens = splitPorts(val)
+  const ports = []
+  const protocols = []
+  for (const t of tokens) {
+    const m = t.match(/^(\d{1,5})(?:-(\d{1,5}))?(?:\/(tcp|udp))?$/i)
+    if (!m) {
+      throw new Error(`${field}中的“${t}”格式不正确（应为 端口、起始-结束，可加 /tcp|udp）`)
+    }
+    const a = Number(m[1])
+    const b = m[2] ? Number(m[2]) : a
+    if (a < 1 || b > 65535 || a > b) {
+      throw new Error(`${field}中的“${t}”端口范围不合法（1-65535 且起始 ≤ 结束）`)
+    }
+    ports.push(m[2] ? `${a}-${b}` : `${a}`)
+    protocols.push((m[3] || 'tcp').toLowerCase())
+  }
+  return { ports, protocols }
+}
+
+// 表单回填：端口列表 + 协议列表 → 「端口/协议」token 串
+function joinPortTokens(ports, protocols) {
+  const ps = splitPorts(ports)
+  const qs = splitPorts(protocols)
+  return ps.map((p, i) => `${p}/${qs[i] || 'tcp'}`).join(',')
+}
+
+// 端口 token 展开后的实际端口数（单口 1，A-B 为 B-A+1）
+function expandCount(ports) {
+  let n = 0
+  for (const t of ports) {
+    const m = t.match(/^(\d+)-(\d+)$/)
+    n += m ? Number(m[2]) - Number(m[1]) + 1 : 1
+  }
+  return n
+}
+
+// 预览用尽力展开（跳过编辑中/非法 token，范围 token 展开为逐端口带协议）
+function expandForPreview(val) {
+  const out = []
+  for (const t of splitPorts(val)) {
+    const m = t.match(/^(\d{1,5})(?:-(\d{1,5}))?(?:\/(tcp|udp))?$/i)
+    if (!m) {
+      out.push(t)
+      continue
+    }
+    const proto = (m[3] || 'tcp').toLowerCase()
+    if (m[2]) {
+      const a = Number(m[1])
+      const b = Number(m[2])
+      if (a < 1 || b > 65535 || a > b) {
+        out.push(t)
+        continue
+      }
+      for (let p = a; p <= b; p++) out.push(`${p}/${proto}`)
+    } else {
+      out.push(`${m[1]}/${proto}`)
+    }
+  }
+  return out
+}
+
+// 预览上限：大范围（如 1-65535）只渲染前 N 对并给出总对数
+const PORT_PAIR_PREVIEW_LIMIT = 100
+
+const portPairTotal = computed(() =>
+  Math.min(
+    expandForPreview(form.external_ports).length,
+    expandForPreview(form.internal_ports).length
+  )
+)
+
 const portPairs = computed(() => {
-  const ext = splitPorts(form.external_ports)
-  const intl = splitPorts(form.internal_ports)
-  const n = Math.min(ext.length, intl.length)
+  const ext = expandForPreview(form.external_ports)
+  const intl = expandForPreview(form.internal_ports)
+  const n = Math.min(ext.length, intl.length, PORT_PAIR_PREVIEW_LIMIT)
   const pairs = []
   for (let i = 0; i < n; i++) pairs.push([ext[i], intl[i]])
   return pairs
@@ -478,8 +562,8 @@ function openDialog(row) {
   editId.value = row?.id || null
   form.public_ip = row?.public_ip || ''
   form.host_id = row?.host_id || null
-  form.external_ports = row?.external_ports || ''
-  form.internal_ports = row?.internal_ports || ''
+  form.external_ports = joinPortTokens(row?.external_ports, row?.external_protocols)
+  form.internal_ports = joinPortTokens(row?.internal_ports, row?.internal_protocols)
   form.domain = row?.domain || ''
   form.remark = row?.remark || ''
   dialogVisible.value = true
@@ -490,10 +574,19 @@ async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
 
-  const ext = splitPorts(form.external_ports)
-  const intl = splitPorts(form.internal_ports)
-  if (ext.length !== intl.length) {
-    ElMessage.warning(`外网端口与内网端口数量必须一致（外网 ${ext.length} 个，内网 ${intl.length} 个）`)
+  let ext
+  let intl
+  try {
+    ext = parsePortTokens(form.external_ports, '外网端口')
+    intl = parsePortTokens(form.internal_ports, '内网端口')
+  } catch (e) {
+    ElMessage.warning(e.message)
+    return
+  }
+  const extCount = expandCount(ext.ports)
+  const intlCount = expandCount(intl.ports)
+  if (extCount !== intlCount) {
+    ElMessage.warning(`外网端口与内网端口数量必须一致（外网 ${extCount} 个，内网 ${intlCount} 个）`)
     return
   }
 
@@ -502,8 +595,10 @@ async function handleSubmit() {
     const payload = {
       public_ip: form.public_ip,
       host_id: form.host_id,
-      external_ports: ext.join(','),
-      internal_ports: intl.join(','),
+      external_ports: ext.ports.join(','),
+      external_protocols: ext.protocols.join(','),
+      internal_ports: intl.ports.join(','),
+      internal_protocols: intl.protocols.join(','),
       domain: form.domain.trim(),
       remark: form.remark.trim()
     }

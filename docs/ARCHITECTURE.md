@@ -145,7 +145,8 @@ go/
 │   │   ├── host_csv_service_test.go # 筛选导出行数一致性单测（T-008）
 │   │   ├── stats_service_test.go  # 探测状态机/TCP/ICMP 单测（T-011）
 │   │   ├── zero_trust_service_test.go # 接入目标子表 CRUD/按主机搜索单测（T-052）
-│   │   └── data_exchange_test.go  # 空库 xlsx 回灌（零信任子表往返）单测（T-052）
+│   │   ├── port_mapping_service_test.go # 端口协议/范围归一化、展开配对、整组判重单测（T-055）
+│   │   └── data_exchange_test.go  # 空库 xlsx 回灌（零信任子表/映射协议列往返）单测（T-052/T-055）
 │   │
 │   ├── routes/
 │   │   ├── routes.go              # 路由协调：CORS + JWT 受保护组收口 + 分发各域
@@ -351,8 +352,10 @@ go/
 | ID | `id` | BIGSERIAL | PRIMARY KEY |
 | 公网IP | `public_ip` | VARCHAR(45) | NOT NULL |
 | 内网主机 | `host_id` | BIGINT | NOT NULL, FK → hosts(id) |
-| 外网端口 | `external_ports` | TEXT | NOT NULL（默认 `''`），逗号分隔多端口 |
-| 内网端口 | `internal_ports` | TEXT | NOT NULL（默认 `''`），与外网端口数量/顺序一一对应 |
+| 外网端口 | `external_ports` | TEXT | NOT NULL（默认 `''`），逗号分隔 token：单端口或 `A-B` 连续范围（1-65535、起始≤结束），规范化存储（T-055） |
+| 外网协议 | `external_protocols` | TEXT | NOT NULL，与外网端口 **token** 等长逗号并行（`tcp`/`udp`，缺省 tcp，T-055） |
+| 内网端口 | `internal_ports` | TEXT | NOT NULL（默认 `''`），与外网端口 token 并行存储；与外网端口**展开后数量**一致、按展开顺序一一对应（范围可与单口混搭） |
+| 内网协议 | `internal_protocols` | TEXT | NOT NULL，与内网端口 **token** 等长逗号并行（`tcp`/`udp`，缺省 tcp，T-055） |
 | 域名 | `domain` | VARCHAR(255) | 可选；非空时唯一（唯一索引 `idx_port_mappings_domain`） |
 | 备注 | `remark` | TEXT | |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
@@ -398,8 +401,8 @@ go/
 - `ip_subnets.cidr` 仅允许 `/24` IPv4 网段，写入时自动规范化为网络地址（末位归 0）
 - 系统**不预置默认网段**，由用户在「IP统计 → 管理网段」中维护
 - `zero_trusts` 接入目标经 `zero_trust_targets` 子表存储（一对「主机:端口」一行，双 FK `ON DELETE RESTRICT`）；主机被零信任台账引用时禁止删除（应用层子表去重计数校验，返回 `40901`）；API `targets` 为读时组装的派生字段；`public_ip` 须在公网IP资源池，接入地区（`exit_location`）读时带出不落库
-- `port_mappings.host_id` 外键关联 `hosts.id`；外网/内网端口列表长度必须一致；主机被映射引用时禁止删除
-- `port_mappings` 整组唯一 `(host_id, public_ip, external_ports)`（唯一索引 `idx_port_mappings_host_ip_ports`，迁移先清历史重复再落索引；应用层 Create/Update 判重返回 `40901`，`T-051`）
+- `port_mappings.host_id` 外键关联 `hosts.id`；外网/内网端口**展开后**数量必须一致（`A-B` 范围按 B-A+1 计，范围可与单口混搭配对），协议列表分别与对应端口 **token** 列表等长（仅 `tcp`/`udp`，缺省补 `tcp`）；主机被映射引用时禁止删除
+- `port_mappings` 整组唯一 `(host_id, public_ip, external_ports, external_protocols)`（唯一索引 `idx_port_mappings_host_ip_ports`：`T-051` 落前三列、`T-055` 纳入外网协议列并回填存量为 tcp，迁移 `20261010000006` 幂等；应用层 Create/Update 判重返回 `40901`，同端口不同协议不互斥）
 - `hosts.ip_mapped` 由映射台账自动重算（有映射=true，无=false），主机表单不可手改
 - `public_ips.ip` 唯一约束，公网 IP 资源池录入；删除/修改 IP 时若被 `port_mappings`/`zero_trusts` 引用（应用层值引用校验）返回 `40901`（`T-051`）
 - **GORM 列名陷阱**：`CIDR` 字段默认会被命名为 `c_id_r`，模型已显式指定 `gorm:"column:cidr"`

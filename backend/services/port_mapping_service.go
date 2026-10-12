@@ -18,17 +18,19 @@ func NewPortMappingService() *PortMappingService {
 }
 
 type PortMappingRequest struct {
-	PublicIP      string `json:"public_ip" binding:"required"`
-	HostID        uint   `json:"host_id" binding:"required"`
-	ExternalPorts string `json:"external_ports" binding:"required"`
-	InternalPorts string `json:"internal_ports" binding:"required"`
-	Domain        string `json:"domain"`
-	Remark        string `json:"remark"`
+	PublicIP          string `json:"public_ip" binding:"required"`
+	HostID            uint   `json:"host_id" binding:"required"`
+	ExternalPorts     string `json:"external_ports" binding:"required"`
+	ExternalProtocols string `json:"external_protocols"`
+	InternalPorts     string `json:"internal_ports" binding:"required"`
+	InternalProtocols string `json:"internal_protocols"`
+	Domain            string `json:"domain"`
+	Remark            string `json:"remark"`
 }
 
 var ErrPortMappingNotFound = errors.New("映射记录不存在")
 
-// ErrPortMappingExists 完全相同的映射（host_id + public_ip + external_ports 整组）已存在
+// ErrPortMappingExists 完全相同的映射（host_id + public_ip + external_ports + external_protocols 整组）已存在
 var ErrPortMappingExists = errors.New("该映射已存在")
 
 // ErrHostReferencedByMapping 主机已被映射台账引用
@@ -37,22 +39,83 @@ var ErrHostReferencedByMapping = errors.New("该主机已被映射台账引用")
 // ErrMappingHostNotFound 内网主机不存在
 var ErrMappingHostNotFound = errors.New("内网主机不存在")
 
-func parsePortList(field, raw string) ([]string, error) {
+// parsePortExpr 解析端口表达式（单端口或 A-B 连续范围，T-055）：
+// 返回规范化 token（数字与范围两端均去前导零），不展开、不去重
+func parsePortExpr(field, raw string) ([]string, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return nil, fmt.Errorf("%s不能为空", field)
 	}
 	parts := strings.Split(raw, ",")
-	ports := make([]string, 0, len(parts))
+	tokens := make([]string, 0, len(parts))
 	for _, p := range parts {
 		p = strings.TrimSpace(p)
+		if p == "" {
+			return nil, fmt.Errorf("%s包含空端口项", field)
+		}
+		if strings.Contains(p, "-") {
+			seg := strings.Split(p, "-")
+			if len(seg) != 2 {
+				return nil, fmt.Errorf("%s包含不合法端口 %q（范围 1-65535，连续区间写作起始-结束）", field, p)
+			}
+			a, errA := strconv.Atoi(strings.TrimSpace(seg[0]))
+			b, errB := strconv.Atoi(strings.TrimSpace(seg[1]))
+			if errA != nil || errB != nil || a < 1 || b > 65535 || a > b {
+				return nil, fmt.Errorf("%s包含不合法端口范围 %q（1-65535 且起始 ≤ 结束）", field, p)
+			}
+			tokens = append(tokens, strconv.Itoa(a)+"-"+strconv.Itoa(b))
+			continue
+		}
 		n, err := strconv.Atoi(p)
 		if err != nil || n < 1 || n > 65535 {
 			return nil, fmt.Errorf("%s包含不合法端口 %q（范围 1-65535）", field, p)
 		}
-		ports = append(ports, strconv.Itoa(n))
+		tokens = append(tokens, strconv.Itoa(n))
 	}
-	return ports, nil
+	return tokens, nil
+}
+
+// expandPortCount 端口 token 展开后的总端口数（单口 1，A-B 为 B-A+1）
+func expandPortCount(tokens []string) int {
+	total := 0
+	for _, t := range tokens {
+		if i := strings.IndexByte(t, '-'); i >= 0 {
+			a, errA := strconv.Atoi(t[:i])
+			b, errB := strconv.Atoi(t[i+1:])
+			if errA == nil && errB == nil && b >= a {
+				total += b - a + 1
+				continue
+			}
+		}
+		total++
+	}
+	return total
+}
+
+// parseProtocols 校验与端口 token 等长并行的传输协议列表（仅 tcp/udp，统一小写）；
+// raw 为空时按 tcp 缺省补齐 n 个（n 为 token 数，范围 token 计 1）（T-055）
+func parseProtocols(field, raw string, n int) ([]string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		protos := make([]string, n)
+		for i := range protos {
+			protos[i] = "tcp"
+		}
+		return protos, nil
+	}
+	parts := strings.Split(raw, ",")
+	if len(parts) != n {
+		return nil, fmt.Errorf("%s数量必须与端口数量一致（协议 %d 个，端口 %d 个）", field, len(parts), n)
+	}
+	protos := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.ToLower(strings.TrimSpace(p))
+		if p != "tcp" && p != "udp" {
+			return nil, fmt.Errorf("%s包含不合法协议 %q（仅 tcp/udp）", field, p)
+		}
+		protos = append(protos, p)
+	}
+	return protos, nil
 }
 
 func normalizePortMapping(req PortMappingRequest) (PortMappingRequest, []string, []string, error) {
@@ -65,19 +128,29 @@ func normalizePortMapping(req PortMappingRequest) (PortMappingRequest, []string,
 	if req.HostID == 0 {
 		return req, nil, nil, errors.New("内网主机不能为空")
 	}
-	ext, err := parsePortList("外网端口", req.ExternalPorts)
+	ext, err := parsePortExpr("外网端口", req.ExternalPorts)
 	if err != nil {
 		return req, nil, nil, err
 	}
-	intl, err := parsePortList("内网端口", req.InternalPorts)
+	intl, err := parsePortExpr("内网端口", req.InternalPorts)
 	if err != nil {
 		return req, nil, nil, err
 	}
-	if len(ext) != len(intl) {
-		return req, nil, nil, fmt.Errorf("外网端口与内网端口数量必须一致（外网 %d 个，内网 %d 个）", len(ext), len(intl))
+	if extCount, intlCount := expandPortCount(ext), expandPortCount(intl); extCount != intlCount {
+		return req, nil, nil, fmt.Errorf("外网端口与内网端口数量必须一致（外网 %d 个，内网 %d 个）", extCount, intlCount)
+	}
+	extProtos, err := parseProtocols("外网协议", req.ExternalProtocols, len(ext))
+	if err != nil {
+		return req, nil, nil, err
+	}
+	intlProtos, err := parseProtocols("内网协议", req.InternalProtocols, len(intl))
+	if err != nil {
+		return req, nil, nil, err
 	}
 	req.ExternalPorts = strings.Join(ext, ",")
 	req.InternalPorts = strings.Join(intl, ",")
+	req.ExternalProtocols = strings.Join(extProtos, ",")
+	req.InternalProtocols = strings.Join(intlProtos, ",")
 	return req, ext, intl, nil
 }
 
@@ -107,8 +180,8 @@ func (s *PortMappingService) List(keyword string) ([]models.PortMapping, error) 
 	if keyword = strings.TrimSpace(keyword); keyword != "" {
 		like := "%" + keyword + "%"
 		db = db.Where(
-			"port_mappings.public_ip ILIKE ? OR port_mappings.domain ILIKE ? OR port_mappings.remark ILIKE ? OR port_mappings.external_ports ILIKE ? OR port_mappings.internal_ports ILIKE ? OR EXISTS (SELECT 1 FROM hosts WHERE hosts.id = port_mappings.host_id AND (hosts.name ILIKE ? OR hosts.private_ip ILIKE ?)) OR EXISTS (SELECT 1 FROM public_ips pi WHERE pi.ip = port_mappings.public_ip AND (pi.isp ILIKE ? OR pi.exit_location ILIKE ?))",
-			like, like, like, like, like, like, like, like, like,
+			"port_mappings.public_ip ILIKE ? OR port_mappings.domain ILIKE ? OR port_mappings.remark ILIKE ? OR port_mappings.external_ports ILIKE ? OR port_mappings.internal_ports ILIKE ? OR port_mappings.external_protocols ILIKE ? OR port_mappings.internal_protocols ILIKE ? OR EXISTS (SELECT 1 FROM hosts WHERE hosts.id = port_mappings.host_id AND (hosts.name ILIKE ? OR hosts.private_ip ILIKE ?)) OR EXISTS (SELECT 1 FROM public_ips pi WHERE pi.ip = port_mappings.public_ip AND (pi.isp ILIKE ? OR pi.exit_location ILIKE ?))",
+			like, like, like, like, like, like, like, like, like, like, like,
 		)
 	}
 	var items []models.PortMapping
@@ -172,18 +245,20 @@ func (s *PortMappingService) Create(req PortMappingRequest, op Operator, request
 	}
 	var dupCount int64
 	database.DB.Model(&models.PortMapping{}).
-		Where("host_id = ? AND public_ip = ? AND external_ports = ?", req.HostID, req.PublicIP, req.ExternalPorts).
+		Where("host_id = ? AND public_ip = ? AND external_ports = ? AND external_protocols = ?", req.HostID, req.PublicIP, req.ExternalPorts, req.ExternalProtocols).
 		Count(&dupCount)
 	if dupCount > 0 {
 		return 0, ErrPortMappingExists
 	}
 	rec := models.PortMapping{
-		PublicIP:      req.PublicIP,
-		HostID:        req.HostID,
-		ExternalPorts: req.ExternalPorts,
-		InternalPorts: req.InternalPorts,
-		Domain:        req.Domain,
-		Remark:        req.Remark,
+		PublicIP:          req.PublicIP,
+		HostID:            req.HostID,
+		ExternalPorts:     req.ExternalPorts,
+		ExternalProtocols: req.ExternalProtocols,
+		InternalPorts:     req.InternalPorts,
+		InternalProtocols: req.InternalProtocols,
+		Domain:            req.Domain,
+		Remark:            req.Remark,
 	}
 	if err := database.DB.Create(&rec).Error; err != nil {
 		return 0, err
@@ -224,21 +299,24 @@ func (s *PortMappingService) Update(id uint, req PortMappingRequest, op Operator
 	}
 	var dupCount int64
 	database.DB.Model(&models.PortMapping{}).
-		Where("host_id = ? AND public_ip = ? AND external_ports = ? AND id != ?", req.HostID, req.PublicIP, req.ExternalPorts, id).
+		Where("host_id = ? AND public_ip = ? AND external_ports = ? AND external_protocols = ? AND id != ?", req.HostID, req.PublicIP, req.ExternalPorts, req.ExternalProtocols, id).
 		Count(&dupCount)
 	if dupCount > 0 {
 		return ErrPortMappingExists
 	}
 	before := PortMappingRequest{
 		PublicIP: rec.PublicIP, HostID: rec.HostID, ExternalPorts: rec.ExternalPorts,
-		InternalPorts: rec.InternalPorts, Domain: rec.Domain, Remark: rec.Remark,
+		ExternalProtocols: rec.ExternalProtocols, InternalPorts: rec.InternalPorts,
+		InternalProtocols: rec.InternalProtocols, Domain: rec.Domain, Remark: rec.Remark,
 	}
 	updates := map[string]interface{}{
-		"public_ip":      req.PublicIP,
-		"host_id":        req.HostID,
-		"external_ports": req.ExternalPorts,
-		"internal_ports": req.InternalPorts,
-		"remark":         req.Remark,
+		"public_ip":          req.PublicIP,
+		"host_id":            req.HostID,
+		"external_ports":     req.ExternalPorts,
+		"external_protocols": req.ExternalProtocols,
+		"internal_ports":     req.InternalPorts,
+		"internal_protocols": req.InternalProtocols,
+		"remark":             req.Remark,
 	}
 	if req.Domain != "" {
 		updates["domain"] = req.Domain
@@ -270,12 +348,14 @@ func (s *PortMappingService) Delete(id uint, op Operator, requestID string) erro
 	NewAuditService().Record(op, "delete", "port_mapping", &id,
 		DetailDiff{Before: PortMappingRequest{
 			PublicIP: rec.PublicIP, HostID: rec.HostID, ExternalPorts: rec.ExternalPorts,
-			InternalPorts: rec.InternalPorts, Domain: rec.Domain, Remark: rec.Remark,
+			ExternalProtocols: rec.ExternalProtocols, InternalPorts: rec.InternalPorts,
+			InternalProtocols: rec.InternalProtocols, Domain: rec.Domain, Remark: rec.Remark,
 		}}, requestID)
 	return refreshHostIPMapped(hostID)
 }
 
-// BatchCreateText 映射批量添加：公网IP,内网IP,外网端口,内网端口,域名,备注
+// BatchCreateText 映射批量添加：公网IP,内网IP,外网端口,内网端口,域名,备注,外网协议,内网协议
+// 外网协议/内网协议为第 7/8 可选列，缺省 tcp（仅 tcp/udp）；
 // 运营商/出口位置从公网IP资源池展示，不在批量行填写
 func (s *PortMappingService) BatchCreateText(text string, op Operator, requestID string) (*BatchCreateResponse, error) {
 	resp := &BatchCreateResponse{}
@@ -297,9 +377,9 @@ func (s *PortMappingService) BatchCreateText(text string, op Operator, requestID
 			headerSkipped = true
 			continue
 		}
-		if len(row) > 6 {
+		if len(row) > 8 {
 			resp.Errors++
-			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 列数超出 6 列", lineNo))
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 列数超出 8 列", lineNo))
 			continue
 		}
 		if len(row) < 4 {
@@ -307,7 +387,7 @@ func (s *PortMappingService) BatchCreateText(text string, op Operator, requestID
 			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 至少需要4列(公网IP,内网IP,外网端口,内网端口)", lineNo))
 			continue
 		}
-		for len(row) < 6 {
+		for len(row) < 8 {
 			row = append(row, "")
 		}
 		privateIP := strings.TrimSpace(row[1])
@@ -318,12 +398,14 @@ func (s *PortMappingService) BatchCreateText(text string, op Operator, requestID
 			continue
 		}
 		req := PortMappingRequest{
-			PublicIP:      strings.TrimSpace(row[0]),
-			HostID:        host.ID,
-			ExternalPorts: strings.TrimSpace(row[2]),
-			InternalPorts: strings.TrimSpace(row[3]),
-			Domain:        strings.TrimSpace(row[4]),
-			Remark:        strings.TrimSpace(row[5]),
+			PublicIP:          strings.TrimSpace(row[0]),
+			HostID:            host.ID,
+			ExternalPorts:     strings.TrimSpace(row[2]),
+			InternalPorts:     strings.TrimSpace(row[3]),
+			Domain:            strings.TrimSpace(row[4]),
+			Remark:            strings.TrimSpace(row[5]),
+			ExternalProtocols: strings.TrimSpace(row[6]),
+			InternalProtocols: strings.TrimSpace(row[7]),
 		}
 		if _, err := s.Create(req, op, requestID); err != nil {
 			if strings.Contains(err.Error(), "已存在") {

@@ -20,15 +20,20 @@
 
 **认领规则**：一次只领 **1 条**优先级最高（`P0` > `P1` > `P2`）的任务；领用 = 把该条移到 `in_progress` 并填写负责字段（在写任何代码之前先改本文件）。
 
-**回顾锚点**：`上次回顾至 T-020`。`done` 表自该锚点起新增 ≥ 5 条时，须先执行 [AGENTS.md · 会话协议 E](../AGENTS.md#会话协议) 的周期回顾（按各任务「回写」字段定向核查文档↔代码符合度、补回填写漏，纯文档类任务跳过，偏差先报告人类再修），回顾完成并经人类确认后把锚点推进至该批最后一条 `done` ID。
+**回顾锚点**：`上次回顾至 T-052`。`done` 表自该锚点起新增 ≥ 5 条时，须先执行 [AGENTS.md · 会话协议 E](../AGENTS.md#会话协议) 的周期回顾（按各任务「回写」字段定向核查文档↔代码符合度、补回填写漏，纯文档类任务跳过，偏差先报告人类再修），回顾完成并经人类确认后把锚点推进至该批最后一条 `done` ID。
 
 ---
 
 ## in_progress
 
-无
-
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
+
+- [ ] **T-056** 零信任接入目标适配单主机多端口（范围/列表表达式） ｜ P1 ｜ 负责: — ｜ 备注: 2026-10-10 人类指定需求；A.0 确认门槛已通过——存储与 API 口径经人类确认：**子表端口列改表达式**（`zero_trust_targets.port` int → `ports` text 存 `1000-10005,22` 每主机一行；API `targets` 改 `{host_id, ports}` 并兼容旧 `port` 数字入参；xlsx 多组「带冒号开组、纯数字/范围续接前组」，旧文件兼容；批量列支持引号包裹列表）
+  - 内容：零信任申请资源单主机可配多端口，连续范围记为 `1000-10005`、不连续列表记为 `22,443,5432`（可混合）：录入/编辑/批量添加/「申请资源」列展示/xlsx 导入导出全链路适配；存储结构与 API `targets` 结构按人类确认的设计执行
+  - 定位：`backend/models/zero_trust_target.go`、`backend/models/zero_trust.go`；`backend/services/zero_trust_service.go`（`ZeroTrustTarget`/`normalizeTargetPairs`/`joinTargetPairs`/`loadZeroTrustTargetPairs`/`insertZeroTrustTargets`/`BatchCreateText`）；`backend/services/import_service.go`（接入目标解析）/`export_service.go`/`data_exchange.go`；`frontend/src/views/ZeroTrustLedger.vue`、`frontend/src/components/ZeroTrustBatchAddDialog.vue`、`frontend/src/components/HostFormDialog.vue`（主机详情关联）、`frontend/src/api/zero_trust.js`；`backend/migrations/`（新迁移 SQL）
+  - 验收标准：单主机可录入范围+列表混合端口表达式，各端口 1-65535 校验、非法表达式返回 `40001`；「申请资源」列展示 `主机名(ip:端口表达式)`；批量添加、xlsx 导入导出、按主机搜索、主机删除 `40901` 引用校验回归通过；迁移 SQL 随附且幂等可重跑；门禁全绿
+  - 回写：ARCHITECTURE（zero_trust_targets 数据模型）+ API.md（targets 结构/批量/接入目标列口径）+ CODE_INDEX + BUSINESS_LOGIC（xlsx 接入目标口径）+ PROJECT_STATUS 变更记录 + AGENTS 快照
+  - 分支：`feat/zero-trust-multi-port`
 
 - [ ] **T-053** `models/audit_log.go` NOT NULL 口径对齐 ｜ P2 ｜ 负责: — ｜ 备注: 2026-10-10 周期回顾发现（红线 9「SQL≡模型」）
   - 内容：`operator_id`/`operator_name`/`action`/`resource_type`/`request_id`/`created_at` 六字段补 `not null` gorm tag，与迁移 `20261010000001_create_audit_logs.sql` 的 NOT NULL 口径一致（goose 主路径无运行时影响，修的是 AutoMigrate 兜底会建可空列的漂移）；`resource_id`/`detail` 保持可空
@@ -52,6 +57,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-055 | 映射端口区分 TCP/UDP 协议并支持 A-B 连续范围 | 2026-10-10 | `-` | 验收：并列协议列缺省 tcp、范围展开后配对、唯一索引含外网协议列、判重含协议维度；xlsx/批量全链路；门禁全绿 |
 | T-008 | 数据导出报表（按筛选导出） | 2026-10-10 | `c71d422` | 验收：ExportCSV 复用列表筛选（applyHostFilter 共享），导出行数=列表 total 单测覆盖；前端传当前 filters；API.md 同步；门禁全绿 |
 | T-009 | 密码哈希升级 bcrypt | 2026-10-10 | `c27e306` | 验收：旧 `salt$hash` 用户登录成功后自动升级 bcrypt（单测覆盖）；bcrypt cost 10，`seedAdmin`/`resetpw` 同步新格式；**无需迁移 SQL**（`password_hash VARCHAR(256)` 兼容两种格式，平滑升级在登录时完成，技术选型推荐结论）；门禁全绿 |
 | T-011 | IP 探测去宿主机 ping 依赖 | 2026-10-10 | `dfd2ac7` | 验收：纯 Go ICMP（`x/net/icmp`，udp4 ping socket → ip4:icmp 原始 socket → TCP 22/3389 兜底，100ms 超时）替代 `exec ping`；颜色状态机单测覆盖 dead 分支 + alive 分支（环境无 ICMP socket 时跳过）；BUSINESS_LOGIC「探测方式」回写；门禁全绿 |

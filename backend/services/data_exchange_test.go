@@ -123,3 +123,64 @@ func TestZeroTrustXLSXRoundtrip(t *testing.T) {
 		t.Fatalf("二次导入后子表应仍为 2 行，实际 %d", n)
 	}
 }
+
+// TestPortMappingXLSXProtocolRoundtrip 端口映射协议列随 xlsx 往返：
+// 导出含外网/内网协议 → 空库回灌保留 → 二次导入按含协议自然键 skip（T-055）
+func TestPortMappingXLSXProtocolRoundtrip(t *testing.T) {
+	newTestDB(t)
+	hostID := makeHost(t, NewHostService(), "pm-rt", "10.67.2.1")
+	if err := database.DB.Create(&models.PublicIP{IP: "203.0.113.11", ISP: "联通", ExitLocation: "北京"}).Error; err != nil {
+		t.Fatalf("种子公网IP失败: %v", err)
+	}
+	if _, err := NewPortMappingService().Create(PortMappingRequest{
+		PublicIP: "203.0.113.11", HostID: hostID,
+		ExternalPorts: "53,1000-10005", InternalPorts: "5353,1000-10005",
+		ExternalProtocols: "udp,tcp", InternalProtocols: "udp,tcp",
+		Remark: "协议回灌",
+	}, testOp, NewRequestID()); err != nil {
+		t.Fatalf("种子映射失败: %v", err)
+	}
+
+	data, expErr := NewDataExchangeService().Export()
+	if expErr != nil {
+		t.Fatalf("导出失败: %v", expErr)
+	}
+
+	openTestDB(t, t.Name()+"_target")
+	importer := NewDataExchangeService()
+	report, impErr := importer.Import(data, testOp, NewRequestID())
+	if impErr != nil {
+		t.Fatalf("导入失败: %v", impErr)
+	}
+	if !report.Committed || len(report.Errors) != 0 {
+		t.Fatalf("导入被回滚或有行错误: %+v", report.Errors)
+	}
+	pmStat := report.stat("port_mappings")
+	if pmStat == nil || pmStat.Created != 1 || pmStat.Updated != 0 || pmStat.Skipped != 0 {
+		t.Fatalf("port_mappings 导入统计不符: %+v", pmStat)
+	}
+
+	var m models.PortMapping
+	if err := database.DB.First(&m).Error; err != nil {
+		t.Fatalf("目标库查映射失败: %v", err)
+	}
+	if m.ExternalPorts != "53,1000-10005" || m.InternalPorts != "5353,1000-10005" {
+		t.Fatalf("端口回灌不符: %q / %q", m.ExternalPorts, m.InternalPorts)
+	}
+	if m.ExternalProtocols != "udp,tcp" || m.InternalProtocols != "udp,tcp" {
+		t.Fatalf("协议回灌不符: %q / %q", m.ExternalProtocols, m.InternalProtocols)
+	}
+
+	// 二次导入：自然键含外网协议，内容一致 → skip
+	report2, err2 := importer.Import(data, testOp, NewRequestID())
+	if err2 != nil {
+		t.Fatalf("二次导入失败: %v", err2)
+	}
+	if !report2.Committed || len(report2.Errors) != 0 {
+		t.Fatalf("二次导入异常: committed=%v errors=%+v", report2.Committed, report2.Errors)
+	}
+	pmStat2 := report2.stat("port_mappings")
+	if pmStat2 == nil || pmStat2.Created != 0 || pmStat2.Updated != 0 || pmStat2.Skipped != 1 {
+		t.Fatalf("二次导入统计不符: %+v", pmStat2)
+	}
+}

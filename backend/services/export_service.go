@@ -177,7 +177,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 			hostIP = m.Host.PrivateIP
 		}
 		mappingRows = append(mappingRows, []interface{}{
-			m.PublicIP, hostIP, m.ExternalPorts, m.InternalPorts, m.Domain, m.Remark,
+			m.PublicIP, hostIP, m.ExternalPorts, m.InternalPorts, m.ExternalProtocols, m.InternalProtocols, m.Domain, m.Remark,
 		})
 	}
 	if err := writeSheetRows(f, "port_mappings", mappingRows); err != nil {
