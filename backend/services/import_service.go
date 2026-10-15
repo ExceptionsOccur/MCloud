@@ -744,6 +744,7 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 		}
 		key := accountName
 
+		applicant := c.get("申请人")
 		contact := c.get("联系方式")
 		publicIP := c.get("公网IP")
 		remark := c.get("备注")
@@ -799,6 +800,10 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 		if hasCur {
 			curPairs := pairsByID[cur.ID]
 			merged := unionTargetPairs(curPairs, normalized)
+			newApplicant := cur.Applicant
+			if newApplicant == "" {
+				newApplicant = applicant
+			}
 			newContact := cur.Contact
 			if newContact == "" {
 				newContact = contact
@@ -815,7 +820,7 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 			if newRemark == "" {
 				newRemark = remark
 			}
-			changed := cur.Contact != newContact || cur.PublicIP != newPublicIP ||
+			changed := cur.Applicant != newApplicant || cur.Contact != newContact || cur.PublicIP != newPublicIP ||
 				cur.SystemName != newSystem || cur.Remark != newRemark ||
 				!targetPairsEqual(curPairs, merged)
 			if !changed {
@@ -823,7 +828,7 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 				return
 			}
 			updates := map[string]interface{}{
-				"contact": newContact, "public_ip": newPublicIP,
+				"applicant": newApplicant, "contact": newContact, "public_ip": newPublicIP,
 				"system_name": newSystem, "remark": newRemark,
 			}
 			if err := tx.Model(&models.ZeroTrust{}).Where("id = ?", cur.ID).Updates(updates).Error; err != nil {
@@ -844,7 +849,7 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 		}
 		z := models.ZeroTrust{
 			ApplyUnit: applyUnit, AccountName: accountName, SystemName: systemName,
-			Contact: contact, PublicIP: publicIP, Remark: remark,
+			Applicant: applicant, Contact: contact, PublicIP: publicIP, Remark: remark,
 			ApplyTime: time.Now(),
 		}
 		if !applyTime.IsZero() {

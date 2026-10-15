@@ -147,7 +147,7 @@ func TestZeroTrustListSearchByHost(t *testing.T) {
 	makeHost(t, hs, "unique-beta-srv", "10.66.9.2")
 
 	if _, err := s.Create(ZeroTrustRequest{
-		ApplyUnit: "搜索单位", AccountName: "search-acct",
+		ApplyUnit: "搜索单位", AccountName: "search-acct", Applicant: "unique-applicant-x",
 		Targets: []ZeroTrustTarget{{HostID: linked, Ports: "22"}},
 	}, testOp, NewRequestID()); err != nil {
 		t.Fatalf("创建失败: %v", err)
@@ -157,11 +157,12 @@ func TestZeroTrustListSearchByHost(t *testing.T) {
 		keyword string
 		want    int
 	}{
-		{"unique-alpha-srv", 1}, // 引用主机名
-		{"10.66.9.1", 1},        // 引用主机内网IP
-		{"search-acct", 1},      // 申请方字段
-		{"unique-beta-srv", 0},  // 未被引用的主机名
-		{"10.66.9.2", 0},        // 未被引用的主机内网IP
+		{"unique-alpha-srv", 1},   // 引用主机名
+		{"10.66.9.1", 1},          // 引用主机内网IP
+		{"search-acct", 1},        // 账户名字段
+		{"unique-applicant-x", 1}, // 申请人字段（T-060）
+		{"unique-beta-srv", 0},    // 未被引用的主机名
+		{"10.66.9.2", 0},          // 未被引用的主机内网IP
 		{"no-such-keyword", 0},
 	} {
 		items, err := s.List(tc.keyword)
@@ -243,10 +244,10 @@ func TestZeroTrustBatchSemicolonGroups(t *testing.T) {
 	s := NewZeroTrustService()
 
 	text := strings.Join([]string{
-		`分号单位,sc-a,,"10.66.6.1,10.66.6.2","22,443;8080,1000-10005",系统A,,,`,
-		`分号单位,sc-b,,"10.66.6.1","22,443",系统B,,,`,
-		`分号单位,sc-c,,"10.66.6.1,10.66.6.2","22;443;8080",系统C,,,`,
-		`分号单位,sc-d,,10.66.6.1,443,系统D,,,`,
+		`分号单位,sc-a,,,"10.66.6.1,10.66.6.2","22,443;8080,1000-10005",系统A,,,`,
+		`分号单位,sc-b,,,"10.66.6.1","22,443",系统B,,,`,
+		`分号单位,sc-c,,,"10.66.6.1,10.66.6.2","22;443;8080",系统C,,,`,
+		`分号单位,sc-d,,,10.66.6.1,443,系统D,,,`,
 	}, "\n")
 	resp, err := s.BatchCreateText(text, testOp, NewRequestID())
 	if err != nil {
@@ -382,8 +383,8 @@ func TestZeroTrustBatchMergeByAccount(t *testing.T) {
 	s := NewZeroTrustService()
 
 	text := strings.Join([]string{
-		`批量单位,ba-merge,,"10.66.4.1",22,系统X,,,`,
-		`批量单位,ba-merge,,10.66.4.2,443,系统Y,,,`,
+		`批量单位,ba-merge,,,"10.66.4.1",22,系统X,,,`,
+		`批量单位,ba-merge,,,10.66.4.2,443,系统Y,,,`,
 	}, "\n")
 	resp, err := s.BatchCreateText(text, testOp, NewRequestID())
 	if err != nil {
@@ -423,12 +424,12 @@ func TestZeroTrustBatchSingleGroupBroadcast(t *testing.T) {
 	s := NewZeroTrustService()
 
 	text := strings.Join([]string{
-		`广播单位,bc-1,,"10.66.3.1,10.66.3.2",22,系统1,,,`,
-		`广播单位,bc-2,,"10.66.3.1,10.66.3.2","22,443;22,443",系统2,,,`,
-		`广播单位,bc-3,,"10.66.3.1,10.66.3.2",22;22,系统3,,,`,
-		`广播单位,bc-4,,"10.66.3.1,10.66.3.2",55;80,系统4,,,`,
-		`广播单位,bc-5,,"10.66.3.1,10.66.3.2","22;",系统5,,,`,
-		`广播单位,bc-6,,"10.66.3.1,10.66.3.2,10.66.3.3","22,443",系统6,,,`,
+		`广播单位,bc-1,,,"10.66.3.1,10.66.3.2",22,系统1,,,`,
+		`广播单位,bc-2,,,"10.66.3.1,10.66.3.2","22,443;22,443",系统2,,,`,
+		`广播单位,bc-3,,,"10.66.3.1,10.66.3.2",22;22,系统3,,,`,
+		`广播单位,bc-4,,,"10.66.3.1,10.66.3.2",55;80,系统4,,,`,
+		`广播单位,bc-5,,,"10.66.3.1,10.66.3.2","22;",系统5,,,`,
+		`广播单位,bc-6,,,"10.66.3.1,10.66.3.2,10.66.3.3","22,443",系统6,,,`,
 	}, "\n")
 	resp, err := s.BatchCreateText(text, testOp, NewRequestID())
 	if err != nil {
@@ -482,10 +483,10 @@ func TestZeroTrustBatchPortGroups(t *testing.T) {
 	s := NewZeroTrustService()
 
 	text := strings.Join([]string{
-		`批量单位,acct-a,,"10.66.7.1,10.66.7.2","""1000-10005,22"",8080",系统A,,,`,
-		`批量单位,acct-b,,10.66.7.1,443,系统B,,,`,
-		`批量单位,acct-c,,"10.66.7.1,10.66.7.2","55;80;90",系统C,,,`,
-		`批量单位,acct-d,,10.66.7.1,10005-1000,系统D,,,`,
+		`批量单位,acct-a,,,"10.66.7.1,10.66.7.2","""1000-10005,22"",8080",系统A,,,`,
+		`批量单位,acct-b,,,10.66.7.1,443,系统B,,,`,
+		`批量单位,acct-c,,,"10.66.7.1,10.66.7.2","55;80;90",系统C,,,`,
+		`批量单位,acct-d,,,10.66.7.1,10005-1000,系统D,,,`,
 	}, "\n")
 	resp, err := s.BatchCreateText(text, testOp, NewRequestID())
 	if err != nil {
@@ -520,5 +521,104 @@ func TestZeroTrustBatchPortGroups(t *testing.T) {
 	}
 	if _, ok := byAccount["acct-d"]; ok {
 		t.Fatal("acct-d 非法表达式不应入库")
+	}
+}
+
+// TestZeroTrustApplicant T-060「申请人」字段与账户名区分：
+// Create/Update 独立存储并回显、账户名合并时空字段补录/非空保留、批量第 3 列解析
+func TestZeroTrustApplicant(t *testing.T) {
+	newTestDB(t)
+	s := NewZeroTrustService()
+	hostA := makeHost(t, NewHostService(), "ap-a", "10.66.2.1")
+
+	// Create：申请人独立于账户名
+	id, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "申请人单位", AccountName: "ap-acct", Applicant: "张三",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
+	}, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("创建失败: %v", err)
+	}
+	var rec models.ZeroTrust
+	err = database.DB.First(&rec, id).Error
+	if err != nil {
+		t.Fatalf("查记录失败: %v", err)
+	}
+	if rec.AccountName != "ap-acct" || rec.Applicant != "张三" {
+		t.Fatalf("账户名/申请人应独立存储: %+v", rec)
+	}
+
+	// 账户名合并：已有申请人非空 → 新值丢弃
+	id2, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "申请人单位", AccountName: "ap-acct", Applicant: "李四",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "443"}},
+	}, testOp, NewRequestID())
+	if err != nil || id2 != id {
+		t.Fatalf("合并失败: id=%d err=%v", id2, err)
+	}
+	err = database.DB.First(&rec, id).Error
+	if err != nil {
+		t.Fatalf("查记录失败: %v", err)
+	}
+	if rec.Applicant != "张三" {
+		t.Fatalf("已有申请人非空应保留，实际 %q", rec.Applicant)
+	}
+
+	// 账户名合并：已有申请人空 → 新值补录
+	id3, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "申请人单位", AccountName: "ap-acct2", Applicant: "",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
+	}, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("创建失败: %v", err)
+	}
+	_, err = s.Create(ZeroTrustRequest{
+		ApplyUnit: "申请人单位", AccountName: "ap-acct2", Applicant: "王五",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "80"}},
+	}, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("合并补录失败: %v", err)
+	}
+	var rec2 models.ZeroTrust
+	err = database.DB.First(&rec2, id3).Error
+	if err != nil {
+		t.Fatalf("查记录失败: %v", err)
+	}
+	if rec2.Applicant != "王五" {
+		t.Fatalf("空字段应补录申请人，实际 %q", rec2.Applicant)
+	}
+
+	// Update：申请人与账户名独立更新
+	err = s.Update(id, ZeroTrustRequest{
+		ApplyUnit: "申请人单位", AccountName: "ap-acct", Applicant: "赵六",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
+	}, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("更新失败: %v", err)
+	}
+	err = database.DB.First(&rec, id).Error
+	if err != nil {
+		t.Fatalf("查记录失败: %v", err)
+	}
+	if rec.Applicant != "赵六" || rec.AccountName != "ap-acct" {
+		t.Fatalf("更新后字段不符: %+v", rec)
+	}
+
+	// 批量：第 3 列为申请人
+	makeHost(t, NewHostService(), "ap-b", "10.66.2.2")
+	resp, err := s.BatchCreateText(`批量申请人单位,bp-acct,批量张三,138,10.66.2.2,8080,系统,,,`, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("批量添加失败: %v", err)
+	}
+	if resp.Success != 1 || resp.Errors != 0 {
+		t.Fatalf("批量统计不符: %+v：%+v", resp, resp.LineErrors)
+	}
+	var bp models.ZeroTrust
+	err = database.DB.Where("account_name = ?", "bp-acct").First(&bp).Error
+	if err != nil {
+		t.Fatalf("查批量记录失败: %v", err)
+	}
+	if bp.Applicant != "批量张三" || bp.Contact != "138" {
+		t.Fatalf("批量申请人/联系方式列不符: %+v", bp)
 	}
 }

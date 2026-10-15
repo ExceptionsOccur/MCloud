@@ -51,7 +51,7 @@
       <div class="toolbar">
         <el-input
           v-model="keyword"
-          placeholder="搜索申请单位 / 账户名 / 联系方式 / 系统名称 / 主机 / 公网IP / 出口位置 / 备注"
+          placeholder="搜索申请单位 / 账户名 / 申请人 / 联系方式 / 系统名称 / 主机 / 公网IP / 出口位置 / 备注"
           clearable
           style="width: 320px"
           @keyup.enter="loadList"
@@ -104,6 +104,16 @@
           min-width="120"
           show-overflow-tooltip
         />
+        <el-table-column
+          prop="applicant"
+          label="申请人"
+          min-width="100"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            {{ row.applicant || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column
           label="申请人联系方式"
           min-width="140"
@@ -244,6 +254,16 @@
           <el-input
             v-model="form.account_name"
             placeholder="请输入账户名"
+            maxlength="64"
+          />
+        </el-form-item>
+        <el-form-item
+          label="申请人"
+          prop="applicant"
+        >
+          <el-input
+            v-model="form.applicant"
+            placeholder="请输入申请人（选填）"
             maxlength="64"
           />
         </el-form-item>
@@ -421,6 +441,7 @@ const publicIPsLoading = ref(false)
 const form = reactive({
   apply_unit: '',
   account_name: '',
+  applicant: '',
   contact: '',
   targets: [{ host_id: null, ports: '22' }],
   system_name: '',
@@ -517,6 +538,7 @@ function openDialog(row) {
   editId.value = row?.id || null
   form.apply_unit = row?.apply_unit || ''
   form.account_name = row?.account_name || ''
+  form.applicant = row?.applicant || ''
   form.contact = row?.contact || ''
   form.targets = (row?.targets || []).map(t => ({ host_id: t.host_id, ports: t.ports || '' }))
   if (!form.targets.length) form.targets = [{ host_id: null, ports: '22' }]
@@ -549,6 +571,7 @@ async function handleSubmit() {
     const payload = {
       apply_unit: form.apply_unit.trim(),
       account_name: form.account_name.trim(),
+      applicant: form.applicant.trim(),
       contact: form.contact.trim(),
       targets: form.targets.map(t => ({ host_id: t.host_id, ports: String(t.ports).trim() })),
       system_name: form.system_name.trim(),

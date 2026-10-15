@@ -31,6 +31,7 @@ type ZeroTrustTarget struct {
 type ZeroTrustRequest struct {
 	ApplyUnit   string              `json:"apply_unit" binding:"required"`
 	AccountName string              `json:"account_name" binding:"required"`
+	Applicant   string              `json:"applicant"`
 	Contact     string              `json:"contact"`
 	PublicIP    string              `json:"public_ip"`
 	Targets     []ZeroTrustTarget   `json:"targets" binding:"required"`
@@ -224,6 +225,7 @@ func loadExitLocations(ips []string) (map[string]string, error) {
 func normalizeZeroTrust(req ZeroTrustRequest) (ZeroTrustRequest, []ZeroTrustTarget, error) {
 	req.ApplyUnit = strings.TrimSpace(req.ApplyUnit)
 	req.AccountName = strings.TrimSpace(req.AccountName)
+	req.Applicant = strings.TrimSpace(req.Applicant)
 	req.Contact = strings.TrimSpace(req.Contact)
 	req.PublicIP = strings.TrimSpace(req.PublicIP)
 	req.SystemName = strings.TrimSpace(req.SystemName)
@@ -250,8 +252,8 @@ func (s *ZeroTrustService) List(keyword string) ([]ZeroTrustItem, error) {
 	if keyword = strings.TrimSpace(keyword); keyword != "" {
 		like := "%" + keyword + "%"
 		db = db.Where(
-			"zero_trusts.apply_unit ILIKE ? OR zero_trusts.account_name ILIKE ? OR zero_trusts.contact ILIKE ? OR zero_trusts.system_name ILIKE ? OR zero_trusts.remark ILIKE ? OR zero_trusts.public_ip ILIKE ? OR EXISTS (SELECT 1 FROM public_ips pi WHERE pi.ip = zero_trusts.public_ip AND (pi.exit_location ILIKE ? OR pi.isp ILIKE ?)) OR EXISTS (SELECT 1 FROM zero_trust_targets ztt JOIN hosts h ON h.id = ztt.host_id WHERE ztt.zero_trust_id = zero_trusts.id AND (h.name ILIKE ? OR h.private_ip ILIKE ?))",
-			like, like, like, like, like, like, like, like, like, like,
+			"zero_trusts.apply_unit ILIKE ? OR zero_trusts.account_name ILIKE ? OR zero_trusts.applicant ILIKE ? OR zero_trusts.contact ILIKE ? OR zero_trusts.system_name ILIKE ? OR zero_trusts.remark ILIKE ? OR zero_trusts.public_ip ILIKE ? OR EXISTS (SELECT 1 FROM public_ips pi WHERE pi.ip = zero_trusts.public_ip AND (pi.exit_location ILIKE ? OR pi.isp ILIKE ?)) OR EXISTS (SELECT 1 FROM zero_trust_targets ztt JOIN hosts h ON h.id = ztt.host_id WHERE ztt.zero_trust_id = zero_trusts.id AND (h.name ILIKE ? OR h.private_ip ILIKE ?))",
+			like, like, like, like, like, like, like, like, like, like, like,
 		)
 	}
 
@@ -360,6 +362,7 @@ func mergeZeroTrustInto(dst *models.ZeroTrust, req ZeroTrustRequest, newPairs []
 	before := map[string]interface{}{
 		"apply_unit":   dst.ApplyUnit,
 		"account_name": dst.AccountName,
+		"applicant":    dst.Applicant,
 		"contact":      dst.Contact,
 		"public_ip":    dst.PublicIP,
 		"targets":      joinTargetPairs(curPairs[dst.ID]),
@@ -377,6 +380,10 @@ func mergeZeroTrustInto(dst *models.ZeroTrust, req ZeroTrustRequest, newPairs []
 
 	mergedPairs := unionTargetPairs(curPairs[dst.ID], newPairs)
 	changed := false
+	if dst.Applicant == "" && req.Applicant != "" {
+		dst.Applicant = req.Applicant
+		changed = true
+	}
 	if dst.Contact == "" && req.Contact != "" {
 		dst.Contact = req.Contact
 		changed = true
@@ -416,6 +423,7 @@ func mergeZeroTrustInto(dst *models.ZeroTrust, req ZeroTrustRequest, newPairs []
 	after := map[string]interface{}{
 		"apply_unit":   dst.ApplyUnit,
 		"account_name": dst.AccountName,
+		"applicant":    dst.Applicant,
 		"contact":      dst.Contact,
 		"public_ip":    dst.PublicIP,
 		"targets":      joinTargetPairs(mergedPairs),
@@ -451,6 +459,7 @@ func (s *ZeroTrustService) Create(req ZeroTrustRequest, op Operator, requestID s
 	record := models.ZeroTrust{
 		ApplyUnit:   req.ApplyUnit,
 		AccountName: req.AccountName,
+		Applicant:   req.Applicant,
 		Contact:     req.Contact,
 		PublicIP:    req.PublicIP,
 		SystemName:  req.SystemName,
@@ -497,6 +506,7 @@ func (s *ZeroTrustService) Update(id uint, req ZeroTrustRequest, op Operator, re
 	before := map[string]interface{}{
 		"apply_unit":   record.ApplyUnit,
 		"account_name": record.AccountName,
+		"applicant":    record.Applicant,
 		"contact":      record.Contact,
 		"public_ip":    record.PublicIP,
 		"targets":      joinTargetPairs(curPairs[record.ID]),
@@ -505,6 +515,7 @@ func (s *ZeroTrustService) Update(id uint, req ZeroTrustRequest, op Operator, re
 	}
 	record.ApplyUnit = req.ApplyUnit
 	record.AccountName = req.AccountName
+	record.Applicant = req.Applicant
 	record.Contact = req.Contact
 	record.PublicIP = req.PublicIP
 	record.SystemName = req.SystemName
@@ -553,8 +564,8 @@ func (s *ZeroTrustService) Delete(id uint, op Operator, requestID string) error 
 	}
 	NewAuditService().Record(op, "delete", "zero_trust", &id,
 		DetailDiff{Before: map[string]interface{}{
-			"apply_unit": record.ApplyUnit, "account_name": record.AccountName, "contact": record.Contact,
-			"public_ip": record.PublicIP, "targets": joinTargetPairs(curPairs[record.ID]),
+			"apply_unit": record.ApplyUnit, "account_name": record.AccountName, "applicant": record.Applicant,
+			"contact": record.Contact, "public_ip": record.PublicIP, "targets": joinTargetPairs(curPairs[record.ID]),
 			"system_name": record.SystemName, "remark": record.Remark,
 		}}, requestID)
 	return nil
@@ -596,10 +607,11 @@ func ZeroTrustsByHost(hostID uint) ([]models.ZeroTrust, error) {
 	return records, nil
 }
 
-// BatchCreateText 零信任批量添加：列顺序 申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注[,公网IP]
+// BatchCreateText 零信任批量添加：列顺序 申请单位,账户名,申请人,联系方式,内网IP,申请端口,系统名称,申请时间,备注[,公网IP]
+// （T-060 起第3列新增申请人，联系方式后移至第4列；旧 9 列文件因申请人列缺失会被视为联系方式→需注意，故按 10 列口径）
 // 内网IP与申请端口两列数量必须一致、按位置配对；申请端口列含 `;` 时按 `;` 分组（T-058，多IP各自多端口），
 // 无 `;` 且仅 1 个端口组时广播到全部 IP（T-059，多IP相同端口）；单IP+整列逗号端口视为该主机多端口；
-// 公网IP第9列选填、须在资源池；主机按内网IP定位，不存在则该行失败；
+// 公网IP第10列选填、须在资源池；主机按内网IP定位，不存在则该行失败；
 // 合法行全部插入；同账户名行合并进已有记录（T-058）
 func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID string) (*BatchCreateResponse, error) {
 	resp := &BatchCreateResponse{}
@@ -624,21 +636,21 @@ func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID s
 			continue
 		}
 
-		if len(row) > 9 {
+		if len(row) > 10 {
 			resp.Errors++
-			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 列数超出 9 列", lineNo))
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 列数超出 10 列", lineNo))
 			continue
 		}
-		if len(row) < 4 {
+		if len(row) < 5 {
 			resp.Errors++
-			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 至少需要4列(申请单位,账户名,联系方式,内网IP)", lineNo))
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 至少需要5列(申请单位,账户名,申请人,联系方式,内网IP)", lineNo))
 			continue
 		}
-		for len(row) < 9 {
+		for len(row) < 10 {
 			row = append(row, "")
 		}
 
-		ips, missing := lookupZeroTrustHostIDs(row[3])
+		ips, missing := lookupZeroTrustHostIDs(row[4])
 		if len(missing) > 0 {
 			resp.Errors++
 			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 内网主机不存在(%s)", lineNo, strings.Join(missing, ",")))
@@ -650,18 +662,18 @@ func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID s
 			continue
 		}
 
-		groups, err := splitPortGroups(row[4])
+		groups, err := splitPortGroups(row[5])
 		if err != nil {
 			resp.Errors++
 			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: %v", lineNo, err))
 			continue
 		}
 		// T-058：单IP+整列逗号端口（无 `;` 分组）直接视为该主机多端口表达式，无需双层引号
-		if len(ips) == 1 && len(groups) > 1 && !strings.Contains(row[4], ";") {
+		if len(ips) == 1 && len(groups) > 1 && !strings.Contains(row[5], ";") {
 			groups = []string{strings.Join(groups, ",")}
 		}
 		// T-059：无 `;` 且仅 1 个端口组 → 广播到全部 IP（多IP相同端口；此前报数不一致）
-		if len(groups) == 1 && len(ips) > 1 && !strings.Contains(row[4], ";") {
+		if len(groups) == 1 && len(ips) > 1 && !strings.Contains(row[5], ";") {
 			broadcast := make([]string, len(ips))
 			for i := range ips {
 				broadcast[i] = groups[0]
@@ -682,13 +694,14 @@ func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID s
 		req := ZeroTrustRequest{
 			ApplyUnit:   strings.TrimSpace(row[0]),
 			AccountName: strings.TrimSpace(row[1]),
-			Contact:     strings.TrimSpace(row[2]),
-			PublicIP:    strings.TrimSpace(row[8]),
+			Applicant:   strings.TrimSpace(row[2]),
+			Contact:     strings.TrimSpace(row[3]),
+			PublicIP:    strings.TrimSpace(row[9]),
 			Targets:     targets,
-			SystemName:  strings.TrimSpace(row[5]),
-			Remark:      strings.TrimSpace(row[7]),
+			SystemName:  strings.TrimSpace(row[6]),
+			Remark:      strings.TrimSpace(row[8]),
 		}
-		if t := strings.TrimSpace(row[6]); t != "" {
+		if t := strings.TrimSpace(row[7]); t != "" {
 			parsed, err := utils.ParseFlexibleTime(t)
 			if err != nil {
 				resp.Errors++

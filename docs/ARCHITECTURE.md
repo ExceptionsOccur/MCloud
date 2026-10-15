@@ -325,6 +325,7 @@ go/
 | ID | `id` | BIGSERIAL | PRIMARY KEY |
 | 申请单位 | `apply_unit` | VARCHAR(128) | NOT NULL |
 | 账户名 | `account_name` | VARCHAR(64) | NOT NULL |
+| 申请人 | `applicant` | VARCHAR(64) | 选填（T-060，与账户名区分） |
 | 申请人联系方式 | `contact` | VARCHAR(64) | |
 | 公网IP入口 | `public_ip` | VARCHAR(45) | 选填，须在 `public_ips` 资源池；接入地区读时带出 |
 | 系统名称 | `system_name` | VARCHAR(128) | 选填 |

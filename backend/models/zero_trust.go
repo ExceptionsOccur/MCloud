@@ -8,6 +8,7 @@ type ZeroTrust struct {
 	ID          uint      `json:"id" gorm:"primaryKey"`
 	ApplyUnit   string    `json:"apply_unit" gorm:"type:varchar(128);not null"`
 	AccountName string    `json:"account_name" gorm:"type:varchar(64);not null"`
+	Applicant   string    `json:"applicant" gorm:"type:varchar(64)"`
 	Contact     string    `json:"contact" gorm:"type:varchar(64)"`
 	PublicIP    string    `json:"public_ip" gorm:"type:varchar(45)"`
 	Targets     string    `json:"targets" gorm:"-"`

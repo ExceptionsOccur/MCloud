@@ -6,7 +6,7 @@
     :close-on-click-modal="false"
   >
     <div class="hint">
-      <p>每行一条记录，字段用逗号分隔，列顺序如下（至少填写前 4 列）：</p>
+      <p>每行一条记录，字段用逗号分隔，列顺序如下（至少填写前 5 列）：</p>
       <p class="columns">
         {{ columnOrder }}
       </p>
@@ -16,10 +16,10 @@
       v-model="textInput"
       type="textarea"
       :rows="12"
-      placeholder="申请单位,账户名,联系方式,内网IP,申请端口,系统名称,申请时间,备注,公网IP
-某某研究院,zhangsan,13800000000,192.168.1.10,22,统一门户,2026-10-08T10:00:00,临时开通,203.0.113.10
-某某研究院,lisi,13900000000,&quot;192.168.1.11,192.168.1.12&quot;,&quot;3389,8080&quot;,运维通道,,,
-某某研究院,wangwu,13700000000,&quot;192.168.1.13,192.168.1.14&quot;,&quot;22,443;8080,1000-10005&quot;,多端口组,,,"
+      placeholder="申请单位,账户名,申请人,联系方式,内网IP,申请端口,系统名称,申请时间,备注,公网IP
+某某研究院,zhangsan,张三,13800000000,192.168.1.10,22,统一门户,2026-10-08T10:00:00,临时开通,203.0.113.10
+某某研究院,lisi,李四,13900000000,&quot;192.168.1.11,192.168.1.12&quot;,&quot;3389,8080&quot;,运维通道,,,
+某某研究院,wangwu,王五,13700000000,&quot;192.168.1.13,192.168.1.14&quot;,&quot;22,443;8080,1000-10005&quot;,多端口组,,,"
     />
     <template #footer>
       <el-button @click="visible = false">
@@ -42,7 +42,7 @@ import { batchCreateZeroTrustsText } from '../api/zero_trust'
 import { ElMessage } from 'element-plus'
 
 const columnOrder = [
-  '申请单位', '账户名', '联系方式', '内网IP', '申请端口',
+  '申请单位', '账户名', '申请人', '联系方式', '内网IP', '申请端口',
   '系统名称', '申请时间', '备注', '公网IP'
 ].join(' | ')
 

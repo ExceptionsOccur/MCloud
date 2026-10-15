@@ -161,7 +161,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 			parts = append(parts, fmt.Sprintf("%s:%s", ip, p.Ports))
 		}
 		ztRows = append(ztRows, []interface{}{
-			z.ApplyUnit, z.AccountName, z.Contact, z.PublicIP,
+			z.ApplyUnit, z.AccountName, z.Applicant, z.Contact, z.PublicIP,
 			strings.Join(parts, ","), z.SystemName,
 			z.ApplyTime.Format(utils.DateTimeLayout), z.Remark,
 		})
