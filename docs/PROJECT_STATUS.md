@@ -38,6 +38,7 @@
 
 ### 2026-10-16
 
+- `5f12eed` `docs:` **T-071** AI 接入文档回写与门禁：API.md/CODE_INDEX/ARCHITECTURE/BUSINESS_LOGIC/README/PROJECT_STATUS/AGENTS 快照全量对齐（表数 12、页面 11），check_docs 0 errors，三端门禁全绿
 - `a6b2c72` `feat:` **T-070** 前端 AI 申请入账页：新增 `/ai-import`（el-steps 上传→解析→确认→完成；docx/xlsx 拖拽上传带上传进度；按识别类型动态渲染可编辑表单含 warnings 高亮；确认后调现有 Create 入账并归档源文件）；11 页齿轮菜单加入口；lint:check + build 全绿
 - `ae983cd` `feat:` **T-069** 前端 AI 接入设置页：新增 `/ai-settings`（配置 API 地址/API Key（脱敏回显、留空保留）/模型名）+ `api/ai.js`；9 页齿轮菜单加「AI 接入设置」入口与路由；lint:check + build 全绿
 - `12881ef` `feat:` **T-068** AI 申请表单解析与提取：`POST /api/ai/extract` 上传 docx/xlsx（标准库/excelize 转文本）调用大模型识别类型（主机/零信任申请）并提取字段返回预览（不写库）；`POST /api/ai/archive` 将已入账源文件归档至 `AI_UPLOAD_DIR` 下 `archived/<日期>/`（extract 先暂存 `incoming/`）；防路径穿越；门禁全绿

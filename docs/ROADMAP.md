@@ -28,8 +28,6 @@
 
 ## todo（按优先级；同级按依赖序，见各条「依赖」字段）
 
-- [ ] **T-071** AI 接入文档回写与门禁：按责任矩阵完成 API.md/CODE_INDEX/ARCHITECTURE/BUSINESS_LOGIC/README/PROJECT_STATUS/AGENTS 快照回写 + `bash scripts/check_docs.sh` 全绿。验收标准：check_docs 0 errors；ROADMAP done 表 T-067~T-070 提交号已回填；AGENTS 快照全量对齐（表数 12、todo 清空）。依赖 T-067~T-070。优先级 P1。回写：全部同步文档。分支 `docs/ai-integration`。
-
 ## blocked
 
 （无。填写格式：`- [ ] **T-xxx** … ｜ blocked 原因：具体条件` —— 泛泛的"困难"不算 blocked）
@@ -45,6 +43,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-071 | AI 接入文档回写与门禁 | 2026-10-16 | `5f12eed` | 验收：check_docs 0 errors；ROADMAP done 表 T-067~T-070 提交号已回填；AGENTS 快照全量对齐（表数 12、页面 11、todo 清空）；三端门禁（build/lint/test/lint:check/build）全绿 |
 | T-070 | 前端 AI 申请入账页 | 2026-10-16 | `a6b2c72` | 验收：`/ai-import` 上传 docx/xlsx 带真实上传进度；按识别类型动态渲染可编辑表单（主机/零信任）含 warnings 高亮；确认复用现有 Create 入账（零信任接入目标内网IP→host_id）、成功后归档源文件；11 页齿轮菜单入口；页面数 10→11；lint:check + build 全绿 |
 | T-069 | 前端 AI 接入设置页 | 2026-10-16 | `ae983cd` | 验收：`/ai-settings` 可读写、Key 回显脱敏（`****1234`）且留空保留；9 页齿轮菜单均有「AI 接入设置」入口；页面数 9→10；lint:check + build 全绿 |
 | T-068 | 后端 AI 表单解析、提取与文件暂存归档 | 2026-10-16 | `12881ef` | 验收：docx 段落/表格、xlsx 多 sheet 转文本单测过；extract 编排（fake LLM）识别 host_apply/zero_trust_apply 并归一化字段、unknown 加告警；incoming 暂存/archived 归档/token 失效/路径穿越拒绝单测过；未配置 AI/非法类型/解析失败返回 40001（dev 实测）；门禁全绿 |
