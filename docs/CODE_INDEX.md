@@ -160,6 +160,7 @@
 | `api/port_mapping.js` | `/port-mappings` |
 | `api/public_ip.js` | `/public-ips` |
 | `api/audit.js` | `/audit-logs/resource`（按资源查变更记录，T-066） |
+| `api/ai.js` | `/ai/settings`（读写，T-069）、`/ai/extract`、`/ai/archive`（T-070 用） |
 
 ### 状态管理（stores/）
 
@@ -194,6 +195,7 @@
 | `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 「申请资源」列按主机聚合、每行最多显示 3 个主机 tag（超出显示「+N 台」），点击主机 tag 用可滚动 popover 查看该主机端口/协议明细（T-065，避免行高随目标数膨胀、气泡限高可滚动、popper auto 定位+flip 自动换方向防出界）+ 配对行表单（主机/端口/协议，主机下拉分页拉全量）+ 接入地区多选下拉（候选取公网IP资源池去重，列表标签展示）+ 批量添加 + 行「复制」新增（账户名置空）；列表含账户名/账号姓名/账户联系方式，申请人列位于申请时间之后；点击数据行打开只读详情弹窗（含「变更记录」时间线，T-066）） |
 | `views/MappingLedger.vue` | `/mapping-ledger` | 端口映射台账（多端口标签 + 批量添加 + 行「复制」新增（公网IP/主机/端口置空）；点击数据行打开只读详情弹窗（含「变更记录」时间线，T-066）） |
 | `views/DataBackup.vue` | `/data-backup` | 数据备份（8 表 xlsx 导出/导入 + 导入报告展示，设置菜单入口） |
+| `views/AISettings.vue` | `/ai-settings` | AI 接入设置（API 地址/API Key 脱敏/模型名，设置菜单入口，T-069） |
 
 ### 组件（components/）
 
@@ -241,7 +243,7 @@
 | **登录/认证** | `controllers/auth.go` `services/auth_service.go` `middleware/jwt.go` | `views/Login.vue` `stores/auth.js` `api/auth.js` |
 | **顶部导航** | —（纯前端路由） | `components/AppNav.vue`（7 Tab 10 页共用，T-019） |
 | **审计日志** | `controllers/audit_log.go` `services/audit_service.go` `models/audit_log.go` `routes/audit.go` | `api/audit.js`（`/audit-logs/resource`）+ `components/AuditTimeline.vue`（资产详情「变更记录」时间线，T-066） |
-| **AI 接入配置** | `controllers/ai.go`（`GetSettings`/`SaveSettings`）`services/ai_setting_service.go`（脱敏/保留原值）`models/ai_setting.go` `routes/ai.go` `utils/crypto.go`（AES-GCM） | `api/ai.js`、（设置页 T-069 待建） |
+| **AI 接入配置** | `controllers/ai.go`（`GetSettings`/`SaveSettings`）`services/ai_setting_service.go`（脱敏/保留原值）`models/ai_setting.go` `routes/ai.go` `utils/crypto.go`（AES-GCM） | `views/AISettings.vue`（`/ai-settings`，T-069）`api/ai.js` |
 | **AI 申请表单提取与归档** | `controllers/ai.go`（`Extract`/`Archive`）`services/ai_extract_service.go`（编排）`services/ai_doc_parser.go`（docx/xlsx 转文本）`services/ai_schema.go`（类型/字段 schema）`services/ai_llm_client.go`（大模型调用）`services/ai_file_store.go`（incoming/archived 落盘） | （入账页 T-070 待建） |
 | **主机 CRUD** | `controllers/host.go` `services/host_service.go` | `views/HostManagement.vue` `components/HostTable.vue` `components/HostFormDialog.vue` `stores/host.js` `composables/usePagedTable.js` |
 | **主机筛选/搜索** | `services/host_service.go` → `Filter` | `components/SearchToolbar.vue` |

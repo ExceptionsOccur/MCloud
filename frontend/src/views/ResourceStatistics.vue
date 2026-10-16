@@ -35,6 +35,12 @@
               <el-dropdown-item command="dataBackup">
                 数据备份
               </el-dropdown-item>
+              <el-dropdown-item
+                command="aiSettings"
+                :disabled="$route.path === '/ai-settings'"
+              >
+                AI 接入设置
+              </el-dropdown-item>
               <el-dropdown-item command="changePassword">
                 修改密码
               </el-dropdown-item>
@@ -205,6 +211,8 @@ function handleCommand(command) {
     cloudResourceDialog.value?.open()
   } else if (command === 'personnel') {
     router.push('/personnel')
+  } else if (command === 'aiSettings') {
+    router.push('/ai-settings')
   } else if (command === 'publicIP') {
     router.push('/public-ip')
   }

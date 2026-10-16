@@ -11,6 +11,7 @@ import PublicIPManagement from '../views/PublicIPManagement.vue'
 import ZeroTrustLedger from '../views/ZeroTrustLedger.vue'
 import MappingLedger from '../views/MappingLedger.vue'
 import DataBackup from '../views/DataBackup.vue'
+import AISettings from '../views/AISettings.vue'
 
 const routes = [
   {
@@ -71,6 +72,12 @@ const routes = [
     path: '/data-backup',
     name: 'DataBackup',
     component: DataBackup,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/ai-settings',
+    name: 'AISettings',
+    component: AISettings,
     meta: { requiresAuth: true }
   }
 ]
