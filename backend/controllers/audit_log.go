@@ -31,3 +31,20 @@ func (ctrl *AuditLogController) List(c *gin.Context) {
 
 	Success(c, resp)
 }
+
+// ResourceHistory 查询某资产的变更记录（resource_type + resource_id），供资产详情时间线使用。
+func (ctrl *AuditLogController) ResourceHistory(c *gin.Context) {
+	var req services.ResourceHistoryRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		Error(c, 40001, "参数校验失败: "+err.Error())
+		return
+	}
+
+	items, err := ctrl.service.ListByResource(req)
+	if err != nil {
+		Error(c, 40001, "查询失败: "+err.Error())
+		return
+	}
+
+	Success(c, items)
+}

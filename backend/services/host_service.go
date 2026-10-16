@@ -281,7 +281,8 @@ func (s *HostService) Create(req CreateHostRequest, op Operator, requestID strin
 	}
 
 	tx.Commit()
-	NewAuditService().Record(op, "create", "host", &host.ID, DetailDiff{After: req}, requestID)
+	NewAuditService().Record(op, "create", "host", &host.ID,
+		DetailDiff{After: hostSnapshot(host, &app)}, requestID)
 	return host.ID, nil
 }
 
@@ -321,6 +322,14 @@ func (s *HostService) Update(id uint, req UpdateHostRequest, op Operator, reques
 	if err := database.DB.First(&host, id).Error; err != nil {
 		return err
 	}
+
+	// 变更前快照（含申请信息），供审计逐字段对比
+	var beforeApp models.HostApplication
+	beforeAppErr := database.DB.Where("host_id = ?", id).First(&beforeApp).Error
+	if beforeAppErr != nil {
+		beforeApp = models.HostApplication{}
+	}
+	before := hostSnapshot(host, &beforeApp)
 
 	// Check unique private_ip if changed
 	if req.PrivateIP != "" && req.PrivateIP != host.PrivateIP {
@@ -444,7 +453,18 @@ func (s *HostService) Update(id uint, req UpdateHostRequest, op Operator, reques
 	}
 
 	tx.Commit()
-	NewAuditService().Record(op, "update", "host", &id, DetailDiff{After: req}, requestID)
+
+	var after models.Host
+	if err := database.DB.First(&after, id).Error; err != nil {
+		after = host
+	}
+	var afterApp models.HostApplication
+	afterAppErr := database.DB.Where("host_id = ?", id).First(&afterApp).Error
+	if afterAppErr != nil {
+		afterApp = models.HostApplication{}
+	}
+	NewAuditService().Record(op, "update", "host", &id,
+		DetailDiff{Before: before, After: hostSnapshot(after, &afterApp)}, requestID)
 	return nil
 }
 
@@ -470,13 +490,16 @@ func (s *HostService) Delete(id uint, op Operator, requestID string) error {
 		return fmt.Errorf("%w，%d 条映射台账记录正在使用", ErrHostReferencedByMapping, mappingRef)
 	}
 
+	var delApp models.HostApplication
+	if err := database.DB.Where("host_id = ?", id).First(&delApp).Error; err != nil {
+		delApp = models.HostApplication{}
+	}
+
 	tx := database.DB.Begin()
 	tx.Where("host_id = ?", id).Delete(&models.HostApplication{})
 	tx.Delete(&host)
 	tx.Commit()
 	NewAuditService().Record(op, "delete", "host", &id,
-		DetailDiff{Before: map[string]interface{}{
-			"name": host.Name, "private_ip": host.PrivateIP, "region": host.Region,
-		}}, requestID)
+		DetailDiff{Before: hostSnapshot(host, &delApp)}, requestID)
 	return nil
 }

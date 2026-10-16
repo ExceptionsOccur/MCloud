@@ -28,7 +28,7 @@
 | Goose 迁移执行器 | ✅ 完成 | `T-016` 启动时 goose 执行 `migrations/*.sql`（embed），AutoMigrate 兜底；存量 dev 库首跑+幂等已实测 |
 | 公网 IP 资源录入 | ✅ 完成 | `T-031` `public_ips` 资源池（IP/运营商/备注），设置菜单 + `/public-ip` 独立页 |
 | 数据备份 | ✅ 完成 | `T-038` 8 个业务 sheet 导出为单个 xlsx / 导入自然键 upsert（单事务失败整体回滚），`/data-backup` 页 + 设置菜单入口 |
-| 审计日志 | ✅ 完成 | `T-047` `audit_logs` 全资源 CUD/导入审计（操作人快照/diff/request_id）+ `GET /api/audit-logs` + `/audit-logs` 页 |
+| 审计日志 | ✅ 完成 | `T-047` `audit_logs` 全资源 CUD/导入审计（操作人快照/diff/request_id）+ `GET /api/audit-logs`；`T-066` 改为资产变更记录：移除独立审计页，主机/零信任/映射详情弹窗「变更记录」时间线（`GET /api/audit-logs/resource`），点击资产行打开只读详情 |
 
 ## 近期变更记录
 
@@ -36,6 +36,7 @@
 
 ### 2026-10-16
 
+- `f902196` `refactor:` **T-066** 审计改为资产变更记录：移除独立审计页；主机/零信任/映射新增/修改写入统一字段快照，详情弹窗「变更记录」时间线按旧值→新值逐字段展示（`GET /api/audit-logs/resource`，批量修改逐主机记录）；点击资产行打开只读详情（去「详情」按钮）；门禁全绿
 - `bd96b7c` `feat:` **T-065** 零信任接入目标增加 TCP/UDP 协议维度（`zero_trust_targets.protocol`，每行单协议、缺省 tcp、存量回填）：API `targets[].protocol`、批量 `/协议` 后缀、xlsx `/协议` 往返；门禁全绿
 - `bd96b7c` `feat:` **T-065** 零信任接入地区改多值（`zero_trusts.exit_location` `VARCHAR→TEXT`，逗号/顿号规整去重、合并取并集）：前端多选下拉与列表标签展示、搜索命中任一地区、批量/xlsx 多值往返；门禁全绿
 - `bd96b7c` `fix:` **T-065** 零信任新增「接入主机」下拉仅加载前 100 台（后端 page_size 上限）致可选主机与主机记录不全：改为分页拉取全量主机；列表「申请资源」标签协议渲染修正为 `端口/协议`；门禁全绿
@@ -174,7 +175,7 @@
 
 | 问题 | 说明 |
 |------|------|
-| 前端大组件 | `IpStatistics` 已拆（T-005，835→300 行）+ composables 抽取（T-004）+ 顶部导航去重（T-019，`AppNav` 10 页共用）；剩 `ZeroTrustLedger` 779 行、`HostFormDialog` 754 行等 |
+| 前端大组件 | `IpStatistics` 已拆（T-005，835→300 行）+ composables 抽取（T-004）+ 顶部导航去重（T-019，`AppNav` 9 页共用）；剩 `ZeroTrustLedger` 922 行、`HostFormDialog` 784 行等 |
 | GORM 列名 | 缩写字段（如 `CIDR`）默认命名异常（`c_id_r`），须显式 `gorm:"column:xxx"` |
 
 ## 注意事项

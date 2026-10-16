@@ -97,7 +97,7 @@ MCloud 是云平台主机资产信息管理系统：**Go (Gin) 后端 + Vue 3 SP
 
 **分层（红线 1，不可破坏）**：`routes`（注册+JWT）→ `controllers`（仅绑定参数、调 service、`Success/Error` 响应）→ `services`（全部业务逻辑）→ `models`（GORM）。
 
-**前端结构**：`api/`（Axios 封装）→ `stores/`（Pinia）→ `views/`（10 个功能页：7 顶部 Tab + 3 设置菜单页）→ `components/`。
+**前端结构**：`api/`（Axios 封装）→ `stores/`（Pinia）→ `views/`（9 个功能页：6 顶部 Tab + 3 设置菜单页）→ `components/`。
 
 | 关键事实 | 值 |
 |----------|-----|

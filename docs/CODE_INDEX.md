@@ -62,7 +62,7 @@
 | `controllers/zero_trust.go` | 零信任台账 CRUD |
 | `controllers/port_mapping.go` | 端口映射台账 CRUD + 整组防重判定（`ErrPortMappingExists` → `40901`） |
 | `controllers/public_ip.go` | 公网IP资源台账 CRUD + 被引用校验（改IP/删除被映射台账引用 → `40901`） |
-| `controllers/audit_log.go` | 审计日志查询（分页筛选） |
+| `controllers/audit_log.go` | 审计日志查询（分页筛选 + 按资源查变更记录 `ResourceHistory`，T-066） |
 | `controllers/audit_context.go` | 审计上下文：`auditContext(c)` 取 operator + request_id |
 | `controllers/websocket.go` | WebSocket 探测通道（并发处理探测请求） |
 
@@ -82,7 +82,7 @@
 | `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`/`ListExitLocations`（接入地区候选取 `public_ips.exit_location` 去重，T-061）；`normalizeTargetPairs`（端口表达式校验+去重，兼容旧 `port` 数字入参，T-056；协议归一化缺省 tcp，T-065）；`splitGroupProtocol`/`mergeGroupProtocols`（批量端口组 `/协议` 后缀解析与单主机多端口协议合并，T-065）；`splitPortGroups`（批量申请端口分组：`;` 分组表达多IP各自多端口，无 `;` 时顶层逗号+引号分组，T-056/T-058；无 `;` 且单端口组广播到全部 IP，T-059）；`mergeZeroTrustInto`/`unionTargetPairs`/`unionExitLocations`（同账户名新增合并：targets 与接入地区并集去重+其余空字段补录，含 `account_name_zh`/`applicant`，T-058/T-060/T-061/T-063/T-065）；`loadZeroTrustTargetPairs`/`insertZeroTrustTargets`（接入目标子表读写，T-052）；`joinTargetPairs`（派生串 `host_id:ports:protocol` 以 `;` 分隔，T-056/T-065）；`HostReferencedByZeroTrust`（子表去重计数）/`ZeroTrustsByHost` |
 | `services/port_mapping_service.go` | 端口映射台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`parsePortExpr`/`expandPortCount`/`parseProtocols`（端口 token 含 `A-B` 范围与协议归一化、展开后配对，T-055）；`ErrPortMappingExists` 整组判重（`host_id+public_ip+external_ports+external_protocols`）；`refreshHostIPMapped` |
 | `services/public_ip_service.go` | 公网IP资源台账 | `List`/`Create`/`Update`/`Delete`、`normalizePublicIP`（IP 唯一/格式校验）、`countPublicIPRefs`/`ErrPublicIPReferenced` 引用保护 |
-| `services/audit_service.go` | 审计日志 | `Record`（写入，失败不阻断业务）、`List`（分页筛选）、`GetOperator`、`NewRequestID` |
+| `services/audit_service.go` | 审计日志 | `Record`（写入，失败不阻断业务）、`List`（分页筛选）、`ListByResource`（按 `resource_type`+`resource_id` 取单资产变更记录，T-066）、`GetOperator`、`NewRequestID` |
 | `services/data_exchange.go` | 数据备份公共定义 | `dataExchangeSheets`（8 sheet 中文名 + 中文列头，T-063）、`ImportReport`/`SheetStat`/`RowError` |
 | `services/export_service.go` | 数据备份导出 | `Export`（8 sheet 依赖序写入）、`ExportFilename` |
 | `services/import_service.go` | 数据备份导入 | `Import`（单事务 + 回滚）、`parseWorkbook`（结构校验）、`apply*`（按自然键 upsert；`zero_trusts` 自然键=账户名合并，T-058）、`zeroTrustKey` |
@@ -113,6 +113,7 @@
 | `middleware/jwt_test.go` | `ValidateToken` 表驱动：有效/过期/伪造签名/非法串/缺 user_id/none 算法（T-022） |
 | `routes/websocket_test.go` | WS 探测通道：缺失/无效 token 升级前 `40101` 拒绝 + 有效 token 建连（T-022） |
 | `controllers/csv_test.go` | CSV 导入：>16MB 超限 `40001`、未超限穿透至业务校验、缺 `file` 字段回归（T-044） |
+| `services/audit_service_test.go` | 按资源查询变更记录：精确匹配 `resource_type`+`resource_id` 且按 id 倒序、跨资源互不串、缺参报错（T-066）；主机新增/修改写入审计且修改含 before/after 字段级 diff |
 | `frontend/src/utils/__tests__/index.spec.js` | Vitest 冒烟（`npm run test`，日期格式化/常量） |
 
 ### 命令工具（cmd/）
@@ -150,7 +151,7 @@
 | `api/zero_trust.js` | `/zero-trusts` |
 | `api/port_mapping.js` | `/port-mappings` |
 | `api/public_ip.js` | `/public-ips` |
-| `api/audit.js` | `/audit-logs` |
+| `api/audit.js` | `/audit-logs/resource`（按资源查变更记录，T-066） |
 
 ### 状态管理（stores/）
 
@@ -176,25 +177,24 @@
 | 文件 | 路由 | 职责 |
 |------|------|------|
 | `views/Login.vue` | `/login` | 登录页 |
-| `views/HostManagement.vue` | `/` | 主机管理主页（工具栏 + 表格 + 各弹窗；行内编辑/复制/详情/删除） |
+| `views/HostManagement.vue` | `/` | 主机管理主页（工具栏 + 表格 + 各弹窗；行内编辑/复制/删除，点击行查看详情，T-066） |
 | `views/ResourceStatistics.vue` | `/statistics` | 资源统计（汇总表格 + 饼图） |
 | `views/IpStatistics.vue` | `/ip-statistics` | IP 统计（位图 + 探测 + 网段管理） |
 | `views/BusinessStatistics.vue` | `/business-statistics` | 业务统计（概览 + 柱状图 + 表格 + 下钻弹窗） |
 | `views/PersonnelManagement.vue` | `/personnel` | 人员管理（搜索 + 新增/编辑/删除，含关联主机数校验） |
 | `views/PublicIPManagement.vue` | `/public-ip` | 公网IP资源台账（搜索 + 新增/编辑/删除，设置菜单入口） |
-| `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 「申请资源」列按主机聚合、每行最多显示 3 个主机 tag（超出显示「+N 台」），点击主机 tag 用可滚动 popover 查看该主机端口/协议明细（T-065，避免行高随目标数膨胀、气泡限高可滚动、popper auto 定位+flip 自动换方向防出界）+ 配对行表单（主机/端口/协议，主机下拉分页拉全量）+ 接入地区多选下拉（候选取公网IP资源池去重，列表标签展示）+ 批量添加 + 行「复制」新增（账户名置空）；列表含账户名/账号姓名/账户联系方式，申请人列位于申请时间之后） |
-| `views/MappingLedger.vue` | `/mapping-ledger` | 端口映射台账（多端口标签 + 批量添加 + 行「复制」新增（公网IP/主机/端口置空）） |
+| `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 「申请资源」列按主机聚合、每行最多显示 3 个主机 tag（超出显示「+N 台」），点击主机 tag 用可滚动 popover 查看该主机端口/协议明细（T-065，避免行高随目标数膨胀、气泡限高可滚动、popper auto 定位+flip 自动换方向防出界）+ 配对行表单（主机/端口/协议，主机下拉分页拉全量）+ 接入地区多选下拉（候选取公网IP资源池去重，列表标签展示）+ 批量添加 + 行「复制」新增（账户名置空）；列表含账户名/账号姓名/账户联系方式，申请人列位于申请时间之后；点击数据行打开只读详情弹窗（含「变更记录」时间线，T-066）） |
+| `views/MappingLedger.vue` | `/mapping-ledger` | 端口映射台账（多端口标签 + 批量添加 + 行「复制」新增（公网IP/主机/端口置空）；点击数据行打开只读详情弹窗（含「变更记录」时间线，T-066）） |
 | `views/DataBackup.vue` | `/data-backup` | 数据备份（8 表 xlsx 导出/导入 + 导入报告展示，设置菜单入口） |
-| `views/AuditLog.vue` | `/audit-logs` | 审计日志（操作人/动作/资源筛选 + 分页 + 详情弹窗） |
 
 ### 组件（components/）
 
 | 文件 | 职责 | 使用页面 |
 |------|------|----------|
-| `AppNav.vue` | 顶部导航 7 个 Tab（T-019 抽取，10 页共用）；`variant` prop 保留 AuditLog/DataBackup 历史样式变体保证视觉零变化 | 全部 10 个功能页 |
+| `AppNav.vue` | 顶部导航 6 个 Tab（T-019 抽取，9 页共用）；`variant` prop 保留 DataBackup 历史样式变体保证视觉零变化 | 全部 9 个功能页 |
 | `SearchToolbar.vue` | 搜索框、筛选下拉、操作按钮 | HostManagement |
-| `HostTable.vue` | 主机列表表格 + 分页（行操作：编辑/复制/详情/删除） | HostManagement |
-| `HostFormDialog.vue` | 新增/编辑/复制/详情弹窗（技术+申请双 Tab，含人员选择/手输自动建人员；复制模式预填所选行、内网IP/实例ID 置空） | HostManagement |
+| `HostTable.vue` | 主机列表表格 + 分页（行操作：编辑/复制/删除；点击数据行打开只读详情，T-066） | HostManagement |
+| `HostFormDialog.vue` | 新增/编辑/复制/详情弹窗（技术+申请双 Tab；`view` 模式另有「关联台账」「变更记录」时间线 Tab，含人员选择/手输自动建人员；复制模式预填所选行、内网IP/实例ID 置空） | HostManagement |
 | `BatchAddDialog.vue` | 批量添加弹窗 | HostManagement |
 | `BatchEditDialog.vue` | 批量编辑弹窗（含人员选择/手输自动建人员） | HostManagement |
 | `ImportDialog.vue` | CSV 导入弹窗 | HostManagement |
@@ -205,6 +205,9 @@
 | `ip/SubnetCard.vue` | 单网段卡片：统计/批量进度/位图格子（T-005） | IpStatistics |
 | `ZeroTrustBatchAddDialog.vue` | 零信任批量添加弹窗（文本粘贴，10 列） | ZeroTrustLedger |
 | `MappingBatchAddDialog.vue` | 端口映射批量添加弹窗（文本粘贴，6 列） | MappingLedger |
+| `ZeroTrustDetailDialog.vue` | 零信任只读详情弹窗（申请信息 + 接入目标 + 「变更记录」时间线，点击行打开，T-066） | ZeroTrustLedger |
+| `MappingDetailDialog.vue` | 端口映射只读详情弹窗（映射信息 + 端口对 + 「变更记录」时间线，点击行打开，T-066） | MappingLedger |
+| `AuditTimeline.vue` | 资产「变更记录」时间线（按 `resourceType`+`resourceId` 拉取，操作人/动作/diff，T-066） | HostFormDialog/ZeroTrustDetailDialog/MappingDetailDialog |
 
 ### 工具与样式
 
@@ -229,7 +232,7 @@
 |------|------|------|
 | **登录/认证** | `controllers/auth.go` `services/auth_service.go` `middleware/jwt.go` | `views/Login.vue` `stores/auth.js` `api/auth.js` |
 | **顶部导航** | —（纯前端路由） | `components/AppNav.vue`（7 Tab 10 页共用，T-019） |
-| **审计日志** | `controllers/audit_log.go` `services/audit_service.go` `models/audit_log.go` `routes/audit.go` | `views/AuditLog.vue` `api/audit.js` |
+| **审计日志** | `controllers/audit_log.go` `services/audit_service.go` `models/audit_log.go` `routes/audit.go` | `api/audit.js`（`/audit-logs/resource`）+ `components/AuditTimeline.vue`（资产详情「变更记录」时间线，T-066） |
 | **主机 CRUD** | `controllers/host.go` `services/host_service.go` | `views/HostManagement.vue` `components/HostTable.vue` `components/HostFormDialog.vue` `stores/host.js` `composables/usePagedTable.js` |
 | **主机筛选/搜索** | `services/host_service.go` → `Filter` | `components/SearchToolbar.vue` |
 | **批量增改** | `controllers/batch.go` `services/host_batch_service.go` → `BatchCreate`/`BatchUpdate` | `components/BatchAddDialog.vue` `components/BatchEditDialog.vue` |

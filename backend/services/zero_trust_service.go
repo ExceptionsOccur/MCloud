@@ -512,7 +512,7 @@ func (s *ZeroTrustService) Create(req ZeroTrustRequest, op Operator, requestID s
 	if err := tx.Commit().Error; err != nil {
 		return 0, err
 	}
-	NewAuditService().Record(op, "create", "zero_trust", &record.ID, DetailDiff{After: req}, requestID)
+	NewAuditService().Record(op, "create", "zero_trust", &record.ID, DetailDiff{After: zeroTrustSnapshot(record, pairs)}, requestID)
 	return record.ID, nil
 }
 
@@ -534,17 +534,7 @@ func (s *ZeroTrustService) Update(id uint, req ZeroTrustRequest, op Operator, re
 		return pairErr
 	}
 
-	before := map[string]interface{}{
-		"apply_unit":      record.ApplyUnit,
-		"account_name":    record.AccountName,
-		"account_name_zh": record.AccountNameZh,
-		"applicant":       record.Applicant,
-		"contact":         record.Contact,
-		"exit_location":   record.ExitLocation,
-		"targets":         joinTargetPairs(curPairs[record.ID]),
-		"system_name":     record.SystemName,
-		"remark":          record.Remark,
-	}
+	before := zeroTrustSnapshot(record, curPairs[record.ID])
 	record.ApplyUnit = req.ApplyUnit
 	record.AccountName = req.AccountName
 	record.AccountNameZh = req.AccountNameZh
@@ -570,7 +560,7 @@ func (s *ZeroTrustService) Update(id uint, req ZeroTrustRequest, op Operator, re
 	if err := tx.Commit().Error; err != nil {
 		return err
 	}
-	NewAuditService().Record(op, "update", "zero_trust", &id, DetailDiff{Before: before, After: req}, requestID)
+	NewAuditService().Record(op, "update", "zero_trust", &id, DetailDiff{Before: before, After: zeroTrustSnapshot(record, pairs)}, requestID)
 	return nil
 }
 

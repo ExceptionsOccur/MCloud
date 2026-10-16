@@ -49,8 +49,8 @@
 - **xlsx 导入宽容归一（T-065）**：导入的「申请时间」接受常见日期写法（`2026-10-09`、`2026/9/10`、`2026-9-1`、`2026.9.10`、`2026年9月10日`、`20260910`），解析成功后统一归一化存为 `YYYY-MM-DD`；两位年份（如 `26/9/10`）与带时刻写法不猜、报行级错误（整体回滚）
 - **批量编辑**（`PUT /api/batch/hosts`）的 `apply_time`：字符串 `YYYY-MM-DD`（空串合法）、`null`（与省略同义，不更新该字段）；字符串但非 `YYYY-MM-DD` 或非字符串值返回 `40001`
 - **导入**：xlsx 导入在报告 `errors[]` 中返回含 `YYYY-MM-DD` 的行级错误（存在行级错误时整体回滚）；CSV 导入只累计 `errors` 计数、不返回行级消息，坏行不入库
-- **审计类时间保留完整时间戳**：各表 `created_at`/`updated_at`、审计日志、用户 `last_login`/`locked_until` 不受本口径影响
-- **展示与导出**：审计/登录类时间展示统一 `YYYY-MM-DD HH:mm:ss`；业务申请时间展示与导出均为 `YYYY-MM-DD`（CSV 与 xlsx 备份）；备份文件名日期统一 `YYYY-MM-DD`
+- **审计类时间保留完整时间戳**：各表 `created_at`/`updated_at`、审计日志、用户 `last_login`/`locked_until` 不受本口径影响；接口一律返回 RFC3339（带时区，如 `2026-10-16T02:25:31Z`，DB 存 UTC），由前端 `formatTime` 转浏览器本地时区展示
+- **展示与导出**：审计/登录类时间展示统一 `YYYY-MM-DD HH:mm:ss`（前端本地时区）；业务申请时间展示与导出均为 `YYYY-MM-DD`（CSV 与 xlsx 备份）；备份文件名日期统一 `YYYY-MM-DD`
 
 ---
 
@@ -109,6 +109,7 @@
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
 | GET | `/api/audit-logs` | `audit.List` | 分页查询审计日志；查询参数 `page`（默认 1）/`page_size`（默认 20，`>100` 回退 20）/`operator_name`/`action`/`resource_type`/`request_id`/`keyword` |
+| GET | `/api/audit-logs/resource` | `audit.ResourceHistory` | 查询某资产的变更记录（资产详情「变更记录」时间线，T-066）；必填 `resource_type` + `resource_id`，返回按时间倒序的条目数组（`operator_name`/`action`/`detail`/`created_at` 等），缺参返回 `40001` |
 
 - CUD/导入/批量操作自动写入 `audit_logs`（操作人快照 + 动作 + 资源 + 前后值 diff + 同请求共用 `request_id`）
 - `action` 枚举：`create`/`update`/`delete`/`batch_update`/`import_csv`/`import_xlsx`；`resource_type` 枚举：`host`/`person`/`public_ip`/`zero_trust`/`port_mapping`/`cloud_resource`/`ip_subnet`/`data_exchange`

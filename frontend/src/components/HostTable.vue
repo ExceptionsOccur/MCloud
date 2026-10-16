@@ -6,6 +6,7 @@
       border
       stripe
       @selection-change="handleSelectionChange"
+      @row-click="handleRowClick"
     >
       <el-table-column
         type="selection"
@@ -136,14 +137,6 @@
           >
             复制
           </el-button>
-          <el-button
-            type="primary"
-            link
-            size="small"
-            @click="handleView(row)"
-          >
-            详情
-          </el-button>
           <el-popconfirm
             title="确定删除？"
             @confirm="handleDelete(row.id)"
@@ -203,6 +196,12 @@ function handleCopy(row) {
 
 function handleView(row) {
   window.dispatchEvent(new CustomEvent('open-host-form', { detail: { mode: 'view', data: row } }))
+}
+
+// 点击数据行打开只读详情；操作列/选择列不触发（T-066）
+function handleRowClick(row, column) {
+  if (column?.type === 'selection' || column?.label === '操作') return
+  handleView(row)
 }
 
 async function handleDelete(id) {

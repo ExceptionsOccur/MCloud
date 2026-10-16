@@ -113,7 +113,7 @@ go/
 │   │   ├── public_ip.go           # 公网IP资源台账 CRUD
 │   │   ├── stats.go               # 统计（IP 使用、探测、业务统计）
 │   │   ├── subnet.go              # IP 网段 CRUD
-│   │   ├── audit_log.go           # 审计日志查询
+│   │   ├── audit_log.go           # 审计日志查询（分页 + 按资源查变更记录，T-066）
 │   │   ├── audit_context.go       # 审计上下文（operator + request_id）
 │   │   ├── websocket.go           # WebSocket IP 探测通道
 │   │   └── csv_test.go            # CSV 导入 16MB 超限/未超限穿透/缺字段测试（T-044）
@@ -135,11 +135,13 @@ go/
 │   │   ├── stats_service.go       # IP 使用统计 + 连通性探测
 │   │   ├── business_stats.go      # 业务统计聚合（项目/公司/人员）
 │   │   ├── subnet_service.go      # IP 网段业务逻辑（/24 校验）
-│   │   ├── audit_service.go       # 审计日志（Record/List，操作人快照 + request_id 聚合）
+│   │   ├── audit_service.go       # 审计日志（Record/List/ListByResource，操作人快照 + request_id 聚合，T-066）
+│   │   ├── audit_snapshot.go      # 资产变更字段快照（主机/零信任/映射 before/after，T-066）
 │   │   ├── data_exchange.go       # 数据备份公共定义（8 sheet 规格 + 导入报告）
 │   │   ├── export_service.go      # 数据备份导出（8 sheet xlsx）
 │   │   ├── import_service.go      # 数据备份导入（自然键 upsert + 单事务回滚）
 │   │   ├── testdb_test.go         # 测试基建：sqlite 内存库注入 database.DB（T-006）
+│   │   ├── audit_service_test.go  # 按资源查变更记录过滤/排序单测（T-066）
 │   │   ├── host_service_test.go   # 主机 CRUD/筛选表驱动单测（T-006）
 │   │   ├── auth_service_test.go   # 登录/锁定表驱动单测（T-006）
 │   │   ├── host_csv_service_test.go # 筛选导出行数一致性单测（T-008）
@@ -160,7 +162,7 @@ go/
 │   │   ├── public_ip.go           # 公网IP域
 │   │   ├── zero_trust.go          # 零信任台账域
 │   │   ├── port_mapping.go        # 端口映射台账域
-│   │   ├── audit.go               # 审计日志域（查询）
+│   │   ├── audit.go               # 审计日志域（查询 + 按资源查变更记录，T-066）
 │   │   ├── websocket.go           # WS 探测通道（query token JWT 有效性校验，T-022）
 │   │   └── websocket_test.go      # WS token 缺失/无效拒绝 + 有效建连测试（T-022）
 │   │
@@ -194,8 +196,8 @@ go/
         ├── stores/                # Pinia 状态：auth / host / cloudResource / stats / business
         ├── composables/           # 组合式函数（T-004/T-005）：useProbeWebSocket / useChartOption / usePagedTable / useProbeGrid
         ├── api/                   # API 封装：index / auth / host / csv / dataExchange / cloud_resource / person / zero_trust / port_mapping / public_ip / stats / subnet / audit
-        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / PublicIPManagement / ZeroTrustLedger / MappingLedger / DataBackup / AuditLog
-        ├── components/            # 组件：顶部导航 AppNav（T-019）/工具栏/表格/各类弹窗（ip/：网段管理/探测面板/网段卡片）
+        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / PublicIPManagement / ZeroTrustLedger / MappingLedger / DataBackup
+        ├── components/            # 组件：顶部导航 AppNav（T-019）/工具栏/表格/各类弹窗（含资产详情弹窗与 AuditTimeline 变更记录时间线，T-066；ip/：网段管理/探测面板/网段卡片）
         │
         ├── utils/
         │   ├── index.js           # 通用工具函数
@@ -228,7 +230,7 @@ go/
 | `zero_trust_targets` | `models/zero_trust_target.go` | 零信任接入目标子表（一对「主机:端口表达式」一行，T-052/T-056） |
 | `port_mappings` | `models/port_mapping.go` | 端口映射台账（公网IP↔内网主机多端口；域名可选） |
 | `public_ips` | `models/public_ip.go` | 公网IP资源台账（IP/运营商/出口位置/备注） |
-| `audit_logs` | `models/audit_log.go` | 审计日志（操作人快照/动作/资源/diff/request_id；只增不删） |
+| `audit_logs` | `models/audit_log.go` | 审计日志（操作人快照/动作/资源/diff/request_id；只增不删；资产详情「变更记录」时间线按 `resource_type`+`resource_id` 查询，T-066） |
 
 > 库中另有 goose 运行时表 `goose_db_version`（记录迁移版本，由 goose 维护），不计入业务表。
 

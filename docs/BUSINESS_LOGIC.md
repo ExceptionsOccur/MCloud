@@ -42,13 +42,16 @@ WebSocket 通道无法携带 Header，token 通过 query 参数传递（`/api/ws
 
 ## 审计日志
 
+> 审计用于记录**资产变更记录**：不再有独立审计日志页，改为在主机/零信任/映射详情弹窗的「变更记录」时间线按资源维度展示（T-066）。
+
 - **写入时机**：service 层 CUD 成功后调用 `AuditService.Record`；覆盖常规 CRUD、批量增改、CSV 导入、xlsx 数据备份导入
 - **不覆盖**：登录/改密事件、级联写（`refreshHostIPMapped`/登录计数）、WS 探测
 - **操作人**：controller 经 `auditContext(c)` 从 JWT `user_id` 取快照（`operator_id` + `operator_name`）
 - **request_id**：同一 HTTP 请求内多条审计共用（批量/CSV 导入逐行共用一个 ID）
 - **detail**：`{"before":{...},"after":{...}}` 前后值 diff；不含 password_hash 等敏感明文
 - **只增不删**：无 UNIQUE 约束、不设 users 外键（操作人以快照落库）
-- **查询**：`GET /api/audit-logs`（JWT、分页筛选）；写入失败不阻断业务（审计不改变 CUD 结果语义）
+- **查询**：`GET /api/audit-logs`（分页筛选，通用查询）与 `GET /api/audit-logs/resource`（按 `resource_type`+`resource_id` 取单资产变更记录，T-066）；写入失败不阻断业务（审计不改变 CUD 结果语义）
+- **展示**：资产详情弹窗「变更记录」tab（`AuditTimeline` 组件）按时间倒序渲染操作人/动作/diff；主机点击行打开详情（`view` 模式），零信任/映射点击行打开只读详情弹窗
 
 
 ## 主机搜索/筛选

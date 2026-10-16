@@ -262,6 +262,20 @@ func (s *HostService) BatchUpdate(req BatchUpdateRequest, op Operator, requestID
 		hostUpdates["person_id"] = personID
 	}
 
+	// 变更前快照（含申请信息），供逐主机审计 diff
+	befores := map[uint]map[string]interface{}{}
+	for _, hid := range req.IDS {
+		var h models.Host
+		if err := database.DB.First(&h, hid).Error; err != nil {
+			continue
+		}
+		var ha models.HostApplication
+		if err := database.DB.Where("host_id = ?", hid).First(&ha).Error; err != nil {
+			ha = models.HostApplication{}
+		}
+		befores[hid] = hostSnapshot(h, &ha)
+	}
+
 	tx := database.DB.Begin()
 
 	if len(hostUpdates) > 0 {
@@ -276,7 +290,20 @@ func (s *HostService) BatchUpdate(req BatchUpdateRequest, op Operator, requestID
 	}
 
 	tx.Commit()
-	NewAuditService().Record(op, "batch_update", "host", nil,
-		DetailDiff{After: map[string]interface{}{"ids": req.IDS, "data": req.Data}}, requestID)
+
+	// 逐主机写入审计：每条记录带 resource_id，使其详情「变更记录」时间线可见
+	audit := NewAuditService()
+	for _, hid := range req.IDS {
+		var h models.Host
+		if err := database.DB.First(&h, hid).Error; err != nil {
+			continue
+		}
+		var ha models.HostApplication
+		if err := database.DB.Where("host_id = ?", hid).First(&ha).Error; err != nil {
+			ha = models.HostApplication{}
+		}
+		audit.Record(op, "batch_update", "host", &hid,
+			DetailDiff{Before: befores[hid], After: hostSnapshot(h, &ha)}, requestID)
+	}
 	return nil
 }

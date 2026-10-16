@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
 	"mcloud/database"
 	"mcloud/models"
@@ -74,6 +75,45 @@ func (s *AuditService) Record(op Operator, action, resourceType string, resource
 	_ = database.DB.Create(&entry).Error
 }
 
+// ResourceHistoryRequest 按资源维度查询变更记录（资产详情「变更记录」时间线）
+type ResourceHistoryRequest struct {
+	ResourceType string `form:"resource_type"`
+	ResourceID   uint   `form:"resource_id"`
+}
+
+// ListByResource 查询某资产的变更记录（resource_type + resource_id 精确匹配），按时间倒序。
+// 无分页：单资产变更条目有限，时间线一次展示。
+func (s *AuditService) ListByResource(req ResourceHistoryRequest) ([]AuditLogItem, error) {
+	resourceType := strings.TrimSpace(req.ResourceType)
+	if resourceType == "" || req.ResourceID == 0 {
+		return nil, errors.New("resource_type 与 resource_id 必填")
+	}
+
+	var logs []models.AuditLog
+	if err := database.DB.
+		Where("resource_type = ? AND resource_id = ?", resourceType, req.ResourceID).
+		Order("id DESC").
+		Find(&logs).Error; err != nil {
+		return nil, err
+	}
+
+	items := make([]AuditLogItem, 0, len(logs))
+	for _, l := range logs {
+		items = append(items, AuditLogItem{
+			ID:           l.ID,
+			OperatorID:   l.OperatorID,
+			OperatorName: l.OperatorName,
+			Action:       l.Action,
+			ResourceType: l.ResourceType,
+			ResourceID:   l.ResourceID,
+			Detail:       json.RawMessage(l.Detail),
+			RequestID:    l.RequestID,
+			CreatedAt:    l.CreatedAt,
+		})
+	}
+	return items, nil
+}
+
 type ListAuditLogRequest struct {
 	Page         int    `form:"page"`
 	PageSize     int    `form:"page_size"`
@@ -93,7 +133,7 @@ type AuditLogItem struct {
 	ResourceID   *uint           `json:"resource_id"`
 	Detail       json.RawMessage `json:"detail"`
 	RequestID    string          `json:"request_id"`
-	CreatedAt    string          `json:"created_at"`
+	CreatedAt    time.Time       `json:"created_at"`
 }
 
 type ListAuditLogResponse struct {
@@ -152,7 +192,7 @@ func (s *AuditService) List(req ListAuditLogRequest) (*ListAuditLogResponse, err
 			ResourceID:   l.ResourceID,
 			Detail:       json.RawMessage(l.Detail),
 			RequestID:    l.RequestID,
-			CreatedAt:    l.CreatedAt.Format("2006-01-02 15:04:05"),
+			CreatedAt:    l.CreatedAt,
 		})
 	}
 

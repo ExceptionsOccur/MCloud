@@ -10,4 +10,5 @@ import (
 func registerAudits(g *gin.RouterGroup) {
 	audit := controllers.NewAuditLogController()
 	g.GET("/audit-logs", audit.List)
+	g.GET("/audit-logs/resource", audit.ResourceHistory)
 }

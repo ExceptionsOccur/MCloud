@@ -420,6 +420,17 @@
             />
           </div>
         </el-tab-pane>
+        <el-tab-pane
+          v-if="mode === 'view'"
+          label="变更记录"
+          name="history"
+        >
+          <AuditTimeline
+            v-if="mode === 'view'"
+            resource-type="host"
+            :resource-id="editId"
+          />
+        </el-tab-pane>
       </el-tabs>
     </el-form>
 
@@ -449,6 +460,7 @@ import { getPersons, createPerson } from '../api/person'
 import { getHost } from '../api/host'
 import { ElMessage } from 'element-plus'
 import { statusOptions, envTypeOptions, assetTypeOptions, cpuArchOptions } from '../utils'
+import AuditTimeline from './AuditTimeline.vue'
 
 const hostStore = useHostStore()
 const cloudStore = useCloudResourceStore()

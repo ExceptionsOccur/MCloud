@@ -263,7 +263,7 @@ func (s *PortMappingService) Create(req PortMappingRequest, op Operator, request
 	if err := database.DB.Create(&rec).Error; err != nil {
 		return 0, err
 	}
-	NewAuditService().Record(op, "create", "port_mapping", &rec.ID, DetailDiff{After: req}, requestID)
+	NewAuditService().Record(op, "create", "port_mapping", &rec.ID, DetailDiff{After: portMappingSnapshot(rec)}, requestID)
 	if err := refreshHostIPMapped(req.HostID); err != nil {
 		return 0, err
 	}
@@ -304,11 +304,7 @@ func (s *PortMappingService) Update(id uint, req PortMappingRequest, op Operator
 	if dupCount > 0 {
 		return ErrPortMappingExists
 	}
-	before := PortMappingRequest{
-		PublicIP: rec.PublicIP, HostID: rec.HostID, ExternalPorts: rec.ExternalPorts,
-		ExternalProtocols: rec.ExternalProtocols, InternalPorts: rec.InternalPorts,
-		InternalProtocols: rec.InternalProtocols, Domain: rec.Domain, Remark: rec.Remark,
-	}
+	before := portMappingSnapshot(rec)
 	updates := map[string]interface{}{
 		"public_ip":          req.PublicIP,
 		"host_id":            req.HostID,
@@ -326,7 +322,11 @@ func (s *PortMappingService) Update(id uint, req PortMappingRequest, op Operator
 	if err := database.DB.Model(&rec).Updates(updates).Error; err != nil {
 		return err
 	}
-	NewAuditService().Record(op, "update", "port_mapping", &id, DetailDiff{Before: before, After: req}, requestID)
+	var after models.PortMapping
+	if err := database.DB.First(&after, id).Error; err != nil {
+		after = rec
+	}
+	NewAuditService().Record(op, "update", "port_mapping", &id, DetailDiff{Before: before, After: portMappingSnapshot(after)}, requestID)
 	if err := refreshHostIPMapped(oldHostID); err != nil {
 		return err
 	}

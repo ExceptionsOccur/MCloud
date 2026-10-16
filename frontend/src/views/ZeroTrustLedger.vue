@@ -83,6 +83,7 @@
         :data="records"
         border
         stripe
+        @row-click="handleRowClick"
       >
         <el-table-column
           label="#"
@@ -506,6 +507,7 @@
     <ChangePasswordDialog ref="changePasswordDialog" />
     <CloudResourceDialog ref="cloudResourceDialog" />
     <ZeroTrustBatchAddDialog ref="zeroTrustBatchDialog" />
+    <ZeroTrustDetailDialog ref="zeroTrustDetailDialog" />
   </div>
 </template>
 
@@ -519,6 +521,7 @@ import { getHosts } from '../api/host'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
 import ZeroTrustBatchAddDialog from '../components/ZeroTrustBatchAddDialog.vue'
+import ZeroTrustDetailDialog from '../components/ZeroTrustDetailDialog.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -526,6 +529,7 @@ const authStore = useAuthStore()
 const changePasswordDialog = ref(null)
 const cloudResourceDialog = ref(null)
 const zeroTrustBatchDialog = ref(null)
+const zeroTrustDetailDialog = ref(null)
 
 // 申请资源 popover 的 popper 选项（T-065）：auto 定位 + flip 自动换方向 + preventOverflow 保证不出界
 const targetPopperOptions = {
@@ -741,6 +745,12 @@ async function handleSubmit() {
   } finally {
     submitting.value = false
   }
+}
+
+// 点击数据行打开只读详情；申请资源/操作列不触发（T-066）
+function handleRowClick(row, column) {
+  if (column?.label === '申请资源' || column?.label === '操作') return
+  zeroTrustDetailDialog.value?.open(row)
 }
 
 async function handleDelete(id) {

@@ -86,6 +86,7 @@
         :data="records"
         border
         stripe
+        @row-click="handleRowClick"
       >
         <el-table-column
           label="#"
@@ -360,6 +361,7 @@
     <MappingBatchAddDialog ref="batchDialog" />
     <ChangePasswordDialog ref="changePasswordDialog" />
     <CloudResourceDialog ref="cloudResourceDialog" />
+    <MappingDetailDialog ref="mappingDetailDialog" />
   </div>
 </template>
 
@@ -377,6 +379,7 @@ import {
 import { getHosts } from '../api/host'
 import { getPublicIPs } from '../api/public_ip'
 import MappingBatchAddDialog from '../components/MappingBatchAddDialog.vue'
+import MappingDetailDialog from '../components/MappingDetailDialog.vue'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
 import AppNav from '../components/AppNav.vue'
@@ -387,6 +390,7 @@ const authStore = useAuthStore()
 const changePasswordDialog = ref(null)
 const cloudResourceDialog = ref(null)
 const batchDialog = ref(null)
+const mappingDetailDialog = ref(null)
 
 const records = ref([])
 const loading = ref(false)
@@ -624,6 +628,12 @@ async function handleSubmit() {
   } finally {
     submitting.value = false
   }
+}
+
+// 点击数据行打开只读详情；操作列不触发（T-066）
+function handleRowClick(row, column) {
+  if (column?.label === '操作') return
+  mappingDetailDialog.value?.open(row)
 }
 
 async function handleDelete(id) {
