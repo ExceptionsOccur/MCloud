@@ -590,6 +590,7 @@ const rules = {
 const dialogTitle = computed(() => {
   if (mode.value === 'create') return '新增主机'
   if (mode.value === 'edit') return '编辑主机'
+  if (mode.value === 'copy') return '复制新增主机'
   return '主机详情'
 })
 
@@ -685,6 +686,13 @@ async function open(data) {
     }
     fillFormFromHost(h)
 
+    // 复制模式：预填所选行，唯一字段（内网IP、实例ID）置空待填
+    if (mode.value === 'copy') {
+      editId.value = null
+      form.private_ip = ''
+      form.instance_id = ''
+    }
+
     // 已关联人员但申请信息为空时，从人员库回填
     if (form.person_id) {
       const p = personOptions.value.find(item => item.id === form.person_id)
@@ -719,13 +727,13 @@ async function handleSubmit() {
       payload[key] = Number(payload[key]) || 0
     })
     let success
-    if (mode.value === 'create') {
+    if (mode.value === 'create' || mode.value === 'copy') {
       success = await hostStore.create(payload)
     } else {
       success = await hostStore.update(editId.value, payload)
     }
     if (success) {
-      ElMessage.success(mode.value === 'create' ? '创建成功' : '更新成功')
+      ElMessage.success(mode.value === 'edit' ? '更新成功' : '创建成功')
       visible.value = false
     }
   } finally {
