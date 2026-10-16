@@ -196,6 +196,7 @@
 | `views/MappingLedger.vue` | `/mapping-ledger` | 端口映射台账（多端口标签 + 批量添加 + 行「复制」新增（公网IP/主机/端口置空）；点击数据行打开只读详情弹窗（含「变更记录」时间线，T-066）） |
 | `views/DataBackup.vue` | `/data-backup` | 数据备份（8 表 xlsx 导出/导入 + 导入报告展示，设置菜单入口） |
 | `views/AISettings.vue` | `/ai-settings` | AI 接入设置（API 地址/API Key 脱敏/模型名，设置菜单入口，T-069） |
+| `views/AIApplicationImport.vue` | `/ai-import` | AI 申请入账（上传 docx/xlsx → 大模型解析预览可编辑 → 确认入库并归档源文件，T-070） |
 
 ### 组件（components/）
 
@@ -244,7 +245,7 @@
 | **顶部导航** | —（纯前端路由） | `components/AppNav.vue`（7 Tab 10 页共用，T-019） |
 | **审计日志** | `controllers/audit_log.go` `services/audit_service.go` `models/audit_log.go` `routes/audit.go` | `api/audit.js`（`/audit-logs/resource`）+ `components/AuditTimeline.vue`（资产详情「变更记录」时间线，T-066） |
 | **AI 接入配置** | `controllers/ai.go`（`GetSettings`/`SaveSettings`）`services/ai_setting_service.go`（脱敏/保留原值）`models/ai_setting.go` `routes/ai.go` `utils/crypto.go`（AES-GCM） | `views/AISettings.vue`（`/ai-settings`，T-069）`api/ai.js` |
-| **AI 申请表单提取与归档** | `controllers/ai.go`（`Extract`/`Archive`）`services/ai_extract_service.go`（编排）`services/ai_doc_parser.go`（docx/xlsx 转文本）`services/ai_schema.go`（类型/字段 schema）`services/ai_llm_client.go`（大模型调用）`services/ai_file_store.go`（incoming/archived 落盘） | （入账页 T-070 待建） |
+| **AI 申请表单提取与归档** | `controllers/ai.go`（`Extract`/`Archive`）`services/ai_extract_service.go`（编排）`services/ai_doc_parser.go`（docx/xlsx 转文本）`services/ai_schema.go`（类型/字段 schema）`services/ai_llm_client.go`（大模型调用）`services/ai_file_store.go`（incoming/archived 落盘） | `views/AIApplicationImport.vue`（`/ai-import`，T-070）`api/ai.js` |
 | **主机 CRUD** | `controllers/host.go` `services/host_service.go` | `views/HostManagement.vue` `components/HostTable.vue` `components/HostFormDialog.vue` `stores/host.js` `composables/usePagedTable.js` |
 | **主机筛选/搜索** | `services/host_service.go` → `Filter` | `components/SearchToolbar.vue` |
 | **批量增改** | `controllers/batch.go` `services/host_batch_service.go` → `BatchCreate`/`BatchUpdate` | `components/BatchAddDialog.vue` `components/BatchEditDialog.vue` |

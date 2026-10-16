@@ -41,6 +41,12 @@
               >
                 AI 接入设置
               </el-dropdown-item>
+              <el-dropdown-item
+                command="aiImport"
+                :disabled="$route.path === '/ai-import'"
+              >
+                AI 申请入账
+              </el-dropdown-item>
               <el-dropdown-item command="changePassword">
                 修改密码
               </el-dropdown-item>
@@ -668,6 +674,8 @@ function handleCommand(command) {
     router.push('/personnel')
   } else if (command === 'aiSettings') {
     router.push('/ai-settings')
+  } else if (command === 'aiImport') {
+    router.push('/ai-import')
   } else if (command === 'publicIP') {
     router.push('/public-ip')
   }

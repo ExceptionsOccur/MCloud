@@ -211,7 +211,7 @@ go/
         ├── stores/                # Pinia 状态：auth / host / cloudResource / stats / business
         ├── composables/           # 组合式函数（T-004/T-005）：useProbeWebSocket / useChartOption / usePagedTable / useProbeGrid
         ├── api/                   # API 封装：index / auth / host / csv / dataExchange / cloud_resource / person / zero_trust / port_mapping / public_ip / stats / subnet / audit
-        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / PublicIPManagement / ZeroTrustLedger / MappingLedger / DataBackup / AISettings
+        ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / PublicIPManagement / ZeroTrustLedger / MappingLedger / DataBackup / AISettings / AIApplicationImport
         ├── components/            # 组件：顶部导航 AppNav（T-019）/工具栏/表格/各类弹窗（含资产详情弹窗与 AuditTimeline 变更记录时间线，T-066；ip/：网段管理/探测面板/网段卡片）
         │
         ├── utils/

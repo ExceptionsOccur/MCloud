@@ -75,8 +75,8 @@
 |------|-----|
 | last_updated | 2026-10-16 |
 | in_progress | 无 |
-| next_task | T-070 |
-| todo（P1） | T-070 / T-071（AI 申请表单智能入账） |
+| next_task | T-071 |
+| todo（P1） | T-071（AI 接入文档回写与门禁） |
 | todo（P2） | 无 |
 | blocked | 无 |
 | 回顾锚点 | 上次回顾至 `T-053`（批次 T-009/T-011/T-012/T-019/T-020 与 T-008/T-053/T-055/T-056/T-057 共 10 条核查，修复 CODE_INDEX×2 偏差后人类确认推进，2026-10-12） |
@@ -97,7 +97,7 @@ MCloud 是云平台主机资产信息管理系统：**Go (Gin) 后端 + Vue 3 SP
 
 **分层（红线 1，不可破坏）**：`routes`（注册+JWT）→ `controllers`（仅绑定参数、调 service、`Success/Error` 响应）→ `services`（全部业务逻辑）→ `models`（GORM）。
 
-**前端结构**：`api/`（Axios 封装）→ `stores/`（Pinia）→ `views/`（10 个功能页：6 顶部 Tab + 4 设置菜单页）→ `components/`。
+**前端结构**：`api/`（Axios 封装）→ `stores/`（Pinia）→ `views/`（11 个功能页：6 顶部 Tab + 5 设置菜单页）→ `components/`。
 
 | 关键事实 | 值 |
 |----------|-----|

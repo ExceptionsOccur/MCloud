@@ -30,7 +30,7 @@
 | 数据备份 | ✅ 完成 | `T-038` 8 个业务 sheet 导出为单个 xlsx / 导入自然键 upsert（单事务失败整体回滚），`/data-backup` 页 + 设置菜单入口 |
 | 审计日志 | ✅ 完成 | `T-047` `audit_logs` 全资源 CUD/导入审计（操作人快照/diff/request_id）+ `GET /api/audit-logs`；`T-066` 改为资产变更记录：移除独立审计页，主机/零信任/映射详情弹窗「变更记录」时间线（`GET /api/audit-logs/resource`），点击资产行打开只读详情 |
 | AI 接入配置 | ✅ 完成 | `T-067` 后端地基：`ai_settings` 单条全局配置（API 地址/加密 Key/模型）+ `GET/PUT /api/ai/settings`（Key 回显脱敏、空值保留原值、变更写审计）；`T-069` 前端 `/ai-settings` 设置页（API 地址/API Key 脱敏/模型名，设置菜单入口）；API Key 以 AES-GCM 密文存储（`AI_SECRET_KEY` 派生密钥，缺失降级明文并告警） |
-| AI 申请表单提取 | ✅ 完成 | `T-068` 后端：`POST /api/ai/extract` 上传 docx/xlsx（≤20MB）→ 大模型识别类型（主机/零信任申请）并提取字段返回预览（不写库）；`POST /api/ai/archive` 将已入账源文件从 `incoming/` 归档至 `archived/<日期>/`（`AI_UPLOAD_DIR` 配置）；文件暂存/归档防路径穿越；前端设置页/入账页（T-069/T-070）待续 |
+| AI 申请表单提取 | ✅ 完成 | `T-068` 后端：`POST /api/ai/extract` 上传 docx/xlsx（≤20MB）→ 大模型识别类型（主机/零信任申请）并提取字段返回预览（不写库）；`POST /api/ai/archive` 将已入账源文件从 `incoming/` 归档至 `archived/<日期>/`（`AI_UPLOAD_DIR` 配置）；文件暂存/归档防路径穿越；`T-070` 前端 `/ai-import` 上传→解析预览可编辑→确认入账（复用现有 Create）→归档源文件 |
 
 ## 近期变更记录
 
@@ -38,6 +38,7 @@
 
 ### 2026-10-16
 
+- `a6b2c72` `feat:` **T-070** 前端 AI 申请入账页：新增 `/ai-import`（el-steps 上传→解析→确认→完成；docx/xlsx 拖拽上传带上传进度；按识别类型动态渲染可编辑表单含 warnings 高亮；确认后调现有 Create 入账并归档源文件）；11 页齿轮菜单加入口；lint:check + build 全绿
 - `ae983cd` `feat:` **T-069** 前端 AI 接入设置页：新增 `/ai-settings`（配置 API 地址/API Key（脱敏回显、留空保留）/模型名）+ `api/ai.js`；9 页齿轮菜单加「AI 接入设置」入口与路由；lint:check + build 全绿
 - `12881ef` `feat:` **T-068** AI 申请表单解析与提取：`POST /api/ai/extract` 上传 docx/xlsx（标准库/excelize 转文本）调用大模型识别类型（主机/零信任申请）并提取字段返回预览（不写库）；`POST /api/ai/archive` 将已入账源文件归档至 `AI_UPLOAD_DIR` 下 `archived/<日期>/`（extract 先暂存 `incoming/`）；防路径穿越；门禁全绿
 - `b7adc68` `feat:` **T-067** AI 接入后端地基：新增 `ai_settings` 单条全局配置表（表数 11→12）+ `GET/PUT /api/ai/settings`（Key 回显仅末四位、空值保留原值、变更写审计），API Key 以 AES-GCM 密文存储（`AI_SECRET_KEY` 派生密钥，缺失降级明文并告警）；门禁全绿

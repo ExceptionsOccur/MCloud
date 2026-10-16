@@ -12,6 +12,7 @@ import ZeroTrustLedger from '../views/ZeroTrustLedger.vue'
 import MappingLedger from '../views/MappingLedger.vue'
 import DataBackup from '../views/DataBackup.vue'
 import AISettings from '../views/AISettings.vue'
+import AIApplicationImport from '../views/AIApplicationImport.vue'
 
 const routes = [
   {
@@ -78,6 +79,12 @@ const routes = [
     path: '/ai-settings',
     name: 'AISettings',
     component: AISettings,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/ai-import',
+    name: 'AIApplicationImport',
+    component: AIApplicationImport,
     meta: { requiresAuth: true }
   }
 ]
