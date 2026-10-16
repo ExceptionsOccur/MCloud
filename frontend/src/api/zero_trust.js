@@ -4,6 +4,10 @@ export function getZeroTrusts(keyword = '') {
   return api.get('/zero-trusts', { params: { keyword } })
 }
 
+export function getZeroTrustExitLocations() {
+  return api.get('/zero-trusts/exit-locations')
+}
+
 export function createZeroTrust(data) {
   return api.post('/zero-trusts', data)
 }

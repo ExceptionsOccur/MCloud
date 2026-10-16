@@ -1,7 +1,6 @@
 package services
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -287,15 +286,12 @@ func TestZeroTrustBatchSemicolonGroups(t *testing.T) {
 
 // TestZeroTrustCreateMergeByAccount 新增按账户名合并（T-058）：
 // 同账户名二次 Create 合并进 id 最小一条，targets 并集去重、空字段补录、非空保留、
-// 无变化不重复写库；公网IP仅补录时校验资源池、已有值时丢弃新值
+// 无变化不重复写库；接入地区仅补录空位、已有值时丢弃新值（T-061）
 func TestZeroTrustCreateMergeByAccount(t *testing.T) {
 	newTestDB(t)
 	s := NewZeroTrustService()
 	hostA := makeHost(t, NewHostService(), "mg-a", "10.66.5.1")
 	hostB := makeHost(t, NewHostService(), "mg-b", "10.66.5.2")
-	if err := database.DB.Create(&models.PublicIP{IP: "203.0.113.20", ISP: "电信", ExitLocation: "杭州"}).Error; err != nil {
-		t.Fatalf("种子公网IP失败: %v", err)
-	}
 
 	id1, err := s.Create(ZeroTrustRequest{
 		ApplyUnit: "合并单位", AccountName: "mg-acct",
@@ -346,31 +342,31 @@ func TestZeroTrustCreateMergeByAccount(t *testing.T) {
 		t.Fatalf("重复新增应无变化返回原 id：%d / %v", id3, err)
 	}
 
-	// 公网IP：已有记录该字段为空 → 补录值须在资源池
+	// 接入地区：已有记录该字段为空 → 补录
 	if _, err := s.Create(ZeroTrustRequest{
-		ApplyUnit: "合并单位", AccountName: "mg-acct", PublicIP: "203.0.113.99",
-		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
-	}, testOp, NewRequestID()); err == nil || !errors.Is(err, ErrPublicIPNotInPool) {
-		t.Fatalf("补录公网IP不在资源池应报错，实际 %v", err)
-	}
-	if _, err := s.Create(ZeroTrustRequest{
-		ApplyUnit: "合并单位", AccountName: "mg-acct", PublicIP: "203.0.113.20",
+		ApplyUnit: "合并单位", AccountName: "mg-acct", ExitLocation: "南宁",
 		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
 	}, testOp, NewRequestID()); err != nil {
-		t.Fatalf("公网IP补录失败: %v", err)
-	}
-	// 已有公网IP → 冲突新值丢弃（不报错、不覆盖）
-	if _, err := s.Create(ZeroTrustRequest{
-		ApplyUnit: "合并单位", AccountName: "mg-acct", PublicIP: "203.0.113.99",
-		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
-	}, testOp, NewRequestID()); err != nil {
-		t.Fatalf("已有公网IP时新值应丢弃而非报错: %v", err)
+		t.Fatalf("接入地区补录失败: %v", err)
 	}
 	if err := database.DB.First(&rec, id1).Error; err != nil {
 		t.Fatalf("查记录失败: %v", err)
 	}
-	if rec.PublicIP != "203.0.113.20" {
-		t.Fatalf("公网IP应保留已有值，实际 %q", rec.PublicIP)
+	if rec.ExitLocation != "南宁" {
+		t.Fatalf("接入地区补录不符，实际 %q", rec.ExitLocation)
+	}
+	// 已有接入地区 → 冲突新值丢弃（不报错、不覆盖）
+	if _, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "合并单位", AccountName: "mg-acct", ExitLocation: "青年",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
+	}, testOp, NewRequestID()); err != nil {
+		t.Fatalf("已有接入地区时新值应丢弃而非报错: %v", err)
+	}
+	if err := database.DB.First(&rec, id1).Error; err != nil {
+		t.Fatalf("查记录失败: %v", err)
+	}
+	if rec.ExitLocation != "南宁" {
+		t.Fatalf("接入地区应保留已有值，实际 %q", rec.ExitLocation)
 	}
 }
 
@@ -521,6 +517,70 @@ func TestZeroTrustBatchPortGroups(t *testing.T) {
 	}
 	if _, ok := byAccount["acct-d"]; ok {
 		t.Fatal("acct-d 非法表达式不应入库")
+	}
+}
+
+// TestZeroTrustExitLocationAndSchema T-061：zero_trusts 无 public_ip 列、有 exit_location 列；
+// ListExitLocations 返回 public_ips.exit_location 去重非空集；Create 落库回显接入地区
+func TestZeroTrustExitLocationAndSchema(t *testing.T) {
+	newTestDB(t)
+	s := NewZeroTrustService()
+	hostA := makeHost(t, NewHostService(), "el-a", "10.66.1.1")
+
+	var cols []struct{ Name string }
+	if err := database.DB.Raw("SELECT name FROM pragma_table_info('zero_trusts')").Scan(&cols).Error; err != nil {
+		t.Fatalf("读取表结构失败: %v", err)
+	}
+	hasExit, hasPublic := false, false
+	for _, c := range cols {
+		if c.Name == "exit_location" {
+			hasExit = true
+		}
+		if c.Name == "public_ip" {
+			hasPublic = true
+		}
+	}
+	if !hasExit || hasPublic {
+		t.Fatalf("zero_trusts 应含 exit_location 且不含 public_ip（exit=%v public=%v）", hasExit, hasPublic)
+	}
+
+	// 地区候选值取资源池去重非空
+	for _, r := range []models.PublicIP{
+		{IP: "203.0.113.1", ExitLocation: "南宁"},
+		{IP: "203.0.113.2", ExitLocation: "南宁"},
+		{IP: "203.0.113.3", ExitLocation: "青年"},
+		{IP: "203.0.113.4", ExitLocation: ""},
+	} {
+		if err := database.DB.Create(&r).Error; err != nil {
+			t.Fatalf("种子公网IP失败: %v", err)
+		}
+	}
+	locs, err := s.ListExitLocations()
+	if err != nil {
+		t.Fatalf("ListExitLocations: %v", err)
+	}
+	if len(locs) != 2 || locs[0] != "南宁" || locs[1] != "青年" {
+		t.Fatalf("地区候选去重不符: %v", locs)
+	}
+
+	// Create 落库接入地区并回显
+	id, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "地区单位", AccountName: "el-acct", ExitLocation: "南宁",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
+	}, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("创建失败: %v", err)
+	}
+	items, err := s.List("")
+	if err != nil || len(items) != 1 {
+		t.Fatalf("List: %v / %d 条", err, len(items))
+	}
+	if items[0].ID != id || items[0].ExitLocation != "南宁" {
+		t.Fatalf("接入地区回显不符: %+v", items[0].ZeroTrust)
+	}
+	// 搜索命中接入地区
+	if items, err := s.List("南宁"); err != nil || len(items) != 1 {
+		t.Fatalf("按接入地区搜索应命中 1 条: %v / %d", err, len(items))
 	}
 }
 

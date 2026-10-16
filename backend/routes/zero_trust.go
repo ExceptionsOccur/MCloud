@@ -11,6 +11,7 @@ func registerZeroTrusts(g *gin.RouterGroup) {
 	zeroTrust := controllers.NewZeroTrustController()
 	zeroTrustGroup := g.Group("/zero-trusts")
 	zeroTrustGroup.GET("", zeroTrust.List)
+	zeroTrustGroup.GET("/exit-locations", zeroTrust.ListExitLocations)
 	zeroTrustGroup.POST("", zeroTrust.Create)
 	zeroTrustGroup.POST("/batch", zeroTrust.BatchCreateText)
 	zeroTrustGroup.PUT("/:id", zeroTrust.Update)

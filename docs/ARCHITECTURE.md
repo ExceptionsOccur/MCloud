@@ -206,6 +206,7 @@ go/
 
 > **迁移索引口径（T-039）**：唯一索引统一采用 GORM 期望的 `idx_` 前缀命名（`idx_<表>_<列>`），历史 `*_key` / `uni_` 重复约束由迁移收敛（`backend/migrations/20261009000001_align_unique_indexes_and_fks.sql`）。
 > **迁移↔实库对齐（T-048）**：`port_mappings`/`public_ips` 主键 `integer`→`bigint`（含序列）、6 表 `created_at` 补 `DEFAULT now()`、`uni_port_mappings_domain`→`idx_port_mappings_domain`、`users.failed_attempts`/`host_applications.host_id` 对齐 `bigint`、`host_applications` 补 `created_at`/`updated_at`、FK 口径统一实库 `NO ACTION`（对齐迁移 `20261010000002_align_schema_drift.sql`，幂等可重跑）。**不做**：软删除、CHECK、普通索引补齐、`people_pkey` 改名。
+> **零信任去公网IP（T-061）**：`zero_trusts` 删除 `public_ip` 列、新增独立 `exit_location` 列（`VARCHAR(128)`），存量由原 `public_ip` 关联的 `public_ips.exit_location` 回填（迁移 `20261016000001_zero_trust_exit_location.sql`，幂等可重跑）。
 
 ---
 
@@ -327,7 +328,7 @@ go/
 | 账户名 | `account_name` | VARCHAR(64) | NOT NULL |
 | 申请人 | `applicant` | VARCHAR(64) | 选填（T-060，与账户名区分） |
 | 申请人联系方式 | `contact` | VARCHAR(64) | |
-| 公网IP入口 | `public_ip` | VARCHAR(45) | 选填，须在 `public_ips` 资源池；接入地区读时带出 |
+| 接入地区 | `exit_location` | VARCHAR(128) | 选填（T-061，独立存储；下拉候选取 `public_ips.exit_location` 去重） |
 | 系统名称 | `system_name` | VARCHAR(128) | 选填 |
 | 申请时间 | `apply_time` | TIMESTAMPTZ | NOT NULL |
 | 备注 | `remark` | TEXT | |
@@ -362,7 +363,7 @@ go/
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 | 更新时间 | `updated_at` | TIMESTAMPTZ | DEFAULT NOW() |
 
-> **运营商/出口位置为派生字段（T-049）**：`isp`/`exit_location` 两列已删除（历史传递依赖，值与资源池漂移），API 响应字段保留、恒从 `public_ips` 资源池读时带出（模型 `gorm:"-"`，对齐 `zero_trusts` 的接入地区做法）；搜索经 `public_ips` 匹配。
+> **运营商/出口位置为派生字段（T-049）**：`isp`/`exit_location` 两列已删除（历史传递依赖，值与资源池漂移），API 响应字段保留、恒从 `public_ips` 资源池读时带出（模型 `gorm:"-"`）；搜索经 `public_ips` 匹配。注意与 `zero_trusts.exit_location` 不同：后者的接入地区自 `T-061` 起为**独立存储**列。
 
 ### public_ips 表（公网IP资源台账）
 
@@ -401,9 +402,9 @@ go/
 - `persons.name` 必填，姓名 + 联系方式 + 单位完全重复视为同一人员
 - `ip_subnets.cidr` 仅允许 `/24` IPv4 网段，写入时自动规范化为网络地址（末位归 0）
 - 系统**不预置默认网段**，由用户在「IP统计 → 管理网段」中维护
-- `zero_trusts` 接入目标经 `zero_trust_targets` 子表存储（一对「主机:端口表达式」一行，`ports` 为单口/范围/列表表达式，双 FK `ON DELETE RESTRICT`）；主机被零信任台账引用时禁止删除（应用层子表去重计数校验，返回 `40901`）；API `targets` 为读时组装的派生字段；`public_ip` 须在公网IP资源池，接入地区（`exit_location`）读时带出不落库
+- `zero_trusts` 接入目标经 `zero_trust_targets` 子表存储（一对「主机:端口表达式」一行，`ports` 为单口/范围/列表表达式，双 FK `ON DELETE RESTRICT`）；主机被零信任台账引用时禁止删除（应用层子表去重计数校验，返回 `40901`）；API `targets` 为读时组装的派生字段；接入地区（`exit_location`）为独立存储字段（T-061，下拉候选取 `public_ips.exit_location` 去重），不再关联公网IP
 - `port_mappings.host_id` 外键关联 `hosts.id`；外网/内网端口**展开后**数量必须一致（`A-B` 范围按 B-A+1 计，范围可与单口混搭配对），协议列表分别与对应端口 **token** 列表等长（仅 `tcp`/`udp`，缺省补 `tcp`）；主机被映射引用时禁止删除
 - `port_mappings` 整组唯一 `(host_id, public_ip, external_ports, external_protocols)`（唯一索引 `idx_port_mappings_host_ip_ports`：`T-051` 落前三列、`T-055` 纳入外网协议列并回填存量为 tcp，迁移 `20261010000006` 幂等；应用层 Create/Update 判重返回 `40901`，同端口不同协议不互斥）
 - `hosts.ip_mapped` 由映射台账自动重算（有映射=true，无=false），主机表单不可手改
-- `public_ips.ip` 唯一约束，公网 IP 资源池录入；删除/修改 IP 时若被 `port_mappings`/`zero_trusts` 引用（应用层值引用校验）返回 `40901`（`T-051`）
+- `public_ips.ip` 唯一约束，公网 IP 资源池录入；删除/修改 IP 时若被 `port_mappings` 引用（应用层值引用校验）返回 `40901`（`T-051`；零信任 `T-061` 起不再关联公网IP）
 - **GORM 列名陷阱**：`CIDR` 字段默认会被命名为 `c_id_r`，模型已显式指定 `gorm:"column:cidr"`

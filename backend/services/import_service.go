@@ -710,7 +710,8 @@ func (s *DataExchangeService) applyHostApplications(tx *gorm.DB, sh *importSheet
 }
 
 // applyZeroTrusts 自然键 = 账户名（T-058）；同账户名合并：接入目标并集去重、
-// 空字段补录、非空保留（申请时间保留已有）；接入目标 = 内网IP:端口（导入解析回 host_id，写 zero_trust_targets 子表），公网IP仅补录时校验须在资源池
+// 空字段补录、非空保留（申请时间保留已有）；接入目标 = 内网IP:端口（导入解析回 host_id，写 zero_trust_targets 子表），
+// 接入地区为独立字段（T-061，值取自公网IP资源池去重，不做强制校验）
 func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, report *ImportReport) error {
 	var existing []models.ZeroTrust
 	if err := tx.Order("id ASC").Find(&existing).Error; err != nil {
@@ -746,7 +747,7 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 
 		applicant := c.get("申请人")
 		contact := c.get("联系方式")
-		publicIP := c.get("公网IP")
+		exitLocation := c.get("接入地区")
 		remark := c.get("备注")
 
 		targetsRaw := c.get("接入目标")
@@ -784,13 +785,6 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 			return
 		}
 		cur, hasCur := byKey[key]
-		// 公网IP仅在会写入时校验（无已有记录或已有记录该字段为空）
-		if !hasCur || cur.PublicIP == "" {
-			if err = requirePublicIP(tx, publicIP); err != nil {
-				fail(report, c, err)
-				return
-			}
-		}
 		applyTime, err := parseTimeCell(c.get("申请时间"))
 		if err != nil {
 			fail(report, c, err)
@@ -808,9 +802,9 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 			if newContact == "" {
 				newContact = contact
 			}
-			newPublicIP := cur.PublicIP
-			if newPublicIP == "" {
-				newPublicIP = publicIP
+			newExitLocation := cur.ExitLocation
+			if newExitLocation == "" {
+				newExitLocation = exitLocation
 			}
 			newSystem := cur.SystemName
 			if newSystem == "" {
@@ -820,7 +814,7 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 			if newRemark == "" {
 				newRemark = remark
 			}
-			changed := cur.Applicant != newApplicant || cur.Contact != newContact || cur.PublicIP != newPublicIP ||
+			changed := cur.Applicant != newApplicant || cur.Contact != newContact || cur.ExitLocation != newExitLocation ||
 				cur.SystemName != newSystem || cur.Remark != newRemark ||
 				!targetPairsEqual(curPairs, merged)
 			if !changed {
@@ -828,7 +822,7 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 				return
 			}
 			updates := map[string]interface{}{
-				"applicant": newApplicant, "contact": newContact, "public_ip": newPublicIP,
+				"applicant": newApplicant, "contact": newContact, "exit_location": newExitLocation,
 				"system_name": newSystem, "remark": newRemark,
 			}
 			if err := tx.Model(&models.ZeroTrust{}).Where("id = ?", cur.ID).Updates(updates).Error; err != nil {
@@ -849,7 +843,7 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 		}
 		z := models.ZeroTrust{
 			ApplyUnit: applyUnit, AccountName: accountName, SystemName: systemName,
-			Applicant: applicant, Contact: contact, PublicIP: publicIP, Remark: remark,
+			Applicant: applicant, Contact: contact, ExitLocation: exitLocation, Remark: remark,
 			ApplyTime: time.Now(),
 		}
 		if !applyTime.IsZero() {

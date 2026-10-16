@@ -51,7 +51,7 @@
       <div class="toolbar">
         <el-input
           v-model="keyword"
-          placeholder="搜索申请单位 / 账户名 / 申请人 / 联系方式 / 系统名称 / 主机 / 公网IP / 出口位置 / 备注"
+          placeholder="搜索申请单位 / 账户名 / 申请人 / 联系方式 / 系统名称 / 主机 / 接入地区 / 备注"
           clearable
           style="width: 320px"
           @keyup.enter="loadList"
@@ -157,15 +157,6 @@
           </template>
         </el-table-column>
         <el-table-column
-          label="公网IP"
-          min-width="130"
-          show-overflow-tooltip
-        >
-          <template #default="{ row }">
-            {{ row.public_ip || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column
           label="接入地区"
           min-width="100"
           show-overflow-tooltip
@@ -228,28 +219,31 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="520px"
+      width="550px"
       :close-on-click-modal="false"
     >
       <el-form
         ref="formRef"
         :model="form"
         :rules="rules"
-        label-width="110px"
+        label-width="120px"
       >
         <el-form-item
           label="申请单位"
           prop="apply_unit"
+          label-width="120px"
         >
           <el-input
             v-model="form.apply_unit"
             placeholder="请输入申请单位"
             maxlength="128"
+            label-width="120px"
           />
         </el-form-item>
         <el-form-item
           label="账户名"
           prop="account_name"
+          label-width="120px"
         >
           <el-input
             v-model="form.account_name"
@@ -280,6 +274,7 @@
         <el-form-item
           label="接入主机与端口"
           required
+          label-width="120px"
         >
           <div class="target-rows">
             <div
@@ -336,30 +331,24 @@
           />
         </el-form-item>
         <el-form-item
-          label="公网IP"
-          prop="public_ip"
+          label="接入地区"
+          prop="exit_location"
         >
           <el-select
-            v-model="form.public_ip"
-            placeholder="从公网IP资源池选择（选填）"
+            v-model="form.exit_location"
+            placeholder="从公网IP资源池筛选接入地区（选填）"
             filterable
             clearable
             style="width: 100%"
-            :loading="publicIPsLoading"
+            :loading="exitLocationsLoading"
           >
             <el-option
-              v-for="ip in publicIPs"
-              :key="ip.ip"
-              :label="ip.isp ? `${ip.ip}（${ip.isp}）` : ip.ip"
-              :value="ip.ip"
+              v-for="loc in exitLocations"
+              :key="loc"
+              :label="loc"
+              :value="loc"
             />
           </el-select>
-          <div
-            v-if="selectedExitLocation"
-            class="exit-hint"
-          >
-            接入地区：{{ selectedExitLocation }}
-          </div>
         </el-form-item>
         <el-form-item
           label="申请时间"
@@ -411,9 +400,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
-import { getZeroTrusts, createZeroTrust, updateZeroTrust, deleteZeroTrust } from '../api/zero_trust'
+import { getZeroTrusts, getZeroTrustExitLocations, createZeroTrust, updateZeroTrust, deleteZeroTrust } from '../api/zero_trust'
 import { getHosts } from '../api/host'
-import { getPublicIPs } from '../api/public_ip'
 import { formatTime, toLocalPickerValue, toRFC3339 } from '../utils'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
@@ -435,8 +423,8 @@ const editId = ref(null)
 const formRef = ref(null)
 const hosts = ref([])
 const hostsLoading = ref(false)
-const publicIPs = ref([])
-const publicIPsLoading = ref(false)
+const exitLocations = ref([])
+const exitLocationsLoading = ref(false)
 
 const form = reactive({
   apply_unit: '',
@@ -445,7 +433,7 @@ const form = reactive({
   contact: '',
   targets: [{ host_id: null, ports: '22' }],
   system_name: '',
-  public_ip: '',
+  exit_location: '',
   apply_time: '',
   remark: ''
 })
@@ -456,18 +444,13 @@ const rules = {
   apply_time: [{ required: true, message: '请选择申请时间', trigger: 'change' }]
 }
 
-const selectedExitLocation = computed(() => {
-  if (!form.public_ip) return ''
-  return publicIPs.value.find(ip => ip.ip === form.public_ip)?.exit_location || ''
-})
-
 const dialogTitle = computed(() => (editId.value ? '编辑申请' : '新增申请'))
 
 onMounted(() => {
   authStore.fetchUserInfo()
   loadList()
   loadHosts()
-  loadPublicIPs()
+  loadExitLocations()
   window.addEventListener('ledger-batch-done', loadList)
 })
 
@@ -505,17 +488,17 @@ async function loadHosts() {
   }
 }
 
-async function loadPublicIPs() {
-  publicIPsLoading.value = true
+async function loadExitLocations() {
+  exitLocationsLoading.value = true
   try {
-    const res = await getPublicIPs('')
+    const res = await getZeroTrustExitLocations()
     if (res.code === 0) {
-      publicIPs.value = res.data || []
+      exitLocations.value = res.data || []
     }
   } catch {
     // 错误提示由 axios 拦截器统一弹出
   } finally {
-    publicIPsLoading.value = false
+    exitLocationsLoading.value = false
   }
 }
 
@@ -543,7 +526,7 @@ function openDialog(row) {
   form.targets = (row?.targets || []).map(t => ({ host_id: t.host_id, ports: t.ports || '' }))
   if (!form.targets.length) form.targets = [{ host_id: null, ports: '22' }]
   form.system_name = row?.system_name || ''
-  form.public_ip = row?.public_ip || ''
+  form.exit_location = row?.exit_location || ''
   form.apply_time = row?.apply_time ? toLocalPickerValue(row.apply_time) : ''
   form.remark = row?.remark || ''
   dialogVisible.value = true
@@ -575,7 +558,7 @@ async function handleSubmit() {
       contact: form.contact.trim(),
       targets: form.targets.map(t => ({ host_id: t.host_id, ports: String(t.ports).trim() })),
       system_name: form.system_name.trim(),
-      public_ip: form.public_ip || '',
+      exit_location: form.exit_location || '',
       apply_time: toRFC3339(form.apply_time),
       remark: form.remark.trim()
     }
@@ -714,12 +697,5 @@ function handleCommand(command) {
 
 .target-port {
   width: 130px;
-}
-
-.exit-hint {
-  margin-top: 4px;
-  font-size: 12px;
-  color: #909399;
-  line-height: 1.4;
 }
 </style>

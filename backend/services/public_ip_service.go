@@ -24,20 +24,16 @@ type PublicIPRequest struct {
 
 var ErrPublicIPNotFound = errors.New("公网IP记录不存在")
 
-// ErrPublicIPReferenced 公网IP已被映射台账或零信任台账引用，禁止删除/修改
-var ErrPublicIPReferenced = errors.New("该公网IP已被映射台账或零信任台账引用")
+// ErrPublicIPReferenced 公网IP已被映射台账引用，禁止删除/修改
+var ErrPublicIPReferenced = errors.New("该公网IP已被映射台账引用")
 
-// countPublicIPRefs 统计公网IP在 port_mappings / zero_trusts 中的引用数
+// countPublicIPRefs 统计公网IP在 port_mappings 中的引用数（T-061 起零信任不再关联公网IP）
 func countPublicIPRefs(ip string) (int64, error) {
 	var pm int64
 	if err := database.DB.Model(&models.PortMapping{}).Where("public_ip = ?", ip).Count(&pm).Error; err != nil {
 		return 0, err
 	}
-	var zt int64
-	if err := database.DB.Model(&models.ZeroTrust{}).Where("public_ip = ?", ip).Count(&zt).Error; err != nil {
-		return 0, err
-	}
-	return pm + zt, nil
+	return pm, nil
 }
 
 func normalizePublicIP(req PublicIPRequest) (PublicIPRequest, error) {
