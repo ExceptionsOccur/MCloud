@@ -51,7 +51,7 @@
       <div class="toolbar">
         <el-input
           v-model="keyword"
-          placeholder="搜索申请单位 / 账户名 / 账号姓名 / 申请人 / 联系方式 / 系统名称 / 主机 / 接入地区 / 备注"
+          placeholder="搜索申请单位 / 账户名 / 账号姓名 / 申请人 / 账户联系方式 / 系统名称 / 主机 / 接入地区 / 备注"
           clearable
           style="width: 320px"
           @keyup.enter="loadList"
@@ -115,17 +115,7 @@
           </template>
         </el-table-column>
         <el-table-column
-          prop="applicant"
-          label="申请人"
-          min-width="100"
-          show-overflow-tooltip
-        >
-          <template #default="{ row }">
-            {{ row.applicant || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="申请人联系方式"
+          label="账户联系方式"
           min-width="140"
           show-overflow-tooltip
         >
@@ -181,6 +171,16 @@
         >
           <template #default="{ row }">
             {{ formatTime(row.apply_time) }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="applicant"
+          label="申请人"
+          min-width="100"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            {{ row.applicant || '-' }}
           </template>
         </el-table-column>
         <el-table-column
@@ -290,12 +290,12 @@
           />
         </el-form-item>
         <el-form-item
-          label="联系方式"
+          label="账户联系方式"
           prop="contact"
         >
           <el-input
             v-model="form.contact"
-            placeholder="请输入申请人联系方式"
+            placeholder="请输入账户联系方式"
             maxlength="64"
           />
         </el-form-item>

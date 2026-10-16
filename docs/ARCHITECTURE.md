@@ -328,7 +328,7 @@ go/
 | 账户名 | `account_name` | VARCHAR(64) | NOT NULL |
 | 账号姓名 | `account_name_zh` | VARCHAR(64) | 选填（T-063，账户名的补充说明） |
 | 申请人 | `applicant` | VARCHAR(64) | 选填（T-060，与账户名区分） |
-| 申请人联系方式 | `contact` | VARCHAR(64) | |
+| 账户联系方式 | `contact` | VARCHAR(64) | 选填（T-064，账户联系方式，非申请人联系方式） |
 | 接入地区 | `exit_location` | VARCHAR(128) | 选填（T-061，独立存储；下拉候选取 `public_ips.exit_location` 去重） |
 | 系统名称 | `system_name` | VARCHAR(128) | 选填 |
 | 申请时间 | `apply_time` | TIMESTAMPTZ | NOT NULL |
