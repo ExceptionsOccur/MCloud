@@ -175,14 +175,14 @@
 | 文件 | 路由 | 职责 |
 |------|------|------|
 | `views/Login.vue` | `/login` | 登录页 |
-| `views/HostManagement.vue` | `/` | 主机管理主页（工具栏 + 表格 + 各弹窗） |
+| `views/HostManagement.vue` | `/` | 主机管理主页（工具栏 + 表格 + 各弹窗；行内编辑/复制/详情/删除） |
 | `views/ResourceStatistics.vue` | `/statistics` | 资源统计（汇总表格 + 饼图） |
 | `views/IpStatistics.vue` | `/ip-statistics` | IP 统计（位图 + 探测 + 网段管理） |
 | `views/BusinessStatistics.vue` | `/business-statistics` | 业务统计（概览 + 柱状图 + 表格 + 下钻弹窗） |
 | `views/PersonnelManagement.vue` | `/personnel` | 人员管理（搜索 + 新增/编辑/删除，含关联主机数校验） |
 | `views/PublicIPManagement.vue` | `/public-ip` | 公网IP资源台账（搜索 + 新增/编辑/删除，设置菜单入口） |
-| `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 「申请资源」标签列 `主机名(ip:port)` 按主机名排序 + 配对行表单 + 接入地区下拉（候选取公网IP资源池去重）+ 批量添加） |
-| `views/MappingLedger.vue` | `/mapping-ledger` | 端口映射台账（多端口标签 + 批量添加） |
+| `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 「申请资源」标签列 `主机名(ip:port)` 按主机名排序 + 配对行表单 + 接入地区下拉（候选取公网IP资源池去重）+ 批量添加 + 行「复制」新增（账户名置空）） |
+| `views/MappingLedger.vue` | `/mapping-ledger` | 端口映射台账（多端口标签 + 批量添加 + 行「复制」新增（公网IP/主机/端口置空）） |
 | `views/DataBackup.vue` | `/data-backup` | 数据备份（8 表 xlsx 导出/导入 + 导入报告展示，设置菜单入口） |
 | `views/AuditLog.vue` | `/audit-logs` | 审计日志（操作人/动作/资源筛选 + 分页 + 详情弹窗） |
 
@@ -192,8 +192,8 @@
 |------|------|----------|
 | `AppNav.vue` | 顶部导航 7 个 Tab（T-019 抽取，10 页共用）；`variant` prop 保留 AuditLog/DataBackup 历史样式变体保证视觉零变化 | 全部 10 个功能页 |
 | `SearchToolbar.vue` | 搜索框、筛选下拉、操作按钮 | HostManagement |
-| `HostTable.vue` | 主机列表表格 + 分页 | HostManagement |
-| `HostFormDialog.vue` | 新增/编辑/详情弹窗（技术+申请双 Tab，含人员选择/手输自动建人员） | HostManagement |
+| `HostTable.vue` | 主机列表表格 + 分页（行操作：编辑/复制/详情/删除） | HostManagement |
+| `HostFormDialog.vue` | 新增/编辑/复制/详情弹窗（技术+申请双 Tab，含人员选择/手输自动建人员；复制模式预填所选行、内网IP/实例ID 置空） | HostManagement |
 | `BatchAddDialog.vue` | 批量添加弹窗 | HostManagement |
 | `BatchEditDialog.vue` | 批量编辑弹窗（含人员选择/手输自动建人员） | HostManagement |
 | `ImportDialog.vue` | CSV 导入弹窗 | HostManagement |

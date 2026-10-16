@@ -184,7 +184,7 @@
         </el-table-column>
         <el-table-column
           label="操作"
-          width="140"
+          width="180"
           align="center"
           fixed="right"
         >
@@ -196,6 +196,14 @@
               @click="openDialog(row)"
             >
               编辑
+            </el-button>
+            <el-button
+              type="primary"
+              link
+              size="small"
+              @click="openDialog(row, true)"
+            >
+              复制
             </el-button>
             <el-popconfirm
               :title="`确定删除账户 ${row.account_name} 的申请记录？`"
@@ -420,6 +428,7 @@ const keyword = ref('')
 const dialogVisible = ref(false)
 const submitting = ref(false)
 const editId = ref(null)
+const copyMode = ref(false)
 const formRef = ref(null)
 const hosts = ref([])
 const hostsLoading = ref(false)
@@ -444,7 +453,7 @@ const rules = {
   apply_time: [{ required: true, message: '请选择申请时间', trigger: 'change' }]
 }
 
-const dialogTitle = computed(() => (editId.value ? '编辑申请' : '新增申请'))
+const dialogTitle = computed(() => (editId.value ? '编辑申请' : (copyMode.value ? '复制新增申请' : '新增申请')))
 
 onMounted(() => {
   authStore.fetchUserInfo()
@@ -517,10 +526,12 @@ function sortTargets(targets) {
   })
 }
 
-function openDialog(row) {
-  editId.value = row?.id || null
+function openDialog(row, copy = false) {
+  copyMode.value = copy
+  editId.value = copy ? null : (row?.id || null)
   form.apply_unit = row?.apply_unit || ''
-  form.account_name = row?.account_name || ''
+  // 复制时唯一字段（账户名）置空待填
+  form.account_name = copy ? '' : (row?.account_name || '')
   form.applicant = row?.applicant || ''
   form.contact = row?.contact || ''
   form.targets = (row?.targets || []).map(t => ({ host_id: t.host_id, ports: t.ports || '' }))

@@ -116,7 +116,7 @@
       </el-table-column>
       <el-table-column
         label="操作"
-        width="140"
+        width="180"
         fixed="right"
       >
         <template #default="{ row }">
@@ -127,6 +127,14 @@
             @click="handleEdit(row)"
           >
             编辑
+          </el-button>
+          <el-button
+            type="primary"
+            link
+            size="small"
+            @click="handleCopy(row)"
+          >
+            复制
           </el-button>
           <el-button
             type="primary"
@@ -187,6 +195,10 @@ function handleSelectionChange(selection) {
 
 function handleEdit(row) {
   window.dispatchEvent(new CustomEvent('open-host-form', { detail: { mode: 'edit', data: row } }))
+}
+
+function handleCopy(row) {
+  window.dispatchEvent(new CustomEvent('open-host-form', { detail: { mode: 'copy', data: row } }))
 }
 
 function handleView(row) {

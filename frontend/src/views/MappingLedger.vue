@@ -189,7 +189,7 @@
         </el-table-column>
         <el-table-column
           label="操作"
-          width="140"
+          width="180"
           align="center"
           fixed="right"
         >
@@ -201,6 +201,14 @@
               @click="openDialog(row)"
             >
               编辑
+            </el-button>
+            <el-button
+              type="primary"
+              link
+              size="small"
+              @click="openDialog(row, true)"
+            >
+              复制
             </el-button>
             <el-popconfirm
               title="确定删除该映射记录？"
@@ -386,6 +394,7 @@ const keyword = ref('')
 const dialogVisible = ref(false)
 const submitting = ref(false)
 const editId = ref(null)
+const copyMode = ref(false)
 const formRef = ref(null)
 const hosts = ref([])
 const hostsLoading = ref(false)
@@ -408,7 +417,7 @@ const rules = {
   internal_ports: [{ required: true, message: '请输入内网端口', trigger: 'blur' }]
 }
 
-const dialogTitle = computed(() => (editId.value ? '编辑映射' : '新增映射'))
+const dialogTitle = computed(() => (editId.value ? '编辑映射' : (copyMode.value ? '复制新增映射' : '新增映射')))
 
 function splitPorts(val) {
   if (!val) return []
@@ -558,12 +567,14 @@ async function loadHosts() {
   }
 }
 
-function openDialog(row) {
-  editId.value = row?.id || null
-  form.public_ip = row?.public_ip || ''
-  form.host_id = row?.host_id || null
-  form.external_ports = joinPortTokens(row?.external_ports, row?.external_protocols)
-  form.internal_ports = joinPortTokens(row?.internal_ports, row?.internal_protocols)
+function openDialog(row, copy = false) {
+  copyMode.value = copy
+  editId.value = copy ? null : (row?.id || null)
+  // 复制时唯一键相关字段（公网IP、内网主机、外网/内网端口）置空待填，域名/备注保留
+  form.public_ip = copy ? '' : (row?.public_ip || '')
+  form.host_id = copy ? null : (row?.host_id || null)
+  form.external_ports = copy ? '' : joinPortTokens(row?.external_ports, row?.external_protocols)
+  form.internal_ports = copy ? '' : joinPortTokens(row?.internal_ports, row?.internal_protocols)
   form.domain = row?.domain || ''
   form.remark = row?.remark || ''
   dialogVisible.value = true
