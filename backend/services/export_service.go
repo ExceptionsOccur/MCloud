@@ -2,12 +2,10 @@ package services
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"mcloud/database"
 	"mcloud/models"
-	"mcloud/utils"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -147,24 +145,34 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 		return nil, err
 	}
 
-	// zero_trusts（接入目标取子表配对 host_id → 内网IP:端口表达式；T-056 起端口可为范围/列表，
-	// 导入按「带冒号开组、无冒号续接」解析回多端口）
+	// zero_trusts（接入目标取子表配对 host_id → 内网IP:端口表达式/协议；T-056 起端口可为范围/列表，
+	// T-065 起追加 /协议；按「每个接入目标一行」导出，表头字段逐行重复，导入按账户名合并、接入目标并集去重（T-058）故往返不丢；
+	// 导入按「带冒号开组、无冒号续接」+ `/协议` 解析）
 	ztRows := make([][]interface{}, 0, len(zeroTrusts))
 	for _, z := range zeroTrusts {
 		pairs := ztPairs[z.ID]
-		parts := make([]string, 0, len(pairs))
+		if len(pairs) == 0 {
+			ztRows = append(ztRows, []interface{}{
+				z.ApplyUnit, z.AccountName, z.AccountNameZh, z.Applicant, z.Contact, z.ExitLocation,
+				"", z.SystemName, z.ApplyTime, z.Remark,
+			})
+			continue
+		}
 		for _, p := range pairs {
 			ip, ok := hostIPByID[p.HostID]
 			if !ok {
 				continue
 			}
-			parts = append(parts, fmt.Sprintf("%s:%s", ip, p.Ports))
+			proto := p.Protocol
+			if proto == "" {
+				proto = "tcp"
+			}
+			ztRows = append(ztRows, []interface{}{
+				z.ApplyUnit, z.AccountName, z.AccountNameZh, z.Applicant, z.Contact, z.ExitLocation,
+				fmt.Sprintf("%s:%s/%s", ip, p.Ports, proto), z.SystemName,
+				z.ApplyTime, z.Remark,
+			})
 		}
-		ztRows = append(ztRows, []interface{}{
-			z.ApplyUnit, z.AccountName, z.AccountNameZh, z.Applicant, z.Contact, z.ExitLocation,
-			strings.Join(parts, ","), z.SystemName,
-			z.ApplyTime.Format(utils.DateTimeLayout), z.Remark,
-		})
 	}
 	if err := writeSheetRows(f, "零信任", ztRows); err != nil {
 		return nil, err

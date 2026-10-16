@@ -21,30 +21,33 @@ func NewZeroTrustService() *ZeroTrustService {
 }
 
 // ZeroTrustTarget 一组接入目标配对；T-056 起端口为表达式（`22`/`1000-10005`/`22,443,5432` 可混合），
+// T-065 起每目标行带单协议 Protocol（tcp/udp，缺省 tcp）；
 // 兼容旧 API 入参单端口数字字段 port（ports 为空时回退，响应仅返回 ports）
 type ZeroTrustTarget struct {
-	HostID uint   `json:"host_id"`
-	Ports  string `json:"ports"`
-	Port   *int   `json:"port,omitempty"`
+	HostID   uint   `json:"host_id"`
+	Ports    string `json:"ports"`
+	Protocol string `json:"protocol"`
+	Port     *int   `json:"port,omitempty"`
 }
 
 type ZeroTrustRequest struct {
-	ApplyUnit     string              `json:"apply_unit" binding:"required"`
-	AccountName   string              `json:"account_name" binding:"required"`
-	AccountNameZh string              `json:"account_name_zh"`
-	Applicant     string              `json:"applicant"`
-	Contact       string              `json:"contact"`
-	ExitLocation  string              `json:"exit_location"`
-	Targets       []ZeroTrustTarget   `json:"targets" binding:"required"`
-	SystemName    string              `json:"system_name"`
-	ApplyTime     *utils.FlexibleTime `json:"apply_time"`
-	Remark        string              `json:"remark"`
+	ApplyUnit     string            `json:"apply_unit" binding:"required"`
+	AccountName   string            `json:"account_name" binding:"required"`
+	AccountNameZh string            `json:"account_name_zh"`
+	Applicant     string            `json:"applicant"`
+	Contact       string            `json:"contact"`
+	ExitLocation  string            `json:"exit_location"`
+	Targets       []ZeroTrustTarget `json:"targets" binding:"required"`
+	SystemName    string            `json:"system_name"`
+	ApplyTime     string            `json:"apply_time"`
+	Remark        string            `json:"remark"`
 }
 
-// ZeroTrustTargetView 配对 + 主机简要信息（列表展示用；ports 为端口表达式）
+// ZeroTrustTargetView 配对 + 主机简要信息（列表展示用；ports 为端口表达式，protocol 为 tcp/udp）
 type ZeroTrustTargetView struct {
 	HostID    uint   `json:"host_id"`
 	Ports     string `json:"ports"`
+	Protocol  string `json:"protocol"`
 	HostName  string `json:"host_name"`
 	PrivateIP string `json:"private_ip"`
 }
@@ -73,8 +76,20 @@ type ZeroTrustHostBrief struct {
 	PrivateIP string `json:"private_ip"`
 }
 
+// normalizeTargetProtocol 归一化单协议（空 → tcp，仅 tcp/udp，统一小写）（T-065）
+func normalizeTargetProtocol(raw string) (string, error) {
+	p := strings.ToLower(strings.TrimSpace(raw))
+	if p == "" {
+		return "tcp", nil
+	}
+	if p != "tcp" && p != "udp" {
+		return "", fmt.Errorf("申请协议仅支持 tcp/udp，实际 %q", p)
+	}
+	return p, nil
+}
+
 // normalizeTargetPairs 校验配对列表：端口列表达式（复用 parsePortExpr，单口/范围规范化）、
-// 兼容旧 port 数字入参、按「主机+表达式」去重，返回归一化配对
+// 协议归一化（T-065，空 → tcp）、兼容旧 port 数字入参、按「主机+表达式+协议」去重，返回归一化配对
 func normalizeTargetPairs(list []ZeroTrustTarget) ([]ZeroTrustTarget, error) {
 	if len(list) == 0 {
 		return nil, errors.New("接入主机与端口不能为空")
@@ -94,8 +109,13 @@ func normalizeTargetPairs(list []ZeroTrustTarget) ([]ZeroTrustTarget, error) {
 			return nil, err
 		}
 		t.Ports = strings.Join(tokens, ",")
+		proto, err := normalizeTargetProtocol(t.Protocol)
+		if err != nil {
+			return nil, err
+		}
+		t.Protocol = proto
 		t.Port = nil
-		key := strconv.FormatUint(uint64(t.HostID), 10) + "|" + t.Ports
+		key := strconv.FormatUint(uint64(t.HostID), 10) + "|" + t.Ports + "|" + t.Protocol
 		if _, dup := seen[key]; dup {
 			continue
 		}
@@ -105,12 +125,16 @@ func normalizeTargetPairs(list []ZeroTrustTarget) ([]ZeroTrustTarget, error) {
 	return pairs, nil
 }
 
-// joinTargetPairs 配对列表 → "host_id:ports;host_id:ports" 串（派生字段/审计 diff 用；
-// T-056 起端口为表达式，对间以 ; 分隔、对内表达式保留逗号，避免与旧逗号分隔歧义）
+// joinTargetPairs 配对列表 → "host_id:ports:protocol;..." 串（派生字段/审计 diff 用；
+// T-056 起端口为表达式、对间以 ; 分隔、对内表达式保留逗号；T-065 起追加 :protocol）
 func joinTargetPairs(pairs []ZeroTrustTarget) string {
 	parts := make([]string, len(pairs))
 	for i, t := range pairs {
-		parts[i] = strconv.FormatUint(uint64(t.HostID), 10) + ":" + t.Ports
+		proto := t.Protocol
+		if proto == "" {
+			proto = "tcp"
+		}
+		parts[i] = strconv.FormatUint(uint64(t.HostID), 10) + ":" + t.Ports + ":" + proto
 	}
 	return strings.Join(parts, ";")
 }
@@ -127,7 +151,11 @@ func loadZeroTrustTargetPairs(db *gorm.DB, ids []uint) (map[uint][]ZeroTrustTarg
 		return nil, fmt.Errorf("查询零信任接入目标失败: %w", err)
 	}
 	for _, r := range rows {
-		pairs[r.ZeroTrustID] = append(pairs[r.ZeroTrustID], ZeroTrustTarget{HostID: r.HostID, Ports: r.Ports})
+		proto := r.Protocol
+		if proto == "" {
+			proto = "tcp"
+		}
+		pairs[r.ZeroTrustID] = append(pairs[r.ZeroTrustID], ZeroTrustTarget{HostID: r.HostID, Ports: r.Ports, Protocol: proto})
 	}
 	return pairs, nil
 }
@@ -139,7 +167,11 @@ func insertZeroTrustTargets(tx *gorm.DB, zeroTrustID uint, pairs []ZeroTrustTarg
 	}
 	rows := make([]models.ZeroTrustTarget, 0, len(pairs))
 	for _, p := range pairs {
-		rows = append(rows, models.ZeroTrustTarget{ZeroTrustID: zeroTrustID, HostID: p.HostID, Ports: p.Ports})
+		proto := p.Protocol
+		if proto == "" {
+			proto = "tcp"
+		}
+		rows = append(rows, models.ZeroTrustTarget{ZeroTrustID: zeroTrustID, HostID: p.HostID, Ports: p.Ports, Protocol: proto})
 	}
 	return tx.Create(&rows).Error
 }
@@ -205,13 +237,39 @@ func loadZeroTrustHostBriefs(idSet map[uint]struct{}) (map[uint]ZeroTrustHostBri
 	return briefs, nil
 }
 
+// normalizeExitLocations 规整多值接入地区（T-065）：按逗号/中文逗号/顿号拆分、去空白、
+// 去重保序、空值丢弃，join 回逗号分隔串（空 → ""）
+func normalizeExitLocations(raw string) string {
+	replacer := strings.NewReplacer("，", ",", "、", ",")
+	parts := strings.Split(replacer.Replace(raw), ",")
+	seen := make(map[string]struct{}, len(parts))
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if _, dup := seen[p]; dup {
+			continue
+		}
+		seen[p] = struct{}{}
+		out = append(out, p)
+	}
+	return strings.Join(out, ",")
+}
+
+// unionExitLocations 两组多值接入地区并集去重（已有在前、新值追加），返回逗号分隔串（T-065）
+func unionExitLocations(existing, incoming string) string {
+	return normalizeExitLocations(existing + "," + incoming)
+}
+
 func normalizeZeroTrust(req ZeroTrustRequest) (ZeroTrustRequest, []ZeroTrustTarget, error) {
 	req.ApplyUnit = strings.TrimSpace(req.ApplyUnit)
 	req.AccountName = strings.TrimSpace(req.AccountName)
 	req.AccountNameZh = strings.TrimSpace(req.AccountNameZh)
 	req.Applicant = strings.TrimSpace(req.Applicant)
 	req.Contact = strings.TrimSpace(req.Contact)
-	req.ExitLocation = strings.TrimSpace(req.ExitLocation)
+	req.ExitLocation = normalizeExitLocations(req.ExitLocation)
 	req.SystemName = strings.TrimSpace(req.SystemName)
 	req.Remark = strings.TrimSpace(req.Remark)
 	if req.ApplyUnit == "" {
@@ -225,8 +283,12 @@ func normalizeZeroTrust(req ZeroTrustRequest) (ZeroTrustRequest, []ZeroTrustTarg
 		return req, nil, err
 	}
 	req.Targets = pairs
-	if req.ApplyTime == nil {
-		req.ApplyTime = &utils.FlexibleTime{Time: time.Now()}
+	// 申请时间只到日期（T-066）：非空须严格 YYYY-MM-DD，空值缺省为服务器当天
+	req.ApplyTime = strings.TrimSpace(req.ApplyTime)
+	if req.ApplyTime == "" {
+		req.ApplyTime = time.Now().Format("2006-01-02")
+	} else if err := utils.ValidateDateOnly("申请时间", req.ApplyTime); err != nil {
+		return req, nil, err
 	}
 	return req, pairs, nil
 }
@@ -271,7 +333,7 @@ func (s *ZeroTrustService) List(keyword string) ([]ZeroTrustItem, error) {
 		pairs := pairsByID[r.ID]
 		item := ZeroTrustItem{ZeroTrust: r, Targets: make([]ZeroTrustTargetView, 0, len(pairs))}
 		for _, t := range pairs {
-			view := ZeroTrustTargetView{HostID: t.HostID, Ports: t.Ports}
+			view := ZeroTrustTargetView{HostID: t.HostID, Ports: t.Ports, Protocol: t.Protocol}
 			if b, ok := briefs[t.HostID]; ok {
 				view.HostName = b.Name
 				view.PrivateIP = b.PrivateIP
@@ -296,12 +358,19 @@ func (s *ZeroTrustService) GetByID(id uint) (*models.ZeroTrust, error) {
 	return &record, nil
 }
 
-// unionTargetPairs 两组配对并集去重（键=主机+端口表达式，保序：已有在前、新对追加）（T-058）
+// unionTargetPairs 两组配对并集去重（键=主机+端口表达式+协议，保序：已有在前、新对追加）（T-058/T-065）
 func unionTargetPairs(existing, incoming []ZeroTrustTarget) []ZeroTrustTarget {
 	seen := make(map[string]struct{}, len(existing)+len(incoming))
 	out := make([]ZeroTrustTarget, 0, len(existing)+len(incoming))
+	keyOf := func(t ZeroTrustTarget) string {
+		proto := t.Protocol
+		if proto == "" {
+			proto = "tcp"
+		}
+		return strconv.FormatUint(uint64(t.HostID), 10) + "|" + t.Ports + "|" + proto
+	}
 	for _, t := range existing {
-		key := strconv.FormatUint(uint64(t.HostID), 10) + "|" + t.Ports
+		key := keyOf(t)
 		if _, dup := seen[key]; dup {
 			continue
 		}
@@ -309,7 +378,7 @@ func unionTargetPairs(existing, incoming []ZeroTrustTarget) []ZeroTrustTarget {
 		out = append(out, t)
 	}
 	for _, t := range incoming {
-		key := strconv.FormatUint(uint64(t.HostID), 10) + "|" + t.Ports
+		key := keyOf(t)
 		if _, dup := seen[key]; dup {
 			continue
 		}
@@ -353,8 +422,9 @@ func mergeZeroTrustInto(dst *models.ZeroTrust, req ZeroTrustRequest, newPairs []
 		dst.Contact = req.Contact
 		changed = true
 	}
-	if dst.ExitLocation == "" && req.ExitLocation != "" {
-		dst.ExitLocation = req.ExitLocation
+	// 接入地区多值：取并集去重（T-065）
+	if mergedLoc := unionExitLocations(dst.ExitLocation, req.ExitLocation); mergedLoc != dst.ExitLocation {
+		dst.ExitLocation = mergedLoc
 		changed = true
 	}
 	if dst.SystemName == "" && req.SystemName != "" {
@@ -427,7 +497,7 @@ func (s *ZeroTrustService) Create(req ZeroTrustRequest, op Operator, requestID s
 		Contact:       req.Contact,
 		ExitLocation:  req.ExitLocation,
 		SystemName:    req.SystemName,
-		ApplyTime:     req.ApplyTime.Time,
+		ApplyTime:     req.ApplyTime,
 		Remark:        req.Remark,
 	}
 	tx := database.DB.Begin()
@@ -482,7 +552,7 @@ func (s *ZeroTrustService) Update(id uint, req ZeroTrustRequest, op Operator, re
 	record.Contact = req.Contact
 	record.ExitLocation = req.ExitLocation
 	record.SystemName = req.SystemName
-	record.ApplyTime = req.ApplyTime.Time
+	record.ApplyTime = req.ApplyTime
 	record.Remark = req.Remark
 	tx := database.DB.Begin()
 	if err := tx.Save(&record).Error; err != nil {
@@ -574,7 +644,8 @@ func ZeroTrustsByHost(hostID uint) ([]models.ZeroTrust, error) {
 // （T-060 起第4列申请人，联系方式后移至第5列；T-063 起第3列新增账号姓名，其余后移，故按 11 列口径）
 // 内网IP与申请端口两列数量必须一致、按位置配对；申请端口列含 `;` 时按 `;` 分组（T-058，多IP各自多端口），
 // 无 `;` 且仅 1 个端口组时广播到全部 IP（T-059，多IP相同端口）；单IP+整列逗号端口视为该主机多端口；
-// 接入地区第11列选填（T-061，值取自公网IP资源池去重的接入地区）；主机按内网IP定位，不存在则该行失败；
+// 每个端口组可带 `/协议` 后缀（T-065，tcp/udp，缺省 tcp，作用于该组整行），如 `22/tcp`、`22,443/udp`；
+// 接入地区第11列选填（T-061，值取自公网IP资源池去重的接入地区；T-065 支持逗号/顿号分隔多值，如 `南宁,青年`）；主机按内网IP定位，不存在则该行失败；
 // 合法行全部插入；同账户名行合并进已有记录（T-058）
 func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID string) (*BatchCreateResponse, error) {
 	resp := &BatchCreateResponse{}
@@ -631,27 +702,56 @@ func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID s
 			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: %v", lineNo, err))
 			continue
 		}
-		// T-058：单IP+整列逗号端口（无 `;` 分组）直接视为该主机多端口表达式，无需双层引号
-		if len(ips) == 1 && len(groups) > 1 && !strings.Contains(row[6], ";") {
-			groups = []string{strings.Join(groups, ",")}
+		// T-065：先剥每个端口组的 `/协议` 后缀（作用于该组整行，缺省 tcp），再走 T-058/T-059 分组
+		groupPorts := make([]string, len(groups))
+		groupProtos := make([]string, len(groups))
+		badProto := false
+		for gi, g := range groups {
+			ports, proto, perr := splitGroupProtocol(g)
+			if perr != nil {
+				resp.Errors++
+				resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: %v", lineNo, perr))
+				badProto = true
+				break
+			}
+			groupPorts[gi] = ports
+			groupProtos[gi] = proto
+		}
+		if badProto {
+			continue
+		}
+		// T-058：单IP+整列逗号端口（无 `;` 分组）直接视为该主机多端口表达式，无需双层引号；
+		// 合并为一行时各组的协议须一致（否则歧义报错），取该共同协议（缺省 tcp）
+		if len(ips) == 1 && len(groupPorts) > 1 && !strings.Contains(row[6], ";") {
+			proto, perr := mergeGroupProtocols(groupProtos)
+			if perr != nil {
+				resp.Errors++
+				resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: %v", lineNo, perr))
+				continue
+			}
+			groupPorts = []string{strings.Join(groupPorts, ",")}
+			groupProtos = []string{proto}
 		}
 		// T-059：无 `;` 且仅 1 个端口组 → 广播到全部 IP（多IP相同端口；此前报数不一致）
-		if len(groups) == 1 && len(ips) > 1 && !strings.Contains(row[6], ";") {
-			broadcast := make([]string, len(ips))
+		if len(groupPorts) == 1 && len(ips) > 1 && !strings.Contains(row[6], ";") {
+			bp := make([]string, len(ips))
+			br := make([]string, len(ips))
 			for i := range ips {
-				broadcast[i] = groups[0]
+				bp[i] = groupPorts[0]
+				br[i] = groupProtos[0]
 			}
-			groups = broadcast
+			groupPorts = bp
+			groupProtos = br
 		}
-		if len(ips) != len(groups) {
+		if len(ips) != len(groupPorts) {
 			resp.Errors++
-			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 内网IP与申请端口数量必须一致（IP %d 个，端口组 %d 个）", lineNo, len(ips), len(groups)))
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 内网IP与申请端口数量必须一致（IP %d 个，端口组 %d 个）", lineNo, len(ips), len(groupPorts)))
 			continue
 		}
 
 		targets := make([]ZeroTrustTarget, 0, len(ips))
 		for idx := range ips {
-			targets = append(targets, ZeroTrustTarget{HostID: ips[idx], Ports: groups[idx]})
+			targets = append(targets, ZeroTrustTarget{HostID: ips[idx], Ports: groupPorts[idx], Protocol: groupProtos[idx]})
 		}
 
 		req := ZeroTrustRequest{
@@ -663,16 +763,15 @@ func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID s
 			ExitLocation:  strings.TrimSpace(row[10]),
 			Targets:       targets,
 			SystemName:    strings.TrimSpace(row[7]),
+			ApplyTime:     strings.TrimSpace(row[8]),
 			Remark:        strings.TrimSpace(row[9]),
 		}
-		if t := strings.TrimSpace(row[8]); t != "" {
-			parsed, err := utils.ParseFlexibleTime(t)
-			if err != nil {
+		if req.ApplyTime != "" {
+			if err := utils.ValidateDateOnly("申请时间", req.ApplyTime); err != nil {
 				resp.Errors++
-				resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 申请时间无效: %v", lineNo, err))
+				resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: %v", lineNo, err))
 				continue
 			}
-			req.ApplyTime = &utils.FlexibleTime{Time: parsed}
 		}
 
 		if _, err := s.Create(req, op, requestID); err != nil {
@@ -684,6 +783,47 @@ func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID s
 	}
 
 	return resp, nil
+}
+
+// splitGroupProtocol 拆分单个端口组的 `/协议` 后缀（T-065）：`22/tcp` → (22, tcp)；
+// 无 `/` 时协议缺省 tcp；协议非 tcp/udp 报错
+func splitGroupProtocol(raw string) (ports, protocol string, err error) {
+	raw = strings.TrimSpace(raw)
+	if i := strings.LastIndexByte(raw, '/'); i >= 0 {
+		ports = strings.TrimSpace(raw[:i])
+		proto, perr := normalizeTargetProtocol(raw[i+1:])
+		if perr != nil {
+			return "", "", perr
+		}
+		if ports == "" {
+			return "", "", errors.New("申请端口不能为空")
+		}
+		return ports, proto, nil
+	}
+	return raw, "tcp", nil
+}
+
+// mergeGroupProtocols 合并单IP多端口组的协议（T-065）：各组协议须一致（缺省 tcp），
+// 返回共同协议；出现 tcp/udp 混用时报错
+func mergeGroupProtocols(protos []string) (string, error) {
+	hasTCP, hasUDP := false, false
+	for _, p := range protos {
+		switch p {
+		case "", "tcp":
+			hasTCP = true
+		case "udp":
+			hasUDP = true
+		default:
+			return "", fmt.Errorf("申请协议仅支持 tcp/udp，实际 %q", p)
+		}
+	}
+	if hasTCP && hasUDP {
+		return "", errors.New("单主机多端口不支持 tcp/udp 混用（协议为整行单值）")
+	}
+	if hasUDP {
+		return "udp", nil
+	}
+	return "tcp", nil
 }
 
 // splitPortGroups 解析批量「申请端口」列（T-056/T-058）：含 `;` 时按 `;` 分组（T-058，

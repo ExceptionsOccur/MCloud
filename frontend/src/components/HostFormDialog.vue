@@ -643,17 +643,17 @@ function fillFormFromHost(h) {
 
 function ztPortsForHost(record) {
   if (!record?.targets) return ''
-  // 派生 targets：host_id:ports 表达式，对间以 ; 分隔（T-056）
+  // 派生 targets：host_id:ports:protocol 表达式，对间以 ; 分隔（T-056/T-065）
   return String(record.targets)
     .split(';')
     .map(seg => seg.trim())
     .filter(Boolean)
     .map(seg => {
-      const [hid, ports] = seg.split(':')
-      return { hostId: Number(hid), ports }
+      const [hid, ports, protocol] = seg.split(':')
+      return { hostId: Number(hid), ports, protocol: protocol || 'tcp' }
     })
     .filter(p => p.hostId === editId.value && p.ports)
-    .map(p => p.ports)
+    .map(p => `${p.ports}/${p.protocol}`)
     .join(', ')
 }
 

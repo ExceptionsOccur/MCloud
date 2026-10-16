@@ -1,24 +1,19 @@
 package utils
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 )
 
-// 日期/时间统一口径（T-040）：
-//   - 展示/导出统一 YYYY-MM-DD HH:mm:ss（DateTimeLayout）
-//   - 主机申请时间严格 YYYY-MM-DD（DateOnlyLayout），空值合法
-//   - JSON 时间字段以 RFC3339 带时区为主，兼容无时区格式（按服务器本地时区解释）
+// 日期/时间统一口径（T-040；T-065 收敛为业务申请时间只到日期）：
+//   - 业务申请时间（主机 host_applications / 零信任 zero_trusts）严格 YYYY-MM-DD（DateOnlyLayout），
+//     系统不记录业务时间中的具体时刻
+//   - 审计类时间（created_at/updated_at/审计日志/用户锁定与登录）保留完整时间戳，展示由前端统一格式化
 const (
-	// DateOnlyLayout YYYY-MM-DD（主机申请时间）
+	// DateOnlyLayout YYYY-MM-DD（业务申请时间）
 	DateOnlyLayout = "2006-01-02"
-	// DateTimeLayout YYYY-MM-DD HH:mm:ss（展示/导出）
-	DateTimeLayout = "2006-01-02 15:04:05"
-	// DateTimeISOLayout YYYY-MM-DDTHH:mm:ss（无时区 JSON 入参）
-	DateTimeISOLayout = "2006-01-02T15:04:05"
 )
 
 // ErrInvalidDate 日期字段格式错误哨兵（controller 映射 40001，消息由具体字段给出）
@@ -44,40 +39,28 @@ func ValidateDateOnly(field, s string) error {
 	return nil
 }
 
-// ParseFlexibleTime 解析时间入参：RFC3339 带时区优先，
-// 兼容无时区 YYYY-MM-DDTHH:mm:ss / YYYY-MM-DD HH:mm:ss（按服务器本地时区解释）
-func ParseFlexibleTime(s string) (time.Time, error) {
+// dateLenientLayouts xlsx 导入宽容接受的日期写法（T-065）：标准短横线补零、
+// 斜杠/点/中文年月日分隔且不补零（如 2026/9/10）、8 位紧凑 YYYYMMDD；不支持两位年份（歧义不猜）
+var dateLenientLayouts = []string{
+	"2006-01-02",
+	"2006/1/2",
+	"2006-1-2",
+	"2006.1.2",
+	"2006年1月2日",
+	"20060102",
+}
+
+// NormalizeDateLenient 宽容解析日期并归一化为 YYYY-MM-DD（仅 xlsx 导入路径使用）：
+// 空串合法返回空；可解析 → 统一归一化；均不可解析 → 返回与 ValidateDateOnly 同款错误
+func NormalizeDateLenient(field, s string) (string, error) {
 	s = strings.TrimSpace(s)
 	if s == "" {
-		return time.Time{}, errors.New("时间不能为空")
+		return "", nil
 	}
-	if t, err := time.Parse(time.RFC3339, s); err == nil {
-		return t, nil
-	}
-	for _, layout := range []string{DateTimeISOLayout, DateTimeLayout} {
+	for _, layout := range dateLenientLayouts {
 		if t, err := time.ParseInLocation(layout, s, time.Local); err == nil {
-			return t, nil
+			return t.Format(DateOnlyLayout), nil
 		}
 	}
-	return time.Time{}, fmt.Errorf(
-		"时间格式不正确 %q，应为 RFC3339（如 2026-10-08T10:00:00+08:00）或无时区（如 2026-10-08T10:00:00）", s)
-}
-
-// FlexibleTime 可兼容无时区格式的 time.Time JSON 类型（零信任申请时间入参）
-type FlexibleTime struct {
-	time.Time
-}
-
-// UnmarshalJSON 解析规则见 ParseFlexibleTime
-func (f *FlexibleTime) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return errors.New("申请时间必须是时间字符串")
-	}
-	t, err := ParseFlexibleTime(s)
-	if err != nil {
-		return err
-	}
-	f.Time = t
-	return nil
+	return "", &dateError{msg: fmt.Sprintf("%s格式无法识别（示例: 2026-10-09 或 2026/9/10），当前值 %q", field, s)}
 }

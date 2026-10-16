@@ -4,7 +4,6 @@ import (
 	"errors"
 	"strings"
 	"testing"
-	"time"
 
 	"mcloud/database"
 	"mcloud/models"
@@ -183,7 +182,7 @@ func TestHostDelete(t *testing.T) {
 		zt := models.ZeroTrust{
 			ApplyUnit:   "测试单位",
 			AccountName: "acct",
-			ApplyTime:   time.Now(),
+			ApplyTime:   "2026-01-02",
 		}
 		if err := database.DB.Create(&zt).Error; err != nil {
 			t.Fatalf("种子零信任失败: %v", err)

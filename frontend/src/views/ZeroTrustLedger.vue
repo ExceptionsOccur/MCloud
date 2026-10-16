@@ -101,13 +101,13 @@
         <el-table-column
           prop="account_name"
           label="账户名"
-          min-width="120"
+          min-width="100"
           show-overflow-tooltip
         />
         <el-table-column
           prop="account_name_zh"
           label="账号姓名"
-          min-width="100"
+          min-width="70"
           show-overflow-tooltip
         >
           <template #default="{ row }">
@@ -116,7 +116,7 @@
         </el-table-column>
         <el-table-column
           label="账户联系方式"
-          min-width="140"
+          min-width="90"
           show-overflow-tooltip
         >
           <template #default="{ row }">
@@ -126,24 +126,84 @@
         <el-table-column
           label="申请资源"
           min-width="220"
-          show-overflow-tooltip
         >
           <template #default="{ row }">
-            <div
-              v-if="row.targets?.length"
-              class="target-tags"
-            >
-              <el-tag
-                v-for="(t, ti) in sortTargets(row.targets)"
-                :key="ti"
-                size="small"
-                class="target-tag"
-              >
-                {{ t.host_name || `#${t.host_id}` }}<span
-                  v-if="t.private_ip"
-                >({{ t.private_ip }}:{{ t.ports }})</span>
-              </el-tag>
-            </div>
+            <template v-if="targetGroupsOf(row).length">
+              <div class="target-hosts">
+                <el-popover
+                  v-for="h in targetGroupsOf(row).slice(0, 3)"
+                  :key="h.host_id"
+                  placement="auto"
+                  :width="260"
+                  trigger="click"
+                  popper-class="target-popper"
+                  :popper-options="targetPopperOptions"
+                >
+                  <template #reference>
+                    <el-tag
+                      size="small"
+                      class="target-tag"
+                    >
+                      {{ h.label }}
+                    </el-tag>
+                  </template>
+                  <div class="target-detail-scroll">
+                    <div class="target-detail-title">
+                      {{ h.label }}
+                    </div>
+                    <div class="target-detail-ports">
+                      <el-tag
+                        v-for="(p, pi) in h.ports"
+                        :key="pi"
+                        size="small"
+                        class="port-tag"
+                      >
+                        {{ p.ports }}/{{ p.protocol }}
+                      </el-tag>
+                    </div>
+                  </div>
+                </el-popover>
+                <el-popover
+                  v-if="targetGroupsOf(row).length > 3"
+                  placement="auto"
+                  :width="300"
+                  trigger="click"
+                  popper-class="target-popper"
+                  :popper-options="targetPopperOptions"
+                >
+                  <template #reference>
+                    <el-tag
+                      size="small"
+                      type="info"
+                      class="target-tag"
+                    >
+                      +{{ targetGroupsOf(row).length - 3 }} 台
+                    </el-tag>
+                  </template>
+                  <div class="target-detail-scroll">
+                    <div
+                      v-for="h in targetGroupsOf(row).slice(3)"
+                      :key="h.host_id"
+                      class="target-detail-row"
+                    >
+                      <div class="target-detail-title">
+                        {{ h.label }}
+                      </div>
+                      <div class="target-detail-ports">
+                        <el-tag
+                          v-for="(p, pi) in h.ports"
+                          :key="pi"
+                          size="small"
+                          class="port-tag"
+                        >
+                          {{ p.ports }}/{{ p.protocol }}
+                        </el-tag>
+                      </div>
+                    </div>
+                  </div>
+                </el-popover>
+              </div>
+            </template>
             <span v-else>-</span>
           </template>
         </el-table-column>
@@ -158,25 +218,37 @@
         </el-table-column>
         <el-table-column
           label="接入地区"
-          min-width="100"
-          show-overflow-tooltip
+          min-width="80"
         >
           <template #default="{ row }">
-            {{ row.exit_location || '-' }}
+            <div
+              v-if="splitLocations(row.exit_location).length"
+            >
+              <el-tag
+                v-for="(loc, li) in splitLocations(row.exit_location)"
+                :key="li"
+                size="small"
+                type="info"
+                class="loc-tag"
+              >
+                {{ loc }}
+              </el-tag>
+            </div>
+            <span v-else>-</span>
           </template>
         </el-table-column>
         <el-table-column
           label="申请时间"
-          width="170"
+          width="100"
         >
           <template #default="{ row }">
-            {{ formatTime(row.apply_time) }}
+            {{ row.apply_time || '-' }}
           </template>
         </el-table-column>
         <el-table-column
           prop="applicant"
           label="申请人"
-          min-width="100"
+          min-width="70"
           show-overflow-tooltip
         >
           <template #default="{ row }">
@@ -185,7 +257,7 @@
         </el-table-column>
         <el-table-column
           label="备注"
-          min-width="140"
+          min-width="120"
           show-overflow-tooltip
         >
           <template #default="{ row }">
@@ -330,6 +402,19 @@
                 placeholder="端口或范围，如 22、1000-10005、22,443,5432"
                 class="target-port"
               />
+              <el-select
+                v-model="t.protocol"
+                class="target-protocol"
+              >
+                <el-option
+                  label="TCP"
+                  value="tcp"
+                />
+                <el-option
+                  label="UDP"
+                  value="udp"
+                />
+              </el-select>
               <el-button
                 link
                 type="danger"
@@ -364,8 +449,9 @@
         >
           <el-select
             v-model="form.exit_location"
-            placeholder="从公网IP资源池筛选接入地区（选填）"
+            placeholder="从公网IP资源池筛选接入地区（可多选，选填）"
             filterable
+            multiple
             clearable
             style="width: 100%"
             :loading="exitLocationsLoading"
@@ -384,10 +470,10 @@
         >
           <el-date-picker
             v-model="form.apply_time"
-            type="datetime"
+            type="date"
             placeholder="请选择申请时间"
             style="width: 100%"
-            value-format="YYYY-MM-DDTHH:mm:ss"
+            value-format="YYYY-MM-DD"
           />
         </el-form-item>
         <el-form-item
@@ -430,7 +516,6 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { getZeroTrusts, getZeroTrustExitLocations, createZeroTrust, updateZeroTrust, deleteZeroTrust } from '../api/zero_trust'
 import { getHosts } from '../api/host'
-import { formatTime, toLocalPickerValue, toRFC3339 } from '../utils'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
 import ZeroTrustBatchAddDialog from '../components/ZeroTrustBatchAddDialog.vue'
@@ -441,6 +526,14 @@ const authStore = useAuthStore()
 const changePasswordDialog = ref(null)
 const cloudResourceDialog = ref(null)
 const zeroTrustBatchDialog = ref(null)
+
+// 申请资源 popover 的 popper 选项（T-065）：auto 定位 + flip 自动换方向 + preventOverflow 保证不出界
+const targetPopperOptions = {
+  modifiers: [
+    { name: 'flip', options: { fallbackPlacements: ['top', 'bottom', 'right', 'left'] } },
+    { name: 'preventOverflow', options: { padding: 8, altAxis: true } }
+  ]
+}
 
 const records = ref([])
 const loading = ref(false)
@@ -461,9 +554,9 @@ const form = reactive({
   account_name_zh: '',
   applicant: '',
   contact: '',
-  targets: [{ host_id: null, ports: '22' }],
+  targets: [{ host_id: null, ports: '22', protocol: 'tcp' }],
   system_name: '',
-  exit_location: '',
+  exit_location: [],
   apply_time: '',
   remark: ''
 })
@@ -507,10 +600,21 @@ async function loadList() {
 async function loadHosts() {
   hostsLoading.value = true
   try {
-    const res = await getHosts({ page: 1, page_size: 100 })
-    if (res.code === 0) {
-      hosts.value = res.data?.hosts || []
+    // 后端 page_size 上限 100，全量主机可能超过一页 → 循环拉取全部分页（T-065）
+    const pageSize = 100
+    let page = 1
+    const all = []
+    let total = Infinity
+    while (all.length < total) {
+      const res = await getHosts({ page, page_size: pageSize })
+      if (res.code !== 0) break
+      const batch = res.data?.hosts || []
+      all.push(...batch)
+      total = res.data?.total ?? all.length
+      if (batch.length === 0) break
+      page += 1
     }
+    hosts.value = all
   } catch {
     // 错误提示由 axios 拦截器统一弹出
   } finally {
@@ -533,18 +637,48 @@ async function loadExitLocations() {
 }
 
 function addTargetRow() {
-  form.targets.push({ host_id: null, ports: '22' })
+  form.targets.push({ host_id: null, ports: '22', protocol: 'tcp' })
 }
 
-function sortTargets(targets) {
-  return [...targets].sort((a, b) => {
-    const an = a.host_name || `#${a.host_id}`
-    const bn = b.host_name || `#${b.host_id}`
-    return (
-      an.localeCompare(bn, 'zh-CN', { numeric: true, sensitivity: 'base' }) ||
-      String(a.ports || '').localeCompare(String(b.ports || ''))
-    )
-  })
+// splitLocations 多值接入地区字符串 → 去空数组（T-065）
+function splitLocations(raw) {
+  return String(raw || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
+}
+
+// groupTargetsByHost 接入目标按主机聚合（T-065）：一主机一组端口，供列表「主机 tag + 端口 popover」展示
+function groupTargetsByHost(targets) {
+  const map = new Map()
+  for (const t of targets || []) {
+    if (!map.has(t.host_id)) {
+      map.set(t.host_id, {
+        host_id: t.host_id,
+        label: t.host_name ? (t.private_ip ? `${t.host_name}(${t.private_ip})` : t.host_name) : `#${t.host_id}`,
+        ports: []
+      })
+    }
+    map.get(t.host_id).ports.push({ ports: t.ports || '', protocol: t.protocol || 'tcp' })
+  }
+  const list = [...map.values()]
+  for (const h of list) {
+    h.ports.sort((a, b) => String(a.ports).localeCompare(String(b.ports), 'zh-CN', { numeric: true }))
+  }
+  return list.sort((a, b) => a.label.localeCompare(b.label, 'zh-CN', { numeric: true, sensitivity: 'base' }))
+}
+
+// targetGroupsByRowId 列表每行接入目标按主机聚合的缓存（避免模板内重复计算）
+const targetGroupsByRowId = computed(() => {
+  const cache = {}
+  for (const row of records.value) {
+    cache[row.id] = groupTargetsByHost(row.targets)
+  }
+  return cache
+})
+
+function targetGroupsOf(row) {
+  return targetGroupsByRowId.value[row.id] || []
 }
 
 function openDialog(row, copy = false) {
@@ -556,11 +690,11 @@ function openDialog(row, copy = false) {
   form.account_name_zh = row?.account_name_zh || ''
   form.applicant = row?.applicant || ''
   form.contact = row?.contact || ''
-  form.targets = (row?.targets || []).map(t => ({ host_id: t.host_id, ports: t.ports || '' }))
+  form.targets = (row?.targets || []).map(t => ({ host_id: t.host_id, ports: t.ports || '', protocol: t.protocol || 'tcp' }))
   if (!form.targets.length) form.targets = [{ host_id: null, ports: '22' }]
   form.system_name = row?.system_name || ''
-  form.exit_location = row?.exit_location || ''
-  form.apply_time = row?.apply_time ? toLocalPickerValue(row.apply_time) : ''
+  form.exit_location = splitLocations(row?.exit_location)
+  form.apply_time = row?.apply_time || ''
   form.remark = row?.remark || ''
   dialogVisible.value = true
   formRef.value?.clearValidate()
@@ -590,10 +724,10 @@ async function handleSubmit() {
       account_name_zh: form.account_name_zh.trim(),
       applicant: form.applicant.trim(),
       contact: form.contact.trim(),
-      targets: form.targets.map(t => ({ host_id: t.host_id, ports: String(t.ports).trim() })),
+      targets: form.targets.map(t => ({ host_id: t.host_id, ports: String(t.ports).trim(), protocol: t.protocol || 'tcp' })),
       system_name: form.system_name.trim(),
-      exit_location: form.exit_location || '',
-      apply_time: toRFC3339(form.apply_time),
+      exit_location: (form.exit_location || []).join(','),
+      apply_time: form.apply_time || '',
       remark: form.remark.trim()
     }
     const res = editId.value
@@ -702,13 +836,18 @@ function handleCommand(command) {
   font-size: 12px;
 }
 
-.target-tags {
+.target-hosts {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
 }
 
 .target-tag {
+  max-width: 100%;
+  cursor: pointer;
+}
+
+.loc-tag {
   max-width: 100%;
 }
 
@@ -731,5 +870,43 @@ function handleCommand(command) {
 
 .target-port {
   width: 130px;
+}
+
+.target-protocol {
+  width: 88px;
+  flex-shrink: 0;
+}
+</style>
+
+<style>
+/* 接入资源 popover 内容在 teleport 容器内，需用非 scoped 样式（T-065） */
+.target-popper {
+  max-width: 360px;
+}
+
+.target-detail-scroll {
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.target-detail-title {
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 6px;
+  word-break: break-all;
+}
+
+.target-detail-ports {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.target-detail-row {
+  margin-top: 10px;
+}
+
+.target-detail-row:first-child {
+  margin-top: 0;
 }
 </style>

@@ -274,8 +274,9 @@ async function handleImport() {
   report.value = null
   try {
     const res = await importAll(file.value)
-    report.value = res
-    if (res.committed) {
+    // 拦截器返回响应体 {code, message, data}，导入报告在 data 内
+    report.value = res.data
+    if (report.value?.committed) {
       ElMessage.success('导入成功')
     }
     uploadRef.value?.clearFiles()
