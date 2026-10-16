@@ -181,7 +181,7 @@
 | `views/BusinessStatistics.vue` | `/business-statistics` | 业务统计（概览 + 柱状图 + 表格 + 下钻弹窗） |
 | `views/PersonnelManagement.vue` | `/personnel` | 人员管理（搜索 + 新增/编辑/删除，含关联主机数校验） |
 | `views/PublicIPManagement.vue` | `/public-ip` | 公网IP资源台账（搜索 + 新增/编辑/删除，设置菜单入口） |
-| `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 「申请资源」标签列 `主机名(ip:port)` 按主机名排序 + 配对行表单 + 接入地区下拉（候选取公网IP资源池去重）+ 批量添加 + 行「复制」新增（账户名置空）；列表含账户名/账号姓名/申请人列） |
+| `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 「申请资源」标签列 `主机名(ip:port)` 按主机名排序 + 配对行表单 + 接入地区下拉（候选取公网IP资源池去重）+ 批量添加 + 行「复制」新增（账户名置空）；列表含账户名/账号姓名/账户联系方式，申请人列位于申请时间之后） |
 | `views/MappingLedger.vue` | `/mapping-ledger` | 端口映射台账（多端口标签 + 批量添加 + 行「复制」新增（公网IP/主机/端口置空）） |
 | `views/DataBackup.vue` | `/data-backup` | 数据备份（8 表 xlsx 导出/导入 + 导入报告展示，设置菜单入口） |
 | `views/AuditLog.vue` | `/audit-logs` | 审计日志（操作人/动作/资源筛选 + 分页 + 详情弹窗） |
@@ -320,7 +320,7 @@ GET/POST /api/zero-trusts、GET /api/zero-trusts/exit-locations、PUT/DELETE /ap
        ├─ List()（keyword 模糊 + loadZeroTrustTargetPairs 子表回填主机简要；接入地区为独立字段 T-061）
        ├─ ListExitLocations()（接入地区候选取 public_ips.exit_location 去重非空，T-061）
        ├─ Create()（normalizeTargetPairs 配对校验 + 主机存在校验 + 同账户名 mergeZeroTrustInto 合并，T-058）/Update()（同前但不合并）
-       └─ BatchCreateText()（逐行 10 列：第 3 列申请人（T-060）、第 10 列接入地区（T-061）、内网IP 定位主机、IP 与端口等长配对（`;` 分组/单IP整列多端口，T-058；单端口组广播到全部 IP，T-059）、同账户名行合并、合法行全量插入）
+       └─ BatchCreateText()（逐行 11 列：第 3 列账号姓名（T-063）、第 4 列申请人（T-060）、第 5 列账户联系方式、第 11 列接入地区（T-061）、内网IP 定位主机、IP 与端口等长配对（`;` 分组/单IP整列多端口，T-058；单端口组广播到全部 IP，T-059）、同账户名行合并、合法行全量插入）
 ```
 
 ---

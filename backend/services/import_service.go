@@ -747,7 +747,7 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 
 		accountNameZh := c.get("账号姓名")
 		applicant := c.get("申请人")
-		contact := c.get("联系方式")
+		contact := c.get("账户联系方式")
 		exitLocation := c.get("接入地区")
 		remark := c.get("备注")
 

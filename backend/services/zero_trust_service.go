@@ -570,7 +570,7 @@ func ZeroTrustsByHost(hostID uint) ([]models.ZeroTrust, error) {
 	return records, nil
 }
 
-// BatchCreateText 零信任批量添加：列顺序 申请单位,账户名,账号姓名,申请人,联系方式,内网IP,申请端口,系统名称,申请时间,备注[,接入地区]
+// BatchCreateText 零信任批量添加：列顺序 申请单位,账户名,账号姓名,申请人,账户联系方式,内网IP,申请端口,系统名称,申请时间,备注[,接入地区]
 // （T-060 起第4列申请人，联系方式后移至第5列；T-063 起第3列新增账号姓名，其余后移，故按 11 列口径）
 // 内网IP与申请端口两列数量必须一致、按位置配对；申请端口列含 `;` 时按 `;` 分组（T-058，多IP各自多端口），
 // 无 `;` 且仅 1 个端口组时广播到全部 IP（T-059，多IP相同端口）；单IP+整列逗号端口视为该主机多端口；
@@ -606,7 +606,7 @@ func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID s
 		}
 		if len(row) < 6 {
 			resp.Errors++
-			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 至少需要6列(申请单位,账户名,账号姓名,申请人,联系方式,内网IP)", lineNo))
+			resp.LineErrors = append(resp.LineErrors, fmt.Sprintf("第%d行: 至少需要6列(申请单位,账户名,账号姓名,申请人,账户联系方式,内网IP)", lineNo))
 			continue
 		}
 		for len(row) < 11 {
