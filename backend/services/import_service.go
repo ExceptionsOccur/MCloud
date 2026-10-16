@@ -188,29 +188,6 @@ func parseBoolCell(raw string) (bool, error) {
 	return false, fmt.Errorf("布尔值格式不正确 %q（应为 是/否）", raw)
 }
 
-// parseTimeCell 依次尝试常见布局（无时区按服务器本地时区解释），空 → zero
-func parseTimeCell(raw string) (time.Time, error) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return time.Time{}, nil
-	}
-	layouts := []string{
-		"2006-01-02 15:04:05",
-		"2006-01-02T15:04:05",
-		time.RFC3339,
-		"2006-01-02 15:04",
-		"2006-01-02",
-		"2006/01/02 15:04:05",
-		"2006/01/02",
-	}
-	for _, layout := range layouts {
-		if t, err := time.ParseInLocation(layout, raw, time.Local); err == nil {
-			return t, nil
-		}
-	}
-	return time.Time{}, fmt.Errorf("时间格式不正确 %q（示例: 2026-10-09 15:04:05）", raw)
-}
-
 // rowCtx 单数据行上下文
 type rowCtx struct {
 	sheet  string
@@ -671,10 +648,13 @@ func (s *DataExchangeService) applyHostApplications(tx *gorm.DB, sh *importSheet
 			vals[i] = c.get(col)
 		}
 		vals[6] = strings.TrimSpace(vals[6])
-		if err := utils.ValidateDateOnly("申请时间", vals[6]); err != nil {
-			fail(report, c, err)
+		// 申请时间只到日期（T-065）：导入宽容解析常见写法并归一化为 YYYY-MM-DD（空值合法）
+		normalizedApplyTime, applyErr := utils.NormalizeDateLenient("申请时间", vals[6])
+		if applyErr != nil {
+			fail(report, c, applyErr)
 			return
 		}
+		vals[6] = normalizedApplyTime
 		updates := map[string]interface{}{
 			"apply_unit": vals[0], "applicant": vals[1], "applicant_contact": vals[2],
 			"project": vals[3], "apply_reason": vals[4], "apply_config": vals[5],
@@ -757,12 +737,22 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 			return
 		}
 		// T-056：带冒号的段开新组（内网IP:端口表达式），纯端口段续接前组（逗号内多端口），
-		// 旧文件每段均带冒号 → 每段独立成组，兼容
+		// 旧文件每段均带冒号 → 每段独立成组，兼容；T-065：段尾可带 `/协议`（作用于该组整行）
 		parts := make([]ZeroTrustTarget, 0)
 		for _, seg := range strings.Split(targetsRaw, ",") {
 			seg = strings.TrimSpace(seg)
 			if seg == "" {
 				continue
+			}
+			proto := ""
+			if i := strings.LastIndexByte(seg, '/'); i >= 0 && !strings.Contains(seg[i+1:], ":") {
+				p, perr := normalizeTargetProtocol(seg[i+1:])
+				if perr != nil {
+					fail(report, c, perr)
+					return
+				}
+				proto = p
+				seg = strings.TrimSpace(seg[:i])
 			}
 			ip, portsPart, ok := strings.Cut(seg, ":")
 			if !ok {
@@ -771,6 +761,9 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 					return
 				}
 				parts[len(parts)-1].Ports += "," + seg
+				if proto != "" {
+					parts[len(parts)-1].Protocol = proto
+				}
 				continue
 			}
 			hostID, err := resolveHostIP(tx, strings.TrimSpace(ip))
@@ -778,7 +771,10 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 				fail(report, c, err)
 				return
 			}
-			parts = append(parts, ZeroTrustTarget{HostID: hostID, Ports: strings.TrimSpace(portsPart)})
+			if proto == "" {
+				proto = "tcp"
+			}
+			parts = append(parts, ZeroTrustTarget{HostID: hostID, Ports: strings.TrimSpace(portsPart), Protocol: proto})
 		}
 		normalized, err := normalizeTargetPairs(parts)
 		if err != nil {
@@ -786,9 +782,10 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 			return
 		}
 		cur, hasCur := byKey[key]
-		applyTime, err := parseTimeCell(c.get("申请时间"))
-		if err != nil {
-			fail(report, c, err)
+		// 申请时间只到日期（T-065）：导入宽容解析常见写法（2026/9/10 等）并归一化为 YYYY-MM-DD，空值缺省当天
+		applyTime, applyErr := utils.NormalizeDateLenient("申请时间", c.get("申请时间"))
+		if applyErr != nil {
+			fail(report, c, applyErr)
 			return
 		}
 
@@ -807,10 +804,8 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 			if newContact == "" {
 				newContact = contact
 			}
-			newExitLocation := cur.ExitLocation
-			if newExitLocation == "" {
-				newExitLocation = exitLocation
-			}
+			// 接入地区多值：取并集去重（T-065）
+			newExitLocation := normalizeExitLocations(cur.ExitLocation + "," + exitLocation)
 			newSystem := cur.SystemName
 			if newSystem == "" {
 				newSystem = systemName
@@ -849,9 +844,9 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 		z := models.ZeroTrust{
 			ApplyUnit: applyUnit, AccountName: accountName, AccountNameZh: accountNameZh, SystemName: systemName,
 			Applicant: applicant, Contact: contact, ExitLocation: exitLocation, Remark: remark,
-			ApplyTime: time.Now(),
+			ApplyTime: time.Now().Format("2006-01-02"),
 		}
-		if !applyTime.IsZero() {
+		if applyTime != "" {
 			z.ApplyTime = applyTime
 		}
 		if err := tx.Create(&z).Error; err != nil {

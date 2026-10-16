@@ -124,15 +124,15 @@ var CSVHeaders = []string{
 ### 导出
 
 - `GET /api/export/all` 返回单个 `.xlsx`（excelize），8 个 sheet 按导入依赖序排列：`人员` → `公网IP` → `云资源` → `网段` → `主机` → `主机申请信息` → `零信任` → `端口映射`（T-063 起 sheet 名为中文，导入按中文名匹配、不再兼容旧英文名备份）
-- 列头为中文、按名匹配；不导出 `users`、自增 id 与时间戳；关联用自然键表达：`hosts` 人员列（姓名+联系方式，由 `person_id` 解析）、宿主一律用「内网IP」、零信任「接入目标」由 `zero_trust_targets` 子表配对（`host_id` → 内网IP）拼出 `内网IP:端口表达式`（T-056 起端口可为范围/列表，**无冒号的段续接前组**，如 `10.0.0.1:22,1000-10005,10.0.0.2:8080`，旧文件每段带冒号完全兼容；导入解析与 `normalizeTargetPairs` 归一化后写子表）
+- 列头为中文、按名匹配；不导出 `users`、自增 id 与时间戳；关联用自然键表达：`hosts` 人员列（姓名+联系方式，由 `person_id` 解析）、宿主一律用「内网IP」、零信任「接入目标」由 `zero_trust_targets` 子表配对（`host_id` → 内网IP）拼出 `内网IP:端口表达式/协议`（T-056 起端口可为范围/列表；T-065 起段尾可带 `/协议`，缺省 tcp；**T-065 按「每个接入目标一行」导出**，表头字段逐行重复，导入按账户名合并、接入目标并集去重故往返不丢；导入解析与 `normalizeTargetPairs` 归一化后写子表）
 - 派生列不导出：`hosts.ip_mapped`、`port_mappings` 的运营商/出口位置（由公网IP资源池带出）；`port_mappings` 导出「外网协议/内网协议」列（与端口等长并行，T-055）；`zero_trusts` 导出「接入地区」列（T-061 独立存储，替代原「公网IP」列）
 
 ### 导入（upsert）
 
 - 结构校验先行：非 `.xlsx`、缺 sheet、缺列、表头重复直接返回结构错误（`40001`），不进入事务
-- 逐行解析复用既有规范化：`normalizeCIDR`（/24）、`parsePortExpr`（单端口或 `A-B` 连续范围 token 规范化，T-055/T-056；`expandPortCount` 展开后数量等长校验在 `applyPortMappings` 与 `normalizePortMapping`，范围可与单口混搭）、`parseProtocols`（协议列缺省 tcp、仅 tcp/udp、与端口 **token** 等长，T-055）、`normalizeTargetPairs`（配对去重，端口为表达式并兼容旧 `port` 数字入参，T-056）、`splitPortGroups`（零信任批量申请端口列分组：列值含 `;` 按 `;` 分组表达多IP各自多端口，无 `;` 时顶层逗号+引号分组；T-059 无 `;` 且仅 1 个端口组时广播到全部 IP——多IP相同端口写 `22` 即可、相同多端口列表用重复分组 `22,443;22,443`）、`ValidateDateOnly`（`host_applications.申请时间` 严格 `YYYY-MM-DD`）；人员按姓名(+联系方式)解析 `person_id`、主机按内网IP解析 `host_id`、映射行填写公网IP时必须在 `public_ips` 资源池（空值合法放行）；零信任「接入地区」为独立字段（T-061，不做强制校验）
-- 申请时间两套口径：`host_applications` 走严格 `YYYY-MM-DD`（`utils.ValidateDateOnly`）；`zero_trusts` 走宽松 `parseTimeCell`（依次尝试 `YYYY-MM-DD HH:MM:SS` / `YYYY-MM-DDTHH:MM:SS` / RFC3339 / `YYYY-MM-DD HH:MM` / `YYYY-MM-DD` / `YYYY/MM/DD HH:MM:SS` / `YYYY/MM/DD`，空值保持零值）
-- 每个 sheet 按自然键定位已有记录：值一致 → `skipped`，不一致 → `updated`，不存在 → `created`；`zero_trusts` 自然键为**账户名**（T-058 合并语义：接入目标 `unionTargetPairs` 并集去重（已有在前）、`account_name_zh`/`applicant`/`contact`/`exit_location`/`system_name`/`remark` 空补录非空保留、`apply_time` 保留已有，同文件多行同账户名同样合并，无变化 → `skipped`；`POST /api/zero-trusts` 新增与批量行走同一合并口径，`PUT` 编辑不合并，存量同名多条不迁移、合并目标取 id 最小一条）；**仅新增与更新，不执行删除**
+- 逐行解析复用既有规范化：`normalizeCIDR`（/24）、`parsePortExpr`（单端口或 `A-B` 连续范围 token 规范化，T-055/T-056；`expandPortCount` 展开后数量等长校验在 `applyPortMappings` 与 `normalizePortMapping`，范围可与单口混搭）、`parseProtocols`（协议列缺省 tcp、仅 tcp/udp、与端口 **token** 等长，T-055）、`normalizeTargetPairs`（配对去重，端口为表达式并兼容旧 `port` 数字入参，协议缺省 tcp，T-056/T-065）、`splitPortGroups`（零信任批量申请端口列分组：列值含 `;` 按 `;` 分组表达多IP各自多端口，无 `;` 时顶层逗号+引号分组；T-059 无 `;` 且仅 1 个端口组时广播到全部 IP——多IP相同端口写 `22` 即可、相同多端口列表用重复分组 `22,443;22,443`；T-065 端口组可带 `/协议` 后缀，单主机多端口协议须一致）、`ValidateDateOnly`（`host_applications.申请时间` 严格 `YYYY-MM-DD`）；人员按姓名(+联系方式)解析 `person_id`、主机按内网IP解析 `host_id`、映射行填写公网IP时必须在 `public_ips` 资源池（空值合法放行）；零信任「接入地区」为独立字段（T-061，可多值逗号分隔、不做强制校验，T-065）
+- 申请时间口径统一只到日期（T-065）：`host_applications` 与 `zero_trusts` 均存 `YYYY-MM-DD`（API/批量/表单严格 `utils.ValidateDateOnly`，`zero_trusts` 空值缺省服务器当天）；**xlsx 导入宽容归一**（`utils.NormalizeDateLenient`：接受 `2026/9/10`、`2026-9-1`、`2026.9.10`、`2026年9月10日`、`20260910` 等，归一化为 `YYYY-MM-DD`，两位年份与带时刻报错）；审计类 `created_at`/`updated_at` 等保留完整时间戳
+- 每个 sheet 按自然键定位已有记录：值一致 → `skipped`，不一致 → `updated`，不存在 → `created`；`zero_trusts` 自然键为**账户名**（T-058 合并语义：接入目标 `unionTargetPairs` 与接入地区 `unionExitLocations` 并集去重（已有在前，T-065）、`account_name_zh`/`applicant`/`contact`/`system_name`/`remark` 空补录非空保留、`apply_time` 保留已有，同文件多行同账户名同样合并，无变化 → `skipped`；`POST /api/zero-trusts` 新增与批量行走同一合并口径，`PUT` 编辑不合并，存量同名多条不迁移、合并目标取 id 最小一条）；**仅新增与更新，不执行删除**
 - 单事务：任一行错误累计到 `errors` 并回滚（`errImportRolledBack`），返回 `committed=false` 与逐行明细，库数据不变；全部通过后重算 `hosts.ip_mapped`
 - 详见 [API.md · 数据备份 xlsx 导出/导入](./API.md#数据备份-xlsx-导出导入)
 

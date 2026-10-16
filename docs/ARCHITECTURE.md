@@ -170,7 +170,7 @@ go/
 │   ├── utils/
 │   │   ├── password.go            # 密码哈希工具（bcrypt，兼容旧 SHA-256 平滑升级，T-009）
 │   │   ├── csv.go                 # CSV 解析/生成
-│   │   ├── datetime.go            # 日期时间统一口径（解析/校验/格式化，T-040）
+│   │   ├── datetime.go            # 日期统一口径（业务申请时间严格 YYYY-MM-DD，T-040/T-065）
 │   │   └── password_test.go       # 密码哈希单测（bcrypt 往返/旧格式兼容，T-006/T-009）
 │   │
 │   └── migrations/                # 迁移 SQL（启动时 goose 执行，embed 进二进制；AutoMigrate 兜底）
@@ -206,7 +206,8 @@ go/
 
 > **迁移索引口径（T-039）**：唯一索引统一采用 GORM 期望的 `idx_` 前缀命名（`idx_<表>_<列>`），历史 `*_key` / `uni_` 重复约束由迁移收敛（`backend/migrations/20261009000001_align_unique_indexes_and_fks.sql`）。
 > **迁移↔实库对齐（T-048）**：`port_mappings`/`public_ips` 主键 `integer`→`bigint`（含序列）、6 表 `created_at` 补 `DEFAULT now()`、`uni_port_mappings_domain`→`idx_port_mappings_domain`、`users.failed_attempts`/`host_applications.host_id` 对齐 `bigint`、`host_applications` 补 `created_at`/`updated_at`、FK 口径统一实库 `NO ACTION`（对齐迁移 `20261010000002_align_schema_drift.sql`，幂等可重跑）。**不做**：软删除、CHECK、普通索引补齐、`people_pkey` 改名。
-> **零信任去公网IP（T-061）**：`zero_trusts` 删除 `public_ip` 列、新增独立 `exit_location` 列（`VARCHAR(128)`），存量由原 `public_ip` 关联的 `public_ips.exit_location` 回填（迁移 `20261016000001_zero_trust_exit_location.sql`，幂等可重跑）。
+> **零信任去公网IP（T-061）**：`zero_trusts` 删除 `public_ip` 列、新增独立 `exit_location` 列（`VARCHAR(128)`），存量由原 `public_ip` 关联的 `public_ips.exit_location` 回填（迁移 `20261016000001_zero_trust_exit_location.sql`，幂等可重跑）。**T-065** 起 `exit_location` 改为 `TEXT` 支持多值（逗号分隔；迁移 `20261016000004_zero_trust_exit_location_multi.sql`，幂等）。
+> **申请时间只到日期（T-065）**：`zero_trusts.apply_time` 由 `TIMESTAMPTZ` 改 `VARCHAR(10)` 纯日期 `YYYY-MM-DD`（对齐 `host_applications.apply_time`；审计类 `created_at`/`updated_at` 等保留完整时间戳；迁移 `20261016000005_zero_trust_apply_time_date_only.sql`，`to_char` 取日期、幂等）。
 
 ---
 
@@ -329,9 +330,9 @@ go/
 | 账号姓名 | `account_name_zh` | VARCHAR(64) | 选填（T-063，账户名的补充说明） |
 | 申请人 | `applicant` | VARCHAR(64) | 选填（T-060，与账户名区分） |
 | 账户联系方式 | `contact` | VARCHAR(64) | 选填（T-064，账户联系方式，非申请人联系方式） |
-| 接入地区 | `exit_location` | VARCHAR(128) | 选填（T-061，独立存储；下拉候选取 `public_ips.exit_location` 去重） |
+| 接入地区 | `exit_location` | TEXT | 选填（T-061，独立存储；T-065 支持多值，逗号分隔；下拉候选取 `public_ips.exit_location` 去重） |
 | 系统名称 | `system_name` | VARCHAR(128) | 选填 |
-| 申请时间 | `apply_time` | TIMESTAMPTZ | NOT NULL |
+| 申请时间 | `apply_time` | VARCHAR(10) | NOT NULL，纯日期 `YYYY-MM-DD`（T-065 只记录到日期，对齐 host_applications；存量由 TIMESTAMPTZ 迁移取日期） |
 | 备注 | `remark` | TEXT | |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 
@@ -345,8 +346,9 @@ go/
 | 零信任ID | `zero_trust_id` | BIGINT | NOT NULL，索引 `idx_zero_trust_targets_zero_trust_id`，FK → zero_trusts(id)，**ON DELETE RESTRICT** |
 | 主机ID | `host_id` | BIGINT | NOT NULL，索引 `idx_zero_trust_targets_host_id`，FK → hosts(id)，**ON DELETE RESTRICT** |
 | 端口 | `ports` | TEXT | NOT NULL，端口表达式（单口 `22`/范围 `1000-10005`/列表 `22,443,5432` 可混合，各端口 1-65535，T-056；T-052~055 期间为 INTEGER 单口 `port` 列） |
+| 协议 | `protocol` | VARCHAR(8) | NOT NULL，DEFAULT `tcp`，仅 `tcp`/`udp`，作用于该行整个 `ports` 表达式（T-065，迁移回填存量 tcp） |
 
-> 一对「主机:端口表达式」一行；迁移 `20261010000005_zero_trust_targets.sql` 建表并回填存量 `targets` 串（格式非法或主机不存在的行跳过），随后删除 `zero_trusts.targets` 列；迁移 `20261010000007_zero_trust_targets_ports.sql`（T-056）把 `port` INTEGER 列改名并转为 `ports` TEXT 表达式列（条件守卫幂等；DO 块须包裹 `-- +goose StatementBegin/End`，否则 goose 切分器按体内分号截断导致启动失败，T-057）。删除被引用主机/台账记录时，应用层经子表计数校验返回 `40901`，数据库层双 FK RESTRICT 兜底（本表按 T-052 规格用 RESTRICT，晚于 T-048 的既有 NO ACTION 口径）。
+> 一对「主机:端口表达式」一行；迁移 `20261010000005_zero_trust_targets.sql` 建表并回填存量 `targets` 串（格式非法或主机不存在的行跳过），随后删除 `zero_trusts.targets` 列；迁移 `20261010000007_zero_trust_targets_ports.sql`（T-056）把 `port` INTEGER 列改名并转为 `ports` TEXT 表达式列（条件守卫幂等；DO 块须包裹 `-- +goose StatementBegin/End`，否则 goose 切分器按体内分号截断导致启动失败，T-057）；迁移 `20261016000003_zero_trust_target_protocol.sql`（T-065）新增 `protocol` 列并回填存量 tcp。删除被引用主机/台账记录时，应用层经子表计数校验返回 `40901`，数据库层双 FK RESTRICT 兜底（本表按 T-052 规格用 RESTRICT，晚于 T-048 的既有 NO ACTION 口径）。派生串 `host_id:ports:protocol`（T-065）。
 
 ### port_mappings 表（端口映射台账）
 
@@ -403,7 +405,7 @@ go/
 - `persons.name` 必填，姓名 + 联系方式 + 单位完全重复视为同一人员
 - `ip_subnets.cidr` 仅允许 `/24` IPv4 网段，写入时自动规范化为网络地址（末位归 0）
 - 系统**不预置默认网段**，由用户在「IP统计 → 管理网段」中维护
-- `zero_trusts` 接入目标经 `zero_trust_targets` 子表存储（一对「主机:端口表达式」一行，`ports` 为单口/范围/列表表达式，双 FK `ON DELETE RESTRICT`）；主机被零信任台账引用时禁止删除（应用层子表去重计数校验，返回 `40901`）；API `targets` 为读时组装的派生字段；接入地区（`exit_location`）为独立存储字段（T-061，下拉候选取 `public_ips.exit_location` 去重），不再关联公网IP
+- `zero_trusts` 接入目标经 `zero_trust_targets` 子表存储（一对「主机:端口表达式」一行，`ports` 为单口/范围/列表表达式，双 FK `ON DELETE RESTRICT`）；主机被零信任台账引用时禁止删除（应用层子表去重计数校验，返回 `40901`）；API `targets` 为读时组装的派生字段；接入地区（`exit_location`）为独立存储字段（T-061，下拉候选取 `public_ips.exit_location` 去重；T-065 支持多值逗号分隔），不再关联公网IP
 - `port_mappings.host_id` 外键关联 `hosts.id`；外网/内网端口**展开后**数量必须一致（`A-B` 范围按 B-A+1 计，范围可与单口混搭配对），协议列表分别与对应端口 **token** 列表等长（仅 `tcp`/`udp`，缺省补 `tcp`）；主机被映射引用时禁止删除
 - `port_mappings` 整组唯一 `(host_id, public_ip, external_ports, external_protocols)`（唯一索引 `idx_port_mappings_host_ip_ports`：`T-051` 落前三列、`T-055` 纳入外网协议列并回填存量为 tcp，迁移 `20261010000006` 幂等；应用层 Create/Update 判重返回 `40901`，同端口不同协议不互斥）
 - `hosts.ip_mapped` 由映射台账自动重算（有映射=true，无=false），主机表单不可手改

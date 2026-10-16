@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"mcloud/database"
 	"mcloud/models"
-	"mcloud/utils"
 )
 
 // makeHost 按指定名称+内网IP建主机（名称与 IP 解耦，供按主机搜索用例区分命中来源）
@@ -58,7 +56,7 @@ func TestZeroTrustTargetSubtableCRUD(t *testing.T) {
 		}
 	}
 
-	applyTime := &utils.FlexibleTime{Time: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)}
+	applyTime := "2026-01-02"
 	id, err := s.Create(ZeroTrustRequest{
 		ApplyUnit: "测试单位", AccountName: "acct", Contact: "张三",
 		SystemName: "sys", ApplyTime: applyTime,
@@ -83,7 +81,7 @@ func TestZeroTrustTargetSubtableCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	wantTargets := fmt.Sprintf("%d:22;%d:443", hostA, hostB)
+	wantTargets := fmt.Sprintf("%d:22:tcp;%d:443:tcp", hostA, hostB)
 	if got.Targets != wantTargets {
 		t.Fatalf("派生 targets 期望 %q，实际 %q", wantTargets, got.Targets)
 	}
@@ -105,7 +103,7 @@ func TestZeroTrustTargetSubtableCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	wantTargets = fmt.Sprintf("%d:8080", hostB)
+	wantTargets = fmt.Sprintf("%d:8080:tcp", hostB)
 	if got.Targets != wantTargets {
 		t.Fatalf("更新后派生 targets 期望 %q，实际 %q", wantTargets, got.Targets)
 	}
@@ -210,7 +208,7 @@ func TestZeroTrustMultiPortExpression(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	wantTargets := fmt.Sprintf("%d:1000-10005,80;%d:22", hostA, hostA)
+	wantTargets := fmt.Sprintf("%d:1000-10005,80:tcp;%d:22:tcp", hostA, hostA)
 	if got.Targets != wantTargets {
 		t.Fatalf("派生 targets 期望 %q，实际 %q", wantTargets, got.Targets)
 	}
@@ -230,6 +228,90 @@ func TestZeroTrustMultiPortExpression(t *testing.T) {
 	}
 	if len(items[0].Targets) != 2 || items[0].Targets[0].Ports != "1000-10005,80" {
 		t.Fatalf("List 目标视图不符: %+v", items[0].Targets)
+	}
+}
+
+// TestZeroTrustTargetProtocol T-065 接入目标协议（每行单协议，缺省 tcp）：
+// Create/Update 落库回显、默认 tcp、非法协议报错、派生串含协议、批量 `/协议` 后缀、单主机多端口协议不一致报错
+func TestZeroTrustTargetProtocol(t *testing.T) {
+	newTestDB(t)
+	s := NewZeroTrustService()
+	hostA := makeHost(t, NewHostService(), "zp-a", "10.66.7.9")
+	hostB := makeHost(t, NewHostService(), "zp-b", "10.66.7.10")
+
+	// 表结构含 protocol 列
+	var cols []struct{ Name string }
+	if err := database.DB.Raw("SELECT name FROM pragma_table_info('zero_trust_targets')").Scan(&cols).Error; err != nil {
+		t.Fatalf("读取表结构失败: %v", err)
+	}
+	hasProto := false
+	for _, c := range cols {
+		if c.Name == "protocol" {
+			hasProto = true
+		}
+	}
+	if !hasProto {
+		t.Fatal("zero_trust_targets 应含 protocol 列")
+	}
+
+	// Create：显式 udp + 缺省 tcp
+	id, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "协议单位", AccountName: "proto-acct",
+		Targets: []ZeroTrustTarget{
+			{HostID: hostA, Ports: "53", Protocol: "udp"},
+			{HostID: hostB, Ports: "443"},
+		},
+	}, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("创建失败: %v", err)
+	}
+	rows := ztTargetRows(t, id)
+	if len(rows) != 2 || rows[0].Protocol != "udp" || rows[1].Protocol != "tcp" {
+		t.Fatalf("协议落库不符（udp/缺省tcp）: %+v", rows)
+	}
+	got, err := s.GetByID(id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	wantTargets := fmt.Sprintf("%d:53:udp;%d:443:tcp", hostA, hostB)
+	if got.Targets != wantTargets {
+		t.Fatalf("派生 targets 期望 %q，实际 %q", wantTargets, got.Targets)
+	}
+	items, err := s.List("")
+	if err != nil || len(items) != 1 {
+		t.Fatalf("List: %v / %d", err, len(items))
+	}
+	if items[0].Targets[0].Protocol != "udp" || items[0].Targets[1].Protocol != "tcp" {
+		t.Fatalf("List 协议视图不符: %+v", items[0].Targets)
+	}
+
+	// 非法协议报错
+	if _, e := s.Create(ZeroTrustRequest{
+		ApplyUnit: "协议单位", AccountName: "proto-bad",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "80", Protocol: "sctp"}},
+	}, testOp, NewRequestID()); e == nil {
+		t.Fatal("非法协议应报错")
+	}
+
+	// 批量：`/协议` 后缀（整个端口组），缺省 tcp
+	text := strings.Join([]string{
+		`协议单位,bp-1,,,,"10.66.7.9",53/udp,系统1,,,`,
+		`协议单位,bp-2,,,,10.66.7.10,80,系统2,,,`,
+	}, "\n")
+	resp, err := s.BatchCreateText(text, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("批量失败: %v", err)
+	}
+	if resp.Success != 2 || resp.Errors != 0 {
+		t.Fatalf("批量统计不符: %+v：%+v", resp, resp.LineErrors)
+	}
+	var bp1 models.ZeroTrust
+	if err := database.DB.Where("account_name = ?", "bp-1").First(&bp1).Error; err != nil {
+		t.Fatalf("查记录失败: %v", err)
+	}
+	r1 := ztTargetRows(t, bp1.ID)
+	if len(r1) != 1 || r1[0].Ports != "53" || r1[0].Protocol != "udp" {
+		t.Fatalf("批量 udp 组不符: %+v", r1)
 	}
 }
 
@@ -355,18 +437,31 @@ func TestZeroTrustCreateMergeByAccount(t *testing.T) {
 	if rec.ExitLocation != "南宁" {
 		t.Fatalf("接入地区补录不符，实际 %q", rec.ExitLocation)
 	}
-	// 已有接入地区 → 冲突新值丢弃（不报错、不覆盖）
+	// 已有接入地区 → 新值并集去重（T-065，非覆盖）
 	if _, err := s.Create(ZeroTrustRequest{
 		ApplyUnit: "合并单位", AccountName: "mg-acct", ExitLocation: "青年",
 		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
 	}, testOp, NewRequestID()); err != nil {
-		t.Fatalf("已有接入地区时新值应丢弃而非报错: %v", err)
+		t.Fatalf("接入地区并集失败: %v", err)
 	}
 	if err := database.DB.First(&rec, id1).Error; err != nil {
 		t.Fatalf("查记录失败: %v", err)
 	}
-	if rec.ExitLocation != "南宁" {
-		t.Fatalf("接入地区应保留已有值，实际 %q", rec.ExitLocation)
+	if rec.ExitLocation != "南宁,青年" {
+		t.Fatalf("接入地区应并集去重，实际 %q", rec.ExitLocation)
+	}
+	// 重复地区不再追加
+	if _, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "合并单位", AccountName: "mg-acct", ExitLocation: "南宁",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
+	}, testOp, NewRequestID()); err != nil {
+		t.Fatalf("接入地区重复合并失败: %v", err)
+	}
+	if err := database.DB.First(&rec, id1).Error; err != nil {
+		t.Fatalf("查记录失败: %v", err)
+	}
+	if rec.ExitLocation != "南宁,青年" {
+		t.Fatalf("接入地区重复值应去重，实际 %q", rec.ExitLocation)
 	}
 }
 
@@ -581,6 +676,50 @@ func TestZeroTrustExitLocationAndSchema(t *testing.T) {
 	// 搜索命中接入地区
 	if items, err := s.List("南宁"); err != nil || len(items) != 1 {
 		t.Fatalf("按接入地区搜索应命中 1 条: %v / %d", err, len(items))
+	}
+}
+
+// TestZeroTrustExitLocationMulti T-065 接入地区多值：逗号/顿号分隔规整去重、
+// Create/Update 多值落库回显、搜索命中任一地区、合并并集
+func TestZeroTrustExitLocationMulti(t *testing.T) {
+	newTestDB(t)
+	s := NewZeroTrustService()
+	hostA := makeHost(t, NewHostService(), "elm-a", "10.66.1.9")
+
+	// 逗号+顿号+重复+空白 → 规整去重保序
+	id, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "多地区单位", AccountName: "elm-acct", ExitLocation: " 南宁、青年,南宁 ， 深圳 ",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
+	}, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("创建失败: %v", err)
+	}
+	var rec models.ZeroTrust
+	if err := database.DB.First(&rec, id).Error; err != nil {
+		t.Fatalf("查记录失败: %v", err)
+	}
+	if rec.ExitLocation != "南宁,青年,深圳" {
+		t.Fatalf("多值规整去重不符: %q", rec.ExitLocation)
+	}
+	// 搜索命中任一地区
+	for _, kw := range []string{"南宁", "青年", "深圳"} {
+		if items, err := s.List(kw); err != nil || len(items) != 1 {
+			t.Fatalf("按 %s 搜索应命中 1 条: %v / %d", kw, err, len(items))
+		}
+	}
+
+	// Update 替换为另一组多值
+	if err := s.Update(id, ZeroTrustRequest{
+		ApplyUnit: "多地区单位", AccountName: "elm-acct", ExitLocation: "北京,上海",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
+	}, testOp, NewRequestID()); err != nil {
+		t.Fatalf("更新失败: %v", err)
+	}
+	if err := database.DB.First(&rec, id).Error; err != nil {
+		t.Fatalf("查记录失败: %v", err)
+	}
+	if rec.ExitLocation != "北京,上海" {
+		t.Fatalf("更新后多值不符: %q", rec.ExitLocation)
 	}
 }
 

@@ -2,11 +2,9 @@ package services
 
 import (
 	"testing"
-	"time"
 
 	"mcloud/database"
 	"mcloud/models"
-	"mcloud/utils"
 )
 
 // TestZeroTrustXLSXRoundtrip 空库回灌：导出 xlsx → 导入全新库，
@@ -25,9 +23,10 @@ func TestZeroTrustXLSXRoundtrip(t *testing.T) {
 		Contact:      "张三",
 		ExitLocation: "上海",
 		SystemName:   "rt-sys", Remark: "回灌备注",
-		ApplyTime: &utils.FlexibleTime{Time: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)},
-		// T-056：hostA 为多端口表达式（导出 ip:22,1000-10005，导入按「无冒号续接前组」解析）
-		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22,1000-10005"}, {HostID: hostB, Ports: "3389"}},
+		ApplyTime: "2026-01-02",
+		// T-056：hostA 为多端口表达式（导出 ip:22,1000-10005，导入按「无冒号续接前组」解析）；
+		// T-065：hostB 为 udp 协议（导出 ip:3389/udp）
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22,1000-10005"}, {HostID: hostB, Ports: "3389", Protocol: "udp"}},
 	}, testOp, NewRequestID())
 	if seedErr != nil {
 		t.Fatalf("种子零信任失败: %v", seedErr)
@@ -51,8 +50,9 @@ func TestZeroTrustXLSXRoundtrip(t *testing.T) {
 	if len(report.Errors) != 0 {
 		t.Fatalf("导入行错误: %+v", report.Errors)
 	}
+	// 导出按「每个接入目标一行」→ 2 行；导入按账户名合并：首行 create、次行合并 update
 	ztStat := report.stat("零信任")
-	if ztStat == nil || ztStat.Created != 1 || ztStat.Updated != 0 || ztStat.Skipped != 0 {
+	if ztStat == nil || ztStat.Rows != 2 || ztStat.Created != 1 || ztStat.Updated != 1 || ztStat.Skipped != 0 {
 		t.Fatalf("zero_trusts 导入统计不符: %+v", ztStat)
 	}
 
@@ -74,7 +74,7 @@ func TestZeroTrustXLSXRoundtrip(t *testing.T) {
 	if zt.Applicant != "回灌人" || zt.AccountNameZh != "回灌账号" || zt.Contact != "张三" || zt.ExitLocation != "上海" || zt.SystemName != "rt-sys" || zt.Remark != "回灌备注" {
 		t.Fatalf("零信任字段回灌不符: %+v", zt)
 	}
-	if !zt.ApplyTime.Equal(time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)) {
+	if zt.ApplyTime != "2026-01-02" {
 		t.Fatalf("apply_time 回灌不符: %v", zt.ApplyTime)
 	}
 	_ = srcID
@@ -84,19 +84,20 @@ func TestZeroTrustXLSXRoundtrip(t *testing.T) {
 		t.Fatalf("子表期望 2 行，实际 %+v", rows)
 	}
 	wantPorts := []string{"22,1000-10005", "3389"}
+	wantProtos := []string{"tcp", "udp"}
 	for i, want := range wantPorts {
-		if rows[i].ZeroTrustID != zt.ID || rows[i].HostID != hostIDs[i] || rows[i].Ports != want {
+		if rows[i].ZeroTrustID != zt.ID || rows[i].HostID != hostIDs[i] || rows[i].Ports != want || rows[i].Protocol != wantProtos[i] {
 			t.Fatalf("子表行%d不符: %+v", i, rows[i])
 		}
 	}
 
-	// 派生字段按目标库自身主机 ID 组装（T-056 对间以 ; 分隔）
+	// 派生字段按目标库自身主机 ID 组装（T-056 对间以 ; 分隔；T-065 含协议）
 	got, err := s.GetByID(zt.ID)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
 	wantTargets := joinTargetPairs([]ZeroTrustTarget{
-		{HostID: hostIDs[0], Ports: "22,1000-10005"}, {HostID: hostIDs[1], Ports: "3389"},
+		{HostID: hostIDs[0], Ports: "22,1000-10005"}, {HostID: hostIDs[1], Ports: "3389", Protocol: "udp"},
 	})
 	if got.Targets != wantTargets {
 		t.Fatalf("派生 targets 期望 %q，实际 %q", wantTargets, got.Targets)
@@ -111,7 +112,7 @@ func TestZeroTrustXLSXRoundtrip(t *testing.T) {
 		t.Fatalf("二次导入异常: committed=%v errors=%+v", report2.Committed, report2.Errors)
 	}
 	ztStat2 := report2.stat("零信任")
-	if ztStat2 == nil || ztStat2.Created != 0 || ztStat2.Updated != 0 || ztStat2.Skipped != 1 {
+	if ztStat2 == nil || ztStat2.Rows != 2 || ztStat2.Created != 0 || ztStat2.Updated != 0 || ztStat2.Skipped != 2 {
 		t.Fatalf("二次导入统计不符: %+v", ztStat2)
 	}
 	var n int64
