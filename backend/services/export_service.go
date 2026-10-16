@@ -75,7 +75,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 	for _, p := range persons {
 		personRows = append(personRows, []interface{}{p.Name, p.Contact, p.Unit})
 	}
-	if err := writeSheetRows(f, "persons", personRows); err != nil {
+	if err := writeSheetRows(f, "人员", personRows); err != nil {
 		return nil, err
 	}
 
@@ -84,7 +84,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 	for _, r := range publicIPs {
 		publicIPRows = append(publicIPRows, []interface{}{r.IP, r.ISP, r.ExitLocation, r.Remark})
 	}
-	if err := writeSheetRows(f, "public_ips", publicIPRows); err != nil {
+	if err := writeSheetRows(f, "公网IP", publicIPRows); err != nil {
 		return nil, err
 	}
 
@@ -95,7 +95,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 			r.Region, r.PhysicalCPU, r.Vcpu, r.Memory, r.Storage, r.BareMetal, r.GpuCardCount, r.ObjectStorage,
 		})
 	}
-	if err := writeSheetRows(f, "cloud_resources", cloudRows); err != nil {
+	if err := writeSheetRows(f, "云资源", cloudRows); err != nil {
 		return nil, err
 	}
 
@@ -104,7 +104,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 	for _, r := range subnets {
 		subnetRows = append(subnetRows, []interface{}{r.CIDR})
 	}
-	if err := writeSheetRows(f, "ip_subnets", subnetRows); err != nil {
+	if err := writeSheetRows(f, "网段", subnetRows); err != nil {
 		return nil, err
 	}
 
@@ -127,7 +127,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 			personName, personContact,
 		})
 	}
-	if err := writeSheetRows(f, "hosts", hostRows); err != nil {
+	if err := writeSheetRows(f, "主机", hostRows); err != nil {
 		return nil, err
 	}
 
@@ -143,7 +143,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 			a.ApplyReason, a.ApplyConfig, a.ApplyTime, a.ObjectStorageSize, a.Remark,
 		})
 	}
-	if err := writeSheetRows(f, "host_applications", appRows); err != nil {
+	if err := writeSheetRows(f, "主机申请信息", appRows); err != nil {
 		return nil, err
 	}
 
@@ -161,12 +161,12 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 			parts = append(parts, fmt.Sprintf("%s:%s", ip, p.Ports))
 		}
 		ztRows = append(ztRows, []interface{}{
-			z.ApplyUnit, z.AccountName, z.Applicant, z.Contact, z.ExitLocation,
+			z.ApplyUnit, z.AccountName, z.AccountNameZh, z.Applicant, z.Contact, z.ExitLocation,
 			strings.Join(parts, ","), z.SystemName,
 			z.ApplyTime.Format(utils.DateTimeLayout), z.Remark,
 		})
 	}
-	if err := writeSheetRows(f, "zero_trusts", ztRows); err != nil {
+	if err := writeSheetRows(f, "零信任", ztRows); err != nil {
 		return nil, err
 	}
 
@@ -181,7 +181,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 			m.PublicIP, hostIP, m.ExternalPorts, m.InternalPorts, m.ExternalProtocols, m.InternalProtocols, m.Domain, m.Remark,
 		})
 	}
-	if err := writeSheetRows(f, "port_mappings", mappingRows); err != nil {
+	if err := writeSheetRows(f, "端口映射", mappingRows); err != nil {
 		return nil, err
 	}
 

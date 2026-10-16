@@ -745,6 +745,7 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 		}
 		key := accountName
 
+		accountNameZh := c.get("账号姓名")
 		applicant := c.get("申请人")
 		contact := c.get("联系方式")
 		exitLocation := c.get("接入地区")
@@ -794,6 +795,10 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 		if hasCur {
 			curPairs := pairsByID[cur.ID]
 			merged := unionTargetPairs(curPairs, normalized)
+			newAccountNameZh := cur.AccountNameZh
+			if newAccountNameZh == "" {
+				newAccountNameZh = accountNameZh
+			}
 			newApplicant := cur.Applicant
 			if newApplicant == "" {
 				newApplicant = applicant
@@ -814,16 +819,16 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 			if newRemark == "" {
 				newRemark = remark
 			}
-			changed := cur.Applicant != newApplicant || cur.Contact != newContact || cur.ExitLocation != newExitLocation ||
-				cur.SystemName != newSystem || cur.Remark != newRemark ||
+			changed := cur.AccountNameZh != newAccountNameZh || cur.Applicant != newApplicant || cur.Contact != newContact ||
+				cur.ExitLocation != newExitLocation || cur.SystemName != newSystem || cur.Remark != newRemark ||
 				!targetPairsEqual(curPairs, merged)
 			if !changed {
 				stat.Skipped++
 				return
 			}
 			updates := map[string]interface{}{
-				"applicant": newApplicant, "contact": newContact, "exit_location": newExitLocation,
-				"system_name": newSystem, "remark": newRemark,
+				"account_name_zh": newAccountNameZh, "applicant": newApplicant, "contact": newContact,
+				"exit_location": newExitLocation, "system_name": newSystem, "remark": newRemark,
 			}
 			if err := tx.Model(&models.ZeroTrust{}).Where("id = ?", cur.ID).Updates(updates).Error; err != nil {
 				fail(report, c, err)
@@ -842,7 +847,7 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 			return
 		}
 		z := models.ZeroTrust{
-			ApplyUnit: applyUnit, AccountName: accountName, SystemName: systemName,
+			ApplyUnit: applyUnit, AccountName: accountName, AccountNameZh: accountNameZh, SystemName: systemName,
 			Applicant: applicant, Contact: contact, ExitLocation: exitLocation, Remark: remark,
 			ApplyTime: time.Now(),
 		}

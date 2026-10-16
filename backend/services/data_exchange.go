@@ -5,32 +5,33 @@ package services
 // sheet 顺序 = 导入依赖顺序：后表通过自然键引用前表
 // （人员/公网IP/云资源/网段 → 主机 → 申请信息 → 零信任 → 端口映射）。
 
-// sheetSpec 单个工作表定义：Name 为 xlsx sheet 名（机器稳定，导入按名匹配），Headers 为列头（导入按名匹配列）
+// sheetSpec 单个工作表定义：Name 为 xlsx sheet 名（中文，导入按名匹配），Headers 为列头（导入按名匹配列）
 type sheetSpec struct {
 	Name    string
 	Headers []string
 }
 
-// dataExchangeSheets 8 表定义，顺序即导出 sheet 顺序与导入处理顺序
+// dataExchangeSheets 8 表定义，顺序即导出 sheet 顺序与导入处理顺序；
+// T-063 起 sheet 名改为中文（人员/公网IP/云资源/网段/主机/主机申请信息/零信任/端口映射），导入按中文名匹配（不再兼容旧英文名备份）
 var dataExchangeSheets = []sheetSpec{
-	{Name: "persons", Headers: []string{"姓名", "联系方式", "单位"}},
-	{Name: "public_ips", Headers: []string{"公网IP", "运营商", "出口位置", "备注"}},
-	{Name: "cloud_resources", Headers: []string{"区域", "物理CPU", "VCPU", "内存", "存储", "裸金属", "GPU卡数", "对象存储"}},
-	{Name: "ip_subnets", Headers: []string{"网段CIDR"}},
-	{Name: "hosts", Headers: []string{
+	{Name: "人员", Headers: []string{"姓名", "联系方式", "单位"}},
+	{Name: "公网IP", Headers: []string{"公网IP", "运营商", "出口位置", "备注"}},
+	{Name: "云资源", Headers: []string{"区域", "物理CPU", "VCPU", "内存", "存储", "裸金属", "GPU卡数", "对象存储"}},
+	{Name: "网段", Headers: []string{"网段CIDR"}},
+	{Name: "主机", Headers: []string{
 		"区域", "实例ID", "主机名称", "内网IP", "资产类型", "操作系统",
 		"CPU核数", "CPU架构", "内存", "磁盘", "系统盘", "数据盘",
 		"环境类型", "是否数据库服务器", "状态", "开放端口", "标签",
 		"人员姓名", "人员联系方式",
 	}},
-	{Name: "host_applications", Headers: []string{
+	{Name: "主机申请信息", Headers: []string{
 		"内网IP", "申请单位", "申请人", "申请人联系方式", "所属项目",
 		"申请理由", "申请配置", "申请时间", "对象存储大小", "备注",
 	}},
-	{Name: "zero_trusts", Headers: []string{
-		"申请单位", "账户名", "申请人", "联系方式", "接入地区", "接入目标", "系统名称", "申请时间", "备注",
+	{Name: "零信任", Headers: []string{
+		"申请单位", "账户名", "账号姓名", "申请人", "联系方式", "接入地区", "接入目标", "系统名称", "申请时间", "备注",
 	}},
-	{Name: "port_mappings", Headers: []string{
+	{Name: "端口映射", Headers: []string{
 		"公网IP", "内网IP", "外网端口", "内网端口", "外网协议", "内网协议", "域名", "备注",
 	}},
 }

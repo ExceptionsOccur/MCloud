@@ -326,6 +326,7 @@ go/
 | ID | `id` | BIGSERIAL | PRIMARY KEY |
 | 申请单位 | `apply_unit` | VARCHAR(128) | NOT NULL |
 | 账户名 | `account_name` | VARCHAR(64) | NOT NULL |
+| 账号姓名 | `account_name_zh` | VARCHAR(64) | 选填（T-063，账户名的补充说明） |
 | 申请人 | `applicant` | VARCHAR(64) | 选填（T-060，与账户名区分） |
 | 申请人联系方式 | `contact` | VARCHAR(64) | |
 | 接入地区 | `exit_location` | VARCHAR(128) | 选填（T-061，独立存储；下拉候选取 `public_ips.exit_location` 去重） |

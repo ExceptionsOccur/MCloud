@@ -51,7 +51,7 @@
       <div class="toolbar">
         <el-input
           v-model="keyword"
-          placeholder="搜索申请单位 / 账户名 / 申请人 / 联系方式 / 系统名称 / 主机 / 接入地区 / 备注"
+          placeholder="搜索申请单位 / 账户名 / 账号姓名 / 申请人 / 联系方式 / 系统名称 / 主机 / 接入地区 / 备注"
           clearable
           style="width: 320px"
           @keyup.enter="loadList"
@@ -104,6 +104,16 @@
           min-width="120"
           show-overflow-tooltip
         />
+        <el-table-column
+          prop="account_name_zh"
+          label="账号姓名"
+          min-width="100"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            {{ row.account_name_zh || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column
           prop="applicant"
           label="申请人"
@@ -256,6 +266,16 @@
           <el-input
             v-model="form.account_name"
             placeholder="请输入账户名"
+            maxlength="64"
+          />
+        </el-form-item>
+        <el-form-item
+          label="账号姓名"
+          prop="account_name_zh"
+        >
+          <el-input
+            v-model="form.account_name_zh"
+            placeholder="请输入账号姓名（选填）"
             maxlength="64"
           />
         </el-form-item>
@@ -438,6 +458,7 @@ const exitLocationsLoading = ref(false)
 const form = reactive({
   apply_unit: '',
   account_name: '',
+  account_name_zh: '',
   applicant: '',
   contact: '',
   targets: [{ host_id: null, ports: '22' }],
@@ -532,6 +553,7 @@ function openDialog(row, copy = false) {
   form.apply_unit = row?.apply_unit || ''
   // 复制时唯一字段（账户名）置空待填
   form.account_name = copy ? '' : (row?.account_name || '')
+  form.account_name_zh = row?.account_name_zh || ''
   form.applicant = row?.applicant || ''
   form.contact = row?.contact || ''
   form.targets = (row?.targets || []).map(t => ({ host_id: t.host_id, ports: t.ports || '' }))
@@ -565,6 +587,7 @@ async function handleSubmit() {
     const payload = {
       apply_unit: form.apply_unit.trim(),
       account_name: form.account_name.trim(),
+      account_name_zh: form.account_name_zh.trim(),
       applicant: form.applicant.trim(),
       contact: form.contact.trim(),
       targets: form.targets.map(t => ({ host_id: t.host_id, ports: String(t.ports).trim() })),
