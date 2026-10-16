@@ -21,7 +21,7 @@ func TestZeroTrustXLSXRoundtrip(t *testing.T) {
 		t.Fatalf("种子公网IP失败: %v", err)
 	}
 	srcID, seedErr := s.Create(ZeroTrustRequest{
-		ApplyUnit: "回灌单位", AccountName: "rt-account", Applicant: "回灌人",
+		ApplyUnit: "回灌单位", AccountName: "rt-account", AccountNameZh: "回灌账号", Applicant: "回灌人",
 		Contact:      "张三",
 		ExitLocation: "上海",
 		SystemName:   "rt-sys", Remark: "回灌备注",
@@ -51,7 +51,7 @@ func TestZeroTrustXLSXRoundtrip(t *testing.T) {
 	if len(report.Errors) != 0 {
 		t.Fatalf("导入行错误: %+v", report.Errors)
 	}
-	ztStat := report.stat("zero_trusts")
+	ztStat := report.stat("零信任")
 	if ztStat == nil || ztStat.Created != 1 || ztStat.Updated != 0 || ztStat.Skipped != 0 {
 		t.Fatalf("zero_trusts 导入统计不符: %+v", ztStat)
 	}
@@ -71,7 +71,7 @@ func TestZeroTrustXLSXRoundtrip(t *testing.T) {
 	if err := database.DB.Where("apply_unit = ? AND account_name = ?", "回灌单位", "rt-account").First(&zt).Error; err != nil {
 		t.Fatalf("目标库查零信任失败: %v", err)
 	}
-	if zt.Applicant != "回灌人" || zt.Contact != "张三" || zt.ExitLocation != "上海" || zt.SystemName != "rt-sys" || zt.Remark != "回灌备注" {
+	if zt.Applicant != "回灌人" || zt.AccountNameZh != "回灌账号" || zt.Contact != "张三" || zt.ExitLocation != "上海" || zt.SystemName != "rt-sys" || zt.Remark != "回灌备注" {
 		t.Fatalf("零信任字段回灌不符: %+v", zt)
 	}
 	if !zt.ApplyTime.Equal(time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)) {
@@ -110,7 +110,7 @@ func TestZeroTrustXLSXRoundtrip(t *testing.T) {
 	if !report2.Committed || len(report2.Errors) != 0 {
 		t.Fatalf("二次导入异常: committed=%v errors=%+v", report2.Committed, report2.Errors)
 	}
-	ztStat2 := report2.stat("zero_trusts")
+	ztStat2 := report2.stat("零信任")
 	if ztStat2 == nil || ztStat2.Created != 0 || ztStat2.Updated != 0 || ztStat2.Skipped != 1 {
 		t.Fatalf("二次导入统计不符: %+v", ztStat2)
 	}
@@ -161,7 +161,7 @@ func TestZeroTrustXLSXMergeByAccount(t *testing.T) {
 	if !report.Committed || len(report.Errors) != 0 {
 		t.Fatalf("导入被回滚或有行错误: committed=%v errors=%+v", report.Committed, report.Errors)
 	}
-	ztStat := report.stat("zero_trusts")
+	ztStat := report.stat("零信任")
 	if ztStat == nil || ztStat.Created != 0 || ztStat.Updated != 1 || ztStat.Skipped != 0 {
 		t.Fatalf("zero_trusts 合并统计不符: %+v", ztStat)
 	}
@@ -224,7 +224,7 @@ func TestPortMappingXLSXProtocolRoundtrip(t *testing.T) {
 	if !report.Committed || len(report.Errors) != 0 {
 		t.Fatalf("导入被回滚或有行错误: %+v", report.Errors)
 	}
-	pmStat := report.stat("port_mappings")
+	pmStat := report.stat("端口映射")
 	if pmStat == nil || pmStat.Created != 1 || pmStat.Updated != 0 || pmStat.Skipped != 0 {
 		t.Fatalf("port_mappings 导入统计不符: %+v", pmStat)
 	}
@@ -248,7 +248,7 @@ func TestPortMappingXLSXProtocolRoundtrip(t *testing.T) {
 	if !report2.Committed || len(report2.Errors) != 0 {
 		t.Fatalf("二次导入异常: committed=%v errors=%+v", report2.Committed, report2.Errors)
 	}
-	pmStat2 := report2.stat("port_mappings")
+	pmStat2 := report2.stat("端口映射")
 	if pmStat2 == nil || pmStat2.Created != 0 || pmStat2.Updated != 0 || pmStat2.Skipped != 1 {
 		t.Fatalf("二次导入统计不符: %+v", pmStat2)
 	}
