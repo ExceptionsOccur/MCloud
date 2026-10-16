@@ -171,7 +171,8 @@ go/
 │   │   ├── password.go            # 密码哈希工具（bcrypt，兼容旧 SHA-256 平滑升级，T-009）
 │   │   ├── csv.go                 # CSV 解析/生成
 │   │   ├── datetime.go            # 日期统一口径（业务申请时间严格 YYYY-MM-DD，T-040/T-065）
-│   │   └── password_test.go       # 密码哈希单测（bcrypt 往返/旧格式兼容，T-006/T-009）
+│   │   ├── password_test.go       # 密码哈希单测（bcrypt 往返/旧格式兼容，T-006/T-009）
+│   │   └── datetime_test.go       # 导入宽容日期归一单测（各写法→YYYY-MM-DD，T-065）
 │   │
 │   └── migrations/                # 迁移 SQL（启动时 goose 执行，embed 进二进制；AutoMigrate 兜底）
 │
