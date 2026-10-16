@@ -346,7 +346,7 @@
               />
               <el-table-column
                 label="外网端口"
-                min-width="120"
+                min-width="90"
               >
                 <template #default="{ row }">
                   {{ fmtPortList(row.external_ports, row.external_protocols) }}
@@ -354,7 +354,7 @@
               </el-table-column>
               <el-table-column
                 label="内网端口"
-                min-width="120"
+                min-width="90"
               >
                 <template #default="{ row }">
                   {{ fmtPortList(row.internal_ports, row.internal_protocols) }}
@@ -363,7 +363,7 @@
               <el-table-column
                 prop="domain"
                 label="域名"
-                min-width="140"
+                min-width="80"
               >
                 <template #default="{ row }">
                   {{ row.domain || '-' }}
@@ -392,12 +392,12 @@
               <el-table-column
                 prop="account_name"
                 label="账户名"
-                min-width="100"
+                min-width="90"
               />
               <el-table-column
                 prop="system_name"
                 label="系统名称"
-                min-width="120"
+                min-width="90"
               >
                 <template #default="{ row }">
                   {{ row.system_name || '-' }}
@@ -405,7 +405,7 @@
               </el-table-column>
               <el-table-column
                 label="申请端口"
-                min-width="110"
+                min-width="80"
                 align="center"
               >
                 <template #default="{ row }">
