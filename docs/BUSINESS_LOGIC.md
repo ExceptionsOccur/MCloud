@@ -7,6 +7,7 @@
 - [认证流程](#认证流程)
 - [JWT 中间件](#jwt-中间件)
 - [审计日志](#审计日志)
+- [AI 接入配置与密钥加密](#ai-接入配置与密钥加密)
 - [主机搜索/筛选](#主机搜索筛选)
 - [CSV 导入导出](#csv-导入导出)
 - [数据备份 xlsx 导出/导入](#数据备份-xlsx-导出导入)
@@ -52,6 +53,19 @@ WebSocket 通道无法携带 Header，token 通过 query 参数传递（`/api/ws
 - **只增不删**：无 UNIQUE 约束、不设 users 外键（操作人以快照落库）
 - **查询**：`GET /api/audit-logs`（分页筛选，通用查询）与 `GET /api/audit-logs/resource`（按 `resource_type`+`resource_id` 取单资产变更记录，T-066）；写入失败不阻断业务（审计不改变 CUD 结果语义）
 - **展示**：资产详情弹窗「变更记录」tab（`AuditTimeline` 组件）按时间倒序渲染操作人/动作/diff；主机点击行打开详情（`view` 模式），零信任/映射点击行打开只读详情弹窗
+
+
+## AI 接入配置与密钥加密
+
+> `T-067` 后端地基：供后续「上传申请表单 → 大模型提取 → 确认入账」（T-068~T-070）复用的配置与密钥管理。
+
+- **存储**：`ai_settings` 单条全局配置（主键恒为 1，全站共用），字段 `api_url` / `api_key_enc` / `model`
+- **加密**：API Key 以 **AES-256-GCM** 加密后落库（`utils/crypto.go`），密文格式 `base64(nonce||ciphertext)`；密钥由环境变量 `AI_SECRET_KEY` 经 SHA-256 派生为 32 字节
+- **降级**：未配置 `AI_SECRET_KEY` 时 `Encrypt/Decrypt` 按明文原样返回并记录一次告警（不阻断功能）；构建文件（docker-compose）是否透传该变量由人类决定
+- **回显**：`GET /api/ai/settings` 只返回脱敏值 `api_key_masked`（保留末四位，如 `****1234`）与 `api_key_set` 布尔，**绝不返回明文**
+- **保存**：`PUT /api/ai/settings` 中 `api_key` 传空表示**保留原值**（因前端只拿到脱敏值，无法回传明文），非空则加密覆盖；`api_url`/`model` 必填
+- **审计**：保存变更写 `audit_logs`（`resource_type=ai_setting`），detail 仅记录 `api_url`/`model`/`api_key_set`，不落 API Key 明文
+- **内部使用**：后端调用大模型经 `AISettingService.GetDecrypted` 取明文 Key，不下发前端
 
 
 ## 主机搜索/筛选

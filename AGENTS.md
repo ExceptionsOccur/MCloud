@@ -75,9 +75,9 @@
 |------|-----|
 | last_updated | 2026-10-16 |
 | in_progress | 无 |
-| next_task | 无（todo 队列已清空） |
-| todo（P1） | 无 |
-| todo（P2） | 无（队列已清空） |
+| next_task | T-068 |
+| todo（P1） | T-068 / T-069 / T-070 / T-071（AI 申请表单智能入账） |
+| todo（P2） | 无 |
 | blocked | 无 |
 | 回顾锚点 | 上次回顾至 `T-053`（批次 T-009/T-011/T-012/T-019/T-020 与 T-008/T-053/T-055/T-056/T-057 共 10 条核查，修复 CODE_INDEX×2 偏差后人类确认推进，2026-10-12） |
 | 功能完成度 | 功能模块 19 项：19 完成 / 0 待开发；技术债 2 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
@@ -103,7 +103,7 @@ MCloud 是云平台主机资产信息管理系统：**Go (Gin) 后端 + Vue 3 SP
 |----------|-----|
 | 开发端口 | 前端 5173（Vite，`/api` 代理到 `backend:5677`）、后端 5677、Postgres 5432、生产 5678 |
 | 默认账号 | `admin` / `Pass4MCloud`（种子见 `backend/database/postgres.go` 的 `seedAdmin()`） |
-| 数据库表 | 11 张：`users` / `hosts` / `host_applications` / `persons` / `cloud_resources` / `ip_subnets` / `zero_trusts` / `zero_trust_targets` / `port_mappings` / `public_ips` / `audit_logs` |
+| 数据库表 | 12 张：`users` / `hosts` / `host_applications` / `persons` / `cloud_resources` / `ip_subnets` / `zero_trusts` / `zero_trust_targets` / `port_mappings` / `public_ips` / `audit_logs` / `ai_settings` |
 | 开发环境 | `cd docker && cp .env.example .env && docker-compose -f docker-compose.dev.yml up -d` |
 
 ## 核心约定（红线）
@@ -195,7 +195,7 @@ cd backend && go build ./...   # 确认模型可编译 + 迁移 SQL 文件已按
 | [README.md](./README.md) | 功能特性、快速开始（面向人类） | 需要产品视角 / 部署说明 |
 | [docs/ROADMAP.md](./docs/ROADMAP.md) | **任务队列（唯一事实来源）** | 领任务、回写状态 |
 | [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md) | 完成度、变更记录、技术债、注意事项 | 判断某功能是否已存在、避坑 |
-| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 目录结构、分层、11 张表模型 | 定位模块、改模型 |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 目录结构、分层、12 张表模型 | 定位模块、改模型 |
 | [docs/API.md](./docs/API.md) | 响应格式、错误码、全部路由与参数 | 增改/调用接口 |
 | [docs/BUSINESS_LOGIC.md](./docs/BUSINESS_LOGIC.md) | 认证、搜索、CSV、IP 探测状态机、统计口径 | 改业务逻辑 |
 | [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) | 编码规范、提交规范、测试、安全 | 写代码时的细则 |

@@ -40,7 +40,7 @@
 
 - **前端**：单页应用，`/api` 请求经 Axios，IP 探测走 WebSocket 长连接
 - **后端**：分层架构，启动时 goose 执行 `migrations/*.sql`（embed）+ AutoMigrate 兜底 + 种子数据
-- **数据库**：PostgreSQL，11 张表
+- **数据库**：PostgreSQL，12 张表
 
 ---
 
@@ -97,7 +97,8 @@ go/
 │   │   ├── zero_trust_target.go   # ZeroTrustTarget 模型（接入目标子表，T-052；端口列 ports 表达式 T-056）
 │   │   ├── port_mapping.go        # PortMapping 模型（端口映射台账）
 │   │   ├── public_ip.go           # PublicIP 模型（公网IP资源台账）
-│   │   └── audit_log.go           # AuditLog 模型（审计日志）
+│   │   ├── audit_log.go           # AuditLog 模型（审计日志）
+│   │   └── ai_setting.go          # AISetting 模型（AI 接入单条全局配置，T-067）
 │   │
 │   ├── controllers/
 │   │   ├── response.go            # 统一响应辅助函数
@@ -115,6 +116,7 @@ go/
 │   │   ├── subnet.go              # IP 网段 CRUD
 │   │   ├── audit_log.go           # 审计日志查询（分页 + 按资源查变更记录，T-066）
 │   │   ├── audit_context.go       # 审计上下文（operator + request_id）
+│   │   ├── ai.go                  # AI 接入配置读写（脱敏 + 审计，T-067）
 │   │   ├── websocket.go           # WebSocket IP 探测通道
 │   │   └── csv_test.go            # CSV 导入 16MB 超限/未超限穿透/缺字段测试（T-044）
 │   │
@@ -138,6 +140,7 @@ go/
 │   │   ├── audit_service.go       # 审计日志（Record/List/ListByResource，操作人快照 + request_id 聚合，T-066）
 │   │   ├── audit_snapshot.go      # 资产变更字段快照（主机/零信任/映射 before/after，T-066）
 │   │   ├── data_exchange.go       # 数据备份公共定义（8 sheet 规格 + 导入报告）
+│   │   ├── ai_setting_service.go  # AI 接入配置业务逻辑（脱敏/保留原值/内部取明文 Key，T-067）
 │   │   ├── export_service.go      # 数据备份导出（8 sheet xlsx）
 │   │   ├── import_service.go      # 数据备份导入（自然键 upsert + 单事务回滚）
 │   │   ├── testdb_test.go         # 测试基建：sqlite 内存库注入 database.DB（T-006）
@@ -149,6 +152,7 @@ go/
 │   │   ├── zero_trust_service_test.go # 接入目标子表 CRUD/按主机搜索/多端口表达式/批量端口组单测（T-052/T-056）
 │   │   ├── port_mapping_service_test.go # 端口协议/范围归一化、展开配对、整组判重单测（T-055）
 │   │   └── data_exchange_test.go  # 空库 xlsx 回灌（零信任子表/映射协议列往返）单测（T-052/T-055）
+│   │   └── ai_setting_service_test.go # AI 配置脱敏/空 key 保留原值单测（T-067）
 │   │
 │   ├── routes/
 │   │   ├── routes.go              # 路由协调：CORS + JWT 受保护组收口 + 分发各域
@@ -163,6 +167,7 @@ go/
 │   │   ├── zero_trust.go          # 零信任台账域
 │   │   ├── port_mapping.go        # 端口映射台账域
 │   │   ├── audit.go               # 审计日志域（查询 + 按资源查变更记录，T-066）
+│   │   ├── ai.go                  # AI 接入配置域（settings 读写，T-067）
 │   │   ├── websocket.go           # WS 探测通道（query token JWT 有效性校验，T-022）
 │   │   └── websocket_test.go      # WS token 缺失/无效拒绝 + 有效建连测试（T-022）
 │   │
@@ -172,8 +177,10 @@ go/
 │   ├── utils/
 │   │   ├── password.go            # 密码哈希工具（bcrypt，兼容旧 SHA-256 平滑升级，T-009）
 │   │   ├── csv.go                 # CSV 解析/生成
+│   │   ├── crypto.go              # AI API Key AES-GCM 加解密/脱敏（T-067）
 │   │   ├── datetime.go            # 日期统一口径（业务申请时间严格 YYYY-MM-DD，T-040/T-065）
 │   │   ├── password_test.go       # 密码哈希单测（bcrypt 往返/旧格式兼容，T-006/T-009）
+│   │   ├── crypto_test.go         # API Key AES-GCM 加解密/降级/脱敏单测（T-067）
 │   │   └── datetime_test.go       # 导入宽容日期归一单测（各写法→YYYY-MM-DD，T-065）
 │   │
 │   └── migrations/                # 迁移 SQL（启动时 goose 执行，embed 进二进制；AutoMigrate 兜底）
@@ -216,7 +223,7 @@ go/
 
 ## 数据模型
 
-数据库共 11 张表：
+数据库共 12 张表：
 
 | 表 | 模型 | 说明 |
 |----|------|------|
@@ -231,6 +238,7 @@ go/
 | `port_mappings` | `models/port_mapping.go` | 端口映射台账（公网IP↔内网主机多端口；域名可选） |
 | `public_ips` | `models/public_ip.go` | 公网IP资源台账（IP/运营商/出口位置/备注） |
 | `audit_logs` | `models/audit_log.go` | 审计日志（操作人快照/动作/资源/diff/request_id；只增不删；资产详情「变更记录」时间线按 `resource_type`+`resource_id` 查询，T-066） |
+| `ai_settings` | `models/ai_setting.go` | AI 接入配置（单条全局：API 地址/加密 Key/模型；API Key 以 AES-GCM 密文列 `api_key_enc` 存储，T-067） |
 
 > 库中另有 goose 运行时表 `goose_db_version`（记录迁移版本，由 goose 维护），不计入业务表。
 
@@ -390,13 +398,25 @@ go/
 | 操作人ID | `operator_id` | BIGINT | NOT NULL（快照，非外键） |
 | 操作人名 | `operator_name` | VARCHAR(64) | NOT NULL DEFAULT ''（快照） |
 | 动作 | `action` | VARCHAR(32) | NOT NULL（create/update/delete/batch_update/import_csv/import_xlsx） |
-| 资源类型 | `resource_type` | VARCHAR(32) | NOT NULL（host/person/public_ip/zero_trust/port_mapping/cloud_resource/ip_subnet/data_exchange） |
+| 资源类型 | `resource_type` | VARCHAR(32) | NOT NULL（host/person/public_ip/zero_trust/port_mapping/cloud_resource/ip_subnet/data_exchange/ai_setting） |
 | 资源ID | `resource_id` | BIGINT | 可空（批量/导入类条目） |
 | 详情 | `detail` | JSONB | `{"before":{...},"after":{...}}` 前后值 diff |
 | 请求ID | `request_id` | VARCHAR(64) | NOT NULL DEFAULT ''（同一 HTTP 请求内多条审计共用） |
 | 创建时间 | `created_at` | TIMESTAMPTZ | NOT NULL DEFAULT NOW() |
 
 索引：`operator_id` / `action` / `resource_type` / `resource_id` / `request_id` / `created_at DESC`（仅普通索引，**无 UNIQUE 约束**、**无 users 外键**，只增不删）。
+
+### ai_settings 表（AI 接入配置）
+
+| 字段 | 列名 | 类型 | 约束 |
+|------|------|------|------|
+| ID | `id` | BIGSERIAL | PRIMARY KEY（单条全局配置，恒为 1） |
+| API 地址 | `api_url` | VARCHAR(255) | NOT NULL DEFAULT ''（OpenAI 兼容接口基址） |
+| API Key 密文 | `api_key_enc` | TEXT | NOT NULL DEFAULT ''（AES-GCM 密文；模型字段 JSON 不序列化） |
+| 模型 | `model` | VARCHAR(128) | NOT NULL DEFAULT '' |
+| 更新时间 | `updated_at` | TIMESTAMPTZ | NOT NULL DEFAULT NOW() |
+
+密钥由环境变量 `AI_SECRET_KEY` 经 SHA-256 派生；未配置该变量时降级明文存储并记录告警（`utils/crypto.go`，T-067）。
 
 ### 字段约束说明
 

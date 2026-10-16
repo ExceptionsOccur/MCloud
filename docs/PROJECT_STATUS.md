@@ -29,6 +29,7 @@
 | 公网 IP 资源录入 | ✅ 完成 | `T-031` `public_ips` 资源池（IP/运营商/备注），设置菜单 + `/public-ip` 独立页 |
 | 数据备份 | ✅ 完成 | `T-038` 8 个业务 sheet 导出为单个 xlsx / 导入自然键 upsert（单事务失败整体回滚），`/data-backup` 页 + 设置菜单入口 |
 | 审计日志 | ✅ 完成 | `T-047` `audit_logs` 全资源 CUD/导入审计（操作人快照/diff/request_id）+ `GET /api/audit-logs`；`T-066` 改为资产变更记录：移除独立审计页，主机/零信任/映射详情弹窗「变更记录」时间线（`GET /api/audit-logs/resource`），点击资产行打开只读详情 |
+| AI 接入配置 | ✅ 完成 | `T-067` 后端地基：`ai_settings` 单条全局配置（API 地址/加密 Key/模型）+ `GET/PUT /api/ai/settings`（Key 回显脱敏、空值保留原值、变更写审计）；API Key 以 AES-GCM 密文存储（`AI_SECRET_KEY` 派生密钥，缺失降级明文并告警）；申请表单智能入账（T-068~T-070）待续 |
 
 ## 近期变更记录
 
@@ -36,6 +37,7 @@
 
 ### 2026-10-16
 
+- `b7adc68` `feat:` **T-067** AI 接入后端地基：新增 `ai_settings` 单条全局配置表（表数 11→12）+ `GET/PUT /api/ai/settings`（Key 回显仅末四位、空值保留原值、变更写审计），API Key 以 AES-GCM 密文存储（`AI_SECRET_KEY` 派生密钥，缺失降级明文并告警）；门禁全绿
 - `c3aa75d` `refactor:` **T-066** 审计改为资产变更记录：移除独立审计页；主机/零信任/映射新增/修改写入统一字段快照，详情弹窗「变更记录」时间线按旧值→新值逐字段展示（`GET /api/audit-logs/resource`，批量修改逐主机记录）；点击资产行打开只读详情（去「详情」按钮）；门禁全绿
 - `bd96b7c` `feat:` **T-065** 零信任接入目标增加 TCP/UDP 协议维度（`zero_trust_targets.protocol`，每行单协议、缺省 tcp、存量回填）：API `targets[].protocol`、批量 `/协议` 后缀、xlsx `/协议` 往返；门禁全绿
 - `bd96b7c` `feat:` **T-065** 零信任接入地区改多值（`zero_trusts.exit_location` `VARCHAR→TEXT`，逗号/顿号规整去重、合并取并集）：前端多选下拉与列表标签展示、搜索命中任一地区、批量/xlsx 多值往返；门禁全绿

@@ -112,9 +112,19 @@
 | GET | `/api/audit-logs/resource` | `audit.ResourceHistory` | 查询某资产的变更记录（资产详情「变更记录」时间线，T-066）；必填 `resource_type` + `resource_id`，返回按时间倒序的条目数组（`operator_name`/`action`/`detail`/`created_at` 等），缺参返回 `40001` |
 
 - CUD/导入/批量操作自动写入 `audit_logs`（操作人快照 + 动作 + 资源 + 前后值 diff + 同请求共用 `request_id`）
-- `action` 枚举：`create`/`update`/`delete`/`batch_update`/`import_csv`/`import_xlsx`；`resource_type` 枚举：`host`/`person`/`public_ip`/`zero_trust`/`port_mapping`/`cloud_resource`/`ip_subnet`/`data_exchange`
+- `action` 枚举：`create`/`update`/`delete`/`batch_update`/`import_csv`/`import_xlsx`；`resource_type` 枚举：`host`/`person`/`public_ip`/`zero_trust`/`port_mapping`/`cloud_resource`/`ip_subnet`/`data_exchange`/`ai_setting`
 - `detail` 不含 password_hash 等敏感明文；只增不删；无 UNIQUE 约束、不设 users 外键
 - 不覆盖：登录/改密事件、级联写（`refreshHostIPMapped`/登录计数）、WS 探测
+
+### AI 接入配置（需 JWT）
+
+| 方法 | 路由 | Controller | 说明 |
+|------|------|-----------|------|
+| GET | `/api/ai/settings` | `ai.GetSettings` | 读取 AI 接入配置，返回 `{api_url, api_key_masked, api_key_set, model}`；`api_key` 仅回显末四位（如 `****1234`），绝不返回明文（T-067） |
+| PUT | `/api/ai/settings` | `ai.SaveSettings` | 保存配置（`api_url`/`model` 必填）；`api_key` 传空表示**保留原值**（前端脱敏回显无法回传明文），非空则加密后更新。变更写审计（`resource_type=ai_setting`），审计不落 API Key 明文 |
+
+- 配置为**单条全局记录**（`ai_settings` 表主键恒为 1），全站共用
+- `api_key` 以 **AES-GCM 密文**落库，密钥由环境变量 `AI_SECRET_KEY` 经 SHA-256 派生；未配置该变量时降级明文存储并记录告警（T-067）
 
 ### 云资源总览（需 JWT）
 

@@ -25,7 +25,7 @@
 | `backend/database/postgres.go` | 数据库连接与迁移 | `Connect()`、`Migrate()`（goose.Up + AutoMigrate 兜底 + seedAdmin）、`seedAdmin()` |
 | `backend/migrations/embed.go` | 迁移 SQL embed FS | `//go:embed *.sql` → `migrations.FS`，供 goose 加载 |
 | `backend/routes/routes.go` | 路由协调 | `SetupRoutes()`：CORS + JWT 受保护组统一收口 + 分发各域 |
-| `backend/routes/{auth,host,data_exchange,cloud_resource,stats,subnet,person,public_ip,zero_trust,port_mapping,audit,websocket}.go` | 各域路由注册 | `registerX(g)`；公开域仅登录/登出 + WS probe |
+| `backend/routes/{auth,host,data_exchange,cloud_resource,stats,subnet,person,public_ip,zero_trust,port_mapping,audit,ai,websocket}.go` | 各域路由注册 | `registerX(g)`；公开域仅登录/登出 + WS probe |
 
 ### 数据模型（models/）
 
@@ -42,6 +42,7 @@
 | `backend/models/port_mapping.go` | `PortMapping` | `port_mappings` |
 | `backend/models/public_ip.go` | `PublicIP` | `public_ips` |
 | `backend/models/audit_log.go` | `AuditLog` | `audit_logs` |
+| `backend/models/ai_setting.go` | `AISetting`（API Key 密文列 `api_key_enc`） | `ai_settings`（单条全局配置，T-067） |
 
 ### 控制器（controllers/）
 
@@ -64,6 +65,7 @@
 | `controllers/public_ip.go` | 公网IP资源台账 CRUD + 被引用校验（改IP/删除被映射台账引用 → `40901`） |
 | `controllers/audit_log.go` | 审计日志查询（分页筛选 + 按资源查变更记录 `ResourceHistory`，T-066） |
 | `controllers/audit_context.go` | 审计上下文：`auditContext(c)` 取 operator + request_id |
+| `controllers/ai.go` | AI 接入配置读写（`GetSettings`/`SaveSettings`，脱敏 + 审计） |
 | `controllers/websocket.go` | WebSocket 探测通道（并发处理探测请求） |
 
 ### 业务服务（services/）
@@ -84,6 +86,7 @@
 | `services/public_ip_service.go` | 公网IP资源台账 | `List`/`Create`/`Update`/`Delete`、`normalizePublicIP`（IP 唯一/格式校验）、`countPublicIPRefs`/`ErrPublicIPReferenced` 引用保护 |
 | `services/audit_service.go` | 审计日志 | `Record`（写入，失败不阻断业务）、`List`（分页筛选）、`ListByResource`（按 `resource_type`+`resource_id` 取单资产变更记录，T-066）、`GetOperator`、`NewRequestID` |
 | `services/data_exchange.go` | 数据备份公共定义 | `dataExchangeSheets`（8 sheet 中文名 + 中文列头，T-063）、`ImportReport`/`SheetStat`/`RowError` |
+| `services/ai_setting_service.go` | AI 接入配置（单条全局，T-067） | `Get`（脱敏回显）、`Save`（api_key 空保留原值）、`GetDecrypted`（内部取明文 Key） |
 | `services/export_service.go` | 数据备份导出 | `Export`（8 sheet 依赖序写入）、`ExportFilename` |
 | `services/import_service.go` | 数据备份导入 | `Import`（单事务 + 回滚）、`parseWorkbook`（结构校验）、`apply*`（按自然键 upsert；`zero_trusts` 自然键=账户名合并，T-058）、`zeroTrustKey` |
 
@@ -233,6 +236,7 @@
 | **登录/认证** | `controllers/auth.go` `services/auth_service.go` `middleware/jwt.go` | `views/Login.vue` `stores/auth.js` `api/auth.js` |
 | **顶部导航** | —（纯前端路由） | `components/AppNav.vue`（7 Tab 10 页共用，T-019） |
 | **审计日志** | `controllers/audit_log.go` `services/audit_service.go` `models/audit_log.go` `routes/audit.go` | `api/audit.js`（`/audit-logs/resource`）+ `components/AuditTimeline.vue`（资产详情「变更记录」时间线，T-066） |
+| **AI 接入配置** | `controllers/ai.go`（`GetSettings`/`SaveSettings`）`services/ai_setting_service.go`（脱敏/保留原值）`models/ai_setting.go` `routes/ai.go` `utils/crypto.go`（AES-GCM） | `api/ai.js`、（设置页 T-069 待建） |
 | **主机 CRUD** | `controllers/host.go` `services/host_service.go` | `views/HostManagement.vue` `components/HostTable.vue` `components/HostFormDialog.vue` `stores/host.js` `composables/usePagedTable.js` |
 | **主机筛选/搜索** | `services/host_service.go` → `Filter` | `components/SearchToolbar.vue` |
 | **批量增改** | `controllers/batch.go` `services/host_batch_service.go` → `BatchCreate`/`BatchUpdate` | `components/BatchAddDialog.vue` `components/BatchEditDialog.vue` |
@@ -344,3 +348,4 @@ GET/POST /api/zero-trusts、GET /api/zero-trusts/exit-locations、PUT/DELETE /ap
 | `port_mappings` | `models/port_mapping.go` | `services/port_mapping_service.go`；删除主机前经 `HostReferencedByMapping` 校验 |
 | `public_ips` | `models/public_ip.go` | `services/public_ip_service.go` |
 | `audit_logs` | `models/audit_log.go` | `services/audit_service.go`；各 CUD service 方法经 `Record` 写入；`controllers/audit_log.go` 查询 |
+| `ai_settings` | `models/ai_setting.go` | `services/ai_setting_service.go`；`controllers/ai.go` 读写；API Key 经 `utils/crypto.go` AES-GCM 加解密 |

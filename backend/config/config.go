@@ -23,6 +23,7 @@ type Config struct {
 	ServerPort         string
 	ServerMode         string
 	CORSAllowedOrigins []string
+	AISecretKey        string
 }
 
 var AppConfig *Config
@@ -45,6 +46,7 @@ func Load() {
 		ServerPort:         getEnv("SERVER_PORT", "5677"),
 		ServerMode:         getEnv("SERVER_MODE", "debug"),
 		CORSAllowedOrigins: splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "")),
+		AISecretKey:        getEnv("AI_SECRET_KEY", ""),
 	}
 
 	AppConfig = appConfig

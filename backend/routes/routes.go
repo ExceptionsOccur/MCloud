@@ -26,6 +26,7 @@ func SetupRoutes(r *gin.Engine) {
 	registerZeroTrusts(protected)
 	registerPortMappings(protected)
 	registerAudits(protected)
+	registerAI(protected)
 
 	registerWS(api)
 }
