@@ -22,9 +22,9 @@ func TestZeroTrustXLSXRoundtrip(t *testing.T) {
 	}
 	srcID, seedErr := s.Create(ZeroTrustRequest{
 		ApplyUnit: "回灌单位", AccountName: "rt-account", Applicant: "回灌人",
-		Contact:    "张三",
-		PublicIP:   "203.0.113.10",
-		SystemName: "rt-sys", Remark: "回灌备注",
+		Contact:      "张三",
+		ExitLocation: "上海",
+		SystemName:   "rt-sys", Remark: "回灌备注",
 		ApplyTime: &utils.FlexibleTime{Time: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)},
 		// T-056：hostA 为多端口表达式（导出 ip:22,1000-10005，导入按「无冒号续接前组」解析）
 		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22,1000-10005"}, {HostID: hostB, Ports: "3389"}},
@@ -71,7 +71,7 @@ func TestZeroTrustXLSXRoundtrip(t *testing.T) {
 	if err := database.DB.Where("apply_unit = ? AND account_name = ?", "回灌单位", "rt-account").First(&zt).Error; err != nil {
 		t.Fatalf("目标库查零信任失败: %v", err)
 	}
-	if zt.Applicant != "回灌人" || zt.Contact != "张三" || zt.PublicIP != "203.0.113.10" || zt.SystemName != "rt-sys" || zt.Remark != "回灌备注" {
+	if zt.Applicant != "回灌人" || zt.Contact != "张三" || zt.ExitLocation != "上海" || zt.SystemName != "rt-sys" || zt.Remark != "回灌备注" {
 		t.Fatalf("零信任字段回灌不符: %+v", zt)
 	}
 	if !zt.ApplyTime.Equal(time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)) {

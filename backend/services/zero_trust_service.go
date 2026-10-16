@@ -29,15 +29,15 @@ type ZeroTrustTarget struct {
 }
 
 type ZeroTrustRequest struct {
-	ApplyUnit   string              `json:"apply_unit" binding:"required"`
-	AccountName string              `json:"account_name" binding:"required"`
-	Applicant   string              `json:"applicant"`
-	Contact     string              `json:"contact"`
-	PublicIP    string              `json:"public_ip"`
-	Targets     []ZeroTrustTarget   `json:"targets" binding:"required"`
-	SystemName  string              `json:"system_name"`
-	ApplyTime   *utils.FlexibleTime `json:"apply_time"`
-	Remark      string              `json:"remark"`
+	ApplyUnit    string              `json:"apply_unit" binding:"required"`
+	AccountName  string              `json:"account_name" binding:"required"`
+	Applicant    string              `json:"applicant"`
+	Contact      string              `json:"contact"`
+	ExitLocation string              `json:"exit_location"`
+	Targets      []ZeroTrustTarget   `json:"targets" binding:"required"`
+	SystemName   string              `json:"system_name"`
+	ApplyTime    *utils.FlexibleTime `json:"apply_time"`
+	Remark       string              `json:"remark"`
 }
 
 // ZeroTrustTargetView 配对 + 主机简要信息（列表展示用；ports 为端口表达式）
@@ -50,8 +50,7 @@ type ZeroTrustTargetView struct {
 
 type ZeroTrustItem struct {
 	models.ZeroTrust
-	Targets      []ZeroTrustTargetView `json:"targets"`
-	ExitLocation string                `json:"exit_location"`
+	Targets []ZeroTrustTargetView `json:"targets"`
 }
 
 // ErrZeroTrustNotFound 零信任台账记录不存在
@@ -63,7 +62,7 @@ var ErrHostNotFound = errors.New("主机不存在")
 // ErrHostReferenced 主机已被零信任台账引用，禁止删除
 var ErrHostReferenced = errors.New("该主机已被零信任台账引用")
 
-// ErrPublicIPNotInPool 公网IP不在资源池中
+// ErrPublicIPNotInPool 公网IP不在资源池中（端口映射导入用；零信任 T-061 起不再关联公网IP）
 var ErrPublicIPNotInPool = errors.New("公网IP不在资源池中，请先在公网IP录入中添加")
 
 // ZeroTrustHostBrief 主机简要信息
@@ -171,19 +170,18 @@ func validateZeroTrustHosts(pairs []ZeroTrustTarget) error {
 	return nil
 }
 
-// validateZeroTrustPublicIP 公网IP非空时必须在资源池中
-func validateZeroTrustPublicIP(ip string) error {
-	if ip == "" {
-		return nil
+// ListExitLocations 接入地区候选值：取 public_ips.exit_location 去重非空集（T-061）
+func (s *ZeroTrustService) ListExitLocations() ([]string, error) {
+	var locs []string
+	err := database.DB.Model(&models.PublicIP{}).
+		Distinct("exit_location").
+		Where("exit_location <> ''").
+		Order("exit_location ASC").
+		Pluck("exit_location", &locs).Error
+	if err != nil {
+		return nil, err
 	}
-	var count int64
-	if err := database.DB.Model(&models.PublicIP{}).Where("ip = ?", ip).Count(&count).Error; err != nil {
-		return err
-	}
-	if count == 0 {
-		return ErrPublicIPNotInPool
-	}
-	return nil
+	return locs, nil
 }
 
 // loadZeroTrustHostBriefs 批量加载主机简要信息（ID → 简要）
@@ -206,28 +204,12 @@ func loadZeroTrustHostBriefs(idSet map[uint]struct{}) (map[uint]ZeroTrustHostBri
 	return briefs, nil
 }
 
-// loadExitLocations 批量带出公网IP的出口位置（IP → exit_location）
-func loadExitLocations(ips []string) (map[string]string, error) {
-	locs := make(map[string]string, len(ips))
-	if len(ips) == 0 {
-		return locs, nil
-	}
-	var resources []models.PublicIP
-	if err := database.DB.Select("ip, exit_location").Where("ip IN ?", ips).Find(&resources).Error; err != nil {
-		return nil, err
-	}
-	for _, r := range resources {
-		locs[r.IP] = r.ExitLocation
-	}
-	return locs, nil
-}
-
 func normalizeZeroTrust(req ZeroTrustRequest) (ZeroTrustRequest, []ZeroTrustTarget, error) {
 	req.ApplyUnit = strings.TrimSpace(req.ApplyUnit)
 	req.AccountName = strings.TrimSpace(req.AccountName)
 	req.Applicant = strings.TrimSpace(req.Applicant)
 	req.Contact = strings.TrimSpace(req.Contact)
-	req.PublicIP = strings.TrimSpace(req.PublicIP)
+	req.ExitLocation = strings.TrimSpace(req.ExitLocation)
 	req.SystemName = strings.TrimSpace(req.SystemName)
 	req.Remark = strings.TrimSpace(req.Remark)
 	if req.ApplyUnit == "" {
@@ -252,8 +234,8 @@ func (s *ZeroTrustService) List(keyword string) ([]ZeroTrustItem, error) {
 	if keyword = strings.TrimSpace(keyword); keyword != "" {
 		like := "%" + keyword + "%"
 		db = db.Where(
-			"zero_trusts.apply_unit ILIKE ? OR zero_trusts.account_name ILIKE ? OR zero_trusts.applicant ILIKE ? OR zero_trusts.contact ILIKE ? OR zero_trusts.system_name ILIKE ? OR zero_trusts.remark ILIKE ? OR zero_trusts.public_ip ILIKE ? OR EXISTS (SELECT 1 FROM public_ips pi WHERE pi.ip = zero_trusts.public_ip AND (pi.exit_location ILIKE ? OR pi.isp ILIKE ?)) OR EXISTS (SELECT 1 FROM zero_trust_targets ztt JOIN hosts h ON h.id = ztt.host_id WHERE ztt.zero_trust_id = zero_trusts.id AND (h.name ILIKE ? OR h.private_ip ILIKE ?))",
-			like, like, like, like, like, like, like, like, like, like, like,
+			"zero_trusts.apply_unit ILIKE ? OR zero_trusts.account_name ILIKE ? OR zero_trusts.applicant ILIKE ? OR zero_trusts.contact ILIKE ? OR zero_trusts.system_name ILIKE ? OR zero_trusts.remark ILIKE ? OR zero_trusts.exit_location ILIKE ? OR EXISTS (SELECT 1 FROM zero_trust_targets ztt JOIN hosts h ON h.id = ztt.host_id WHERE ztt.zero_trust_id = zero_trusts.id AND (h.name ILIKE ? OR h.private_ip ILIKE ?))",
+			like, like, like, like, like, like, like, like, like,
 		)
 	}
 
@@ -282,21 +264,6 @@ func (s *ZeroTrustService) List(keyword string) ([]ZeroTrustItem, error) {
 		return nil, err
 	}
 
-	ipSet := make(map[string]struct{})
-	for _, r := range records {
-		if r.PublicIP != "" {
-			ipSet[r.PublicIP] = struct{}{}
-		}
-	}
-	ips := make([]string, 0, len(ipSet))
-	for ip := range ipSet {
-		ips = append(ips, ip)
-	}
-	locs, err := loadExitLocations(ips)
-	if err != nil {
-		return nil, err
-	}
-
 	items := make([]ZeroTrustItem, 0, len(records))
 	for _, r := range records {
 		pairs := pairsByID[r.ID]
@@ -309,7 +276,6 @@ func (s *ZeroTrustService) List(keyword string) ([]ZeroTrustItem, error) {
 			}
 			item.Targets = append(item.Targets, view)
 		}
-		item.ExitLocation = locs[r.PublicIP]
 		items = append(items, item)
 	}
 	return items, nil
@@ -352,7 +318,7 @@ func unionTargetPairs(existing, incoming []ZeroTrustTarget) []ZeroTrustTarget {
 }
 
 // mergeZeroTrustInto 把一次新增合并进同账户名已有记录（T-058）：
-// 接入目标取并集去重；其余字段已有非空保留、新值仅补空位（公网IP同规则且补录值须在资源池）；
+// 接入目标取并集去重；其余字段已有非空保留、新值仅补空位（含接入地区 T-061）；
 // 申请时间保留已有；无实际变化时不写库
 func mergeZeroTrustInto(dst *models.ZeroTrust, req ZeroTrustRequest, newPairs []ZeroTrustTarget, op Operator, requestID string) (uint, error) {
 	curPairs, err := loadZeroTrustTargetPairs(database.DB, []uint{dst.ID})
@@ -360,22 +326,14 @@ func mergeZeroTrustInto(dst *models.ZeroTrust, req ZeroTrustRequest, newPairs []
 		return 0, err
 	}
 	before := map[string]interface{}{
-		"apply_unit":   dst.ApplyUnit,
-		"account_name": dst.AccountName,
-		"applicant":    dst.Applicant,
-		"contact":      dst.Contact,
-		"public_ip":    dst.PublicIP,
-		"targets":      joinTargetPairs(curPairs[dst.ID]),
-		"system_name":  dst.SystemName,
-		"remark":       dst.Remark,
-	}
-
-	finalPublicIP := dst.PublicIP
-	if finalPublicIP == "" {
-		finalPublicIP = req.PublicIP
-	}
-	if err := validateZeroTrustPublicIP(finalPublicIP); err != nil {
-		return 0, err
+		"apply_unit":    dst.ApplyUnit,
+		"account_name":  dst.AccountName,
+		"applicant":     dst.Applicant,
+		"contact":       dst.Contact,
+		"exit_location": dst.ExitLocation,
+		"targets":       joinTargetPairs(curPairs[dst.ID]),
+		"system_name":   dst.SystemName,
+		"remark":        dst.Remark,
 	}
 
 	mergedPairs := unionTargetPairs(curPairs[dst.ID], newPairs)
@@ -388,8 +346,8 @@ func mergeZeroTrustInto(dst *models.ZeroTrust, req ZeroTrustRequest, newPairs []
 		dst.Contact = req.Contact
 		changed = true
 	}
-	if dst.PublicIP == "" && req.PublicIP != "" {
-		dst.PublicIP = req.PublicIP
+	if dst.ExitLocation == "" && req.ExitLocation != "" {
+		dst.ExitLocation = req.ExitLocation
 		changed = true
 	}
 	if dst.SystemName == "" && req.SystemName != "" {
@@ -421,14 +379,14 @@ func mergeZeroTrustInto(dst *models.ZeroTrust, req ZeroTrustRequest, newPairs []
 		return 0, err
 	}
 	after := map[string]interface{}{
-		"apply_unit":   dst.ApplyUnit,
-		"account_name": dst.AccountName,
-		"applicant":    dst.Applicant,
-		"contact":      dst.Contact,
-		"public_ip":    dst.PublicIP,
-		"targets":      joinTargetPairs(mergedPairs),
-		"system_name":  dst.SystemName,
-		"remark":       dst.Remark,
+		"apply_unit":    dst.ApplyUnit,
+		"account_name":  dst.AccountName,
+		"applicant":     dst.Applicant,
+		"contact":       dst.Contact,
+		"exit_location": dst.ExitLocation,
+		"targets":       joinTargetPairs(mergedPairs),
+		"system_name":   dst.SystemName,
+		"remark":        dst.Remark,
 	}
 	NewAuditService().Record(op, "update", "zero_trust", &dst.ID, DetailDiff{Before: before, After: after}, requestID)
 	return dst.ID, nil
@@ -452,19 +410,16 @@ func (s *ZeroTrustService) Create(req ZeroTrustRequest, op Operator, requestID s
 	if !errors.Is(findErr, gorm.ErrRecordNotFound) {
 		return 0, findErr
 	}
-	if err := validateZeroTrustPublicIP(req.PublicIP); err != nil {
-		return 0, err
-	}
 
 	record := models.ZeroTrust{
-		ApplyUnit:   req.ApplyUnit,
-		AccountName: req.AccountName,
-		Applicant:   req.Applicant,
-		Contact:     req.Contact,
-		PublicIP:    req.PublicIP,
-		SystemName:  req.SystemName,
-		ApplyTime:   req.ApplyTime.Time,
-		Remark:      req.Remark,
+		ApplyUnit:    req.ApplyUnit,
+		AccountName:  req.AccountName,
+		Applicant:    req.Applicant,
+		Contact:      req.Contact,
+		ExitLocation: req.ExitLocation,
+		SystemName:   req.SystemName,
+		ApplyTime:    req.ApplyTime.Time,
+		Remark:       req.Remark,
 	}
 	tx := database.DB.Begin()
 	if err := tx.Create(&record).Error; err != nil {
@@ -495,29 +450,26 @@ func (s *ZeroTrustService) Update(id uint, req ZeroTrustRequest, op Operator, re
 	if err := validateZeroTrustHosts(pairs); err != nil {
 		return err
 	}
-	if err := validateZeroTrustPublicIP(req.PublicIP); err != nil {
-		return err
-	}
 	curPairs, pairErr := loadZeroTrustTargetPairs(database.DB, []uint{record.ID})
 	if pairErr != nil {
 		return pairErr
 	}
 
 	before := map[string]interface{}{
-		"apply_unit":   record.ApplyUnit,
-		"account_name": record.AccountName,
-		"applicant":    record.Applicant,
-		"contact":      record.Contact,
-		"public_ip":    record.PublicIP,
-		"targets":      joinTargetPairs(curPairs[record.ID]),
-		"system_name":  record.SystemName,
-		"remark":       record.Remark,
+		"apply_unit":    record.ApplyUnit,
+		"account_name":  record.AccountName,
+		"applicant":     record.Applicant,
+		"contact":       record.Contact,
+		"exit_location": record.ExitLocation,
+		"targets":       joinTargetPairs(curPairs[record.ID]),
+		"system_name":   record.SystemName,
+		"remark":        record.Remark,
 	}
 	record.ApplyUnit = req.ApplyUnit
 	record.AccountName = req.AccountName
 	record.Applicant = req.Applicant
 	record.Contact = req.Contact
-	record.PublicIP = req.PublicIP
+	record.ExitLocation = req.ExitLocation
 	record.SystemName = req.SystemName
 	record.ApplyTime = req.ApplyTime.Time
 	record.Remark = req.Remark
@@ -565,7 +517,7 @@ func (s *ZeroTrustService) Delete(id uint, op Operator, requestID string) error 
 	NewAuditService().Record(op, "delete", "zero_trust", &id,
 		DetailDiff{Before: map[string]interface{}{
 			"apply_unit": record.ApplyUnit, "account_name": record.AccountName, "applicant": record.Applicant,
-			"contact": record.Contact, "public_ip": record.PublicIP, "targets": joinTargetPairs(curPairs[record.ID]),
+			"contact": record.Contact, "exit_location": record.ExitLocation, "targets": joinTargetPairs(curPairs[record.ID]),
 			"system_name": record.SystemName, "remark": record.Remark,
 		}}, requestID)
 	return nil
@@ -607,11 +559,11 @@ func ZeroTrustsByHost(hostID uint) ([]models.ZeroTrust, error) {
 	return records, nil
 }
 
-// BatchCreateText 零信任批量添加：列顺序 申请单位,账户名,申请人,联系方式,内网IP,申请端口,系统名称,申请时间,备注[,公网IP]
+// BatchCreateText 零信任批量添加：列顺序 申请单位,账户名,申请人,联系方式,内网IP,申请端口,系统名称,申请时间,备注[,接入地区]
 // （T-060 起第3列新增申请人，联系方式后移至第4列；旧 9 列文件因申请人列缺失会被视为联系方式→需注意，故按 10 列口径）
 // 内网IP与申请端口两列数量必须一致、按位置配对；申请端口列含 `;` 时按 `;` 分组（T-058，多IP各自多端口），
 // 无 `;` 且仅 1 个端口组时广播到全部 IP（T-059，多IP相同端口）；单IP+整列逗号端口视为该主机多端口；
-// 公网IP第10列选填、须在资源池；主机按内网IP定位，不存在则该行失败；
+// 接入地区第10列选填（T-061，值取自公网IP资源池去重的接入地区）；主机按内网IP定位，不存在则该行失败；
 // 合法行全部插入；同账户名行合并进已有记录（T-058）
 func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID string) (*BatchCreateResponse, error) {
 	resp := &BatchCreateResponse{}
@@ -692,14 +644,14 @@ func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID s
 		}
 
 		req := ZeroTrustRequest{
-			ApplyUnit:   strings.TrimSpace(row[0]),
-			AccountName: strings.TrimSpace(row[1]),
-			Applicant:   strings.TrimSpace(row[2]),
-			Contact:     strings.TrimSpace(row[3]),
-			PublicIP:    strings.TrimSpace(row[9]),
-			Targets:     targets,
-			SystemName:  strings.TrimSpace(row[6]),
-			Remark:      strings.TrimSpace(row[8]),
+			ApplyUnit:    strings.TrimSpace(row[0]),
+			AccountName:  strings.TrimSpace(row[1]),
+			Applicant:    strings.TrimSpace(row[2]),
+			Contact:      strings.TrimSpace(row[3]),
+			ExitLocation: strings.TrimSpace(row[9]),
+			Targets:      targets,
+			SystemName:   strings.TrimSpace(row[6]),
+			Remark:       strings.TrimSpace(row[8]),
 		}
 		if t := strings.TrimSpace(row[7]); t != "" {
 			parsed, err := utils.ParseFlexibleTime(t)

@@ -28,6 +28,16 @@ func (ctrl *ZeroTrustController) List(c *gin.Context) {
 	Success(c, data)
 }
 
+// ListExitLocations 接入地区候选值（公网IP资源池 exit_location 去重，T-061）
+func (ctrl *ZeroTrustController) ListExitLocations(c *gin.Context) {
+	data, err := ctrl.service.ListExitLocations()
+	if err != nil {
+		Error(c, 50001, "查询失败: "+err.Error())
+		return
+	}
+	Success(c, data)
+}
+
 // BatchCreateText 零信任批量添加（文本粘贴）
 func (ctrl *ZeroTrustController) BatchCreateText(c *gin.Context) {
 	var req struct {
