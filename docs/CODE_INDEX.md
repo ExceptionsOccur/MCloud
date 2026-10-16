@@ -87,6 +87,11 @@
 | `services/audit_service.go` | 审计日志 | `Record`（写入，失败不阻断业务）、`List`（分页筛选）、`ListByResource`（按 `resource_type`+`resource_id` 取单资产变更记录，T-066）、`GetOperator`、`NewRequestID` |
 | `services/data_exchange.go` | 数据备份公共定义 | `dataExchangeSheets`（8 sheet 中文名 + 中文列头，T-063）、`ImportReport`/`SheetStat`/`RowError` |
 | `services/ai_setting_service.go` | AI 接入配置（单条全局，T-067） | `Get`（脱敏回显）、`Save`（api_key 空保留原值）、`GetDecrypted`（内部取明文 Key） |
+| `services/ai_doc_parser.go` | 申请表单文档解析（T-068） | `Parse`（按扩展名分派）、`parseDocx`（标准库 zip+xml 提取段落/表格）、`parseXlsx`（excelize 逐 sheet 转文本） |
+| `services/ai_schema.go` | AI 提取 schema（服务端权威，T-068） | `aiDocTypes`（host_apply/zero_trust_apply 字段清单）、`buildExtractionPrompt`（分类+提取提示词）、`docTypeByKey` |
+| `services/ai_llm_client.go` | OpenAI 兼容大模型客户端（标准库 net/http，T-068） | `Complete`（`/chat/completions`，JSON mode，60s 超时） |
+| `services/ai_extract_service.go` | AI 提取编排（T-068） | `Extract`（解析→LLM→归一化+暂存）、`Archive`（归档已入账文件）、`parseLLMOutput`/`stripCodeFence` |
+| `services/ai_file_store.go` | AI 上传文件暂存/归档（T-068） | `SaveIncoming`、`Archive`、`sanitizeFilename`/`isValidToken`（防路径穿越） |
 | `services/export_service.go` | 数据备份导出 | `Export`（8 sheet 依赖序写入）、`ExportFilename` |
 | `services/import_service.go` | 数据备份导入 | `Import`（单事务 + 回滚）、`parseWorkbook`（结构校验）、`apply*`（按自然键 upsert；`zero_trusts` 自然键=账户名合并，T-058）、`zeroTrustKey` |
 
@@ -237,6 +242,7 @@
 | **顶部导航** | —（纯前端路由） | `components/AppNav.vue`（7 Tab 10 页共用，T-019） |
 | **审计日志** | `controllers/audit_log.go` `services/audit_service.go` `models/audit_log.go` `routes/audit.go` | `api/audit.js`（`/audit-logs/resource`）+ `components/AuditTimeline.vue`（资产详情「变更记录」时间线，T-066） |
 | **AI 接入配置** | `controllers/ai.go`（`GetSettings`/`SaveSettings`）`services/ai_setting_service.go`（脱敏/保留原值）`models/ai_setting.go` `routes/ai.go` `utils/crypto.go`（AES-GCM） | `api/ai.js`、（设置页 T-069 待建） |
+| **AI 申请表单提取与归档** | `controllers/ai.go`（`Extract`/`Archive`）`services/ai_extract_service.go`（编排）`services/ai_doc_parser.go`（docx/xlsx 转文本）`services/ai_schema.go`（类型/字段 schema）`services/ai_llm_client.go`（大模型调用）`services/ai_file_store.go`（incoming/archived 落盘） | （入账页 T-070 待建） |
 | **主机 CRUD** | `controllers/host.go` `services/host_service.go` | `views/HostManagement.vue` `components/HostTable.vue` `components/HostFormDialog.vue` `stores/host.js` `composables/usePagedTable.js` |
 | **主机筛选/搜索** | `services/host_service.go` → `Filter` | `components/SearchToolbar.vue` |
 | **批量增改** | `controllers/batch.go` `services/host_batch_service.go` → `BatchCreate`/`BatchUpdate` | `components/BatchAddDialog.vue` `components/BatchEditDialog.vue` |

@@ -24,6 +24,7 @@ type Config struct {
 	ServerMode         string
 	CORSAllowedOrigins []string
 	AISecretKey        string
+	AIUploadDir        string
 }
 
 var AppConfig *Config
@@ -47,6 +48,7 @@ func Load() {
 		ServerMode:         getEnv("SERVER_MODE", "debug"),
 		CORSAllowedOrigins: splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "")),
 		AISecretKey:        getEnv("AI_SECRET_KEY", ""),
+		AIUploadDir:        getEnv("AI_UPLOAD_DIR", "./data/ai_uploads"),
 	}
 
 	AppConfig = appConfig

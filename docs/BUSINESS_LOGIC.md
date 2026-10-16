@@ -8,6 +8,7 @@
 - [JWT 中间件](#jwt-中间件)
 - [审计日志](#审计日志)
 - [AI 接入配置与密钥加密](#ai-接入配置与密钥加密)
+- [AI 申请表单提取与文件归档](#ai-申请表单提取与文件归档)
 - [主机搜索/筛选](#主机搜索筛选)
 - [CSV 导入导出](#csv-导入导出)
 - [数据备份 xlsx 导出/导入](#数据备份-xlsx-导出导入)
@@ -66,6 +67,19 @@ WebSocket 通道无法携带 Header，token 通过 query 参数传递（`/api/ws
 - **保存**：`PUT /api/ai/settings` 中 `api_key` 传空表示**保留原值**（因前端只拿到脱敏值，无法回传明文），非空则加密覆盖；`api_url`/`model` 必填
 - **审计**：保存变更写 `audit_logs`（`resource_type=ai_setting`），detail 仅记录 `api_url`/`model`/`api_key_set`，不落 API Key 明文
 - **内部使用**：后端调用大模型经 `AISettingService.GetDecrypted` 取明文 Key，不下发前端
+
+## AI 申请表单提取与文件归档
+
+> `T-068`：上传申请表单（docx/xlsx）→ 大模型识别类型并提取字段 → 返回前端预览；源文件暂存，确认入账成功后归档。
+
+1. **解析**：`AIDocParser.Parse` 按扩展名分派——`.docx` 用标准库 `archive/zip` + `encoding/xml` 读 `word/document.xml`，提取段落与表格（表格转 markdown 行）；`.xlsx` 复用 `excelize` 逐 sheet `GetRows` 转文本。文本上限 24000 字符（超出截断）
+2. **提取**：`AIExtractService.Extract` 读 `ai_settings` 取明文 Key → 注入 `buildExtractionPrompt`（含两类模板字段清单）→ `AILLMClient.Complete` 调 `{api_url}/chat/completions`（Bearer Key、`response_format=json_object`、temperature 0、60s 超时）→ `parseLLMOutput` 归一化（容忍 ```` ```json ```` 代码块包裹）
+3. **类型识别**：`doc_type` ∈ `host_apply`（主机申请）/ `zero_trust_apply`（零信任申请）；未匹配返回 `unknown` 并在 `warnings` 追加提示。字段名严格对齐各模块 `CreateRequest`，前端确认后直接调现有 Create 入库
+4. **文件暂存与归档**（`AIFileStore`，根目录 `AI_UPLOAD_DIR`，默认 `./data/ai_uploads`）：
+   - `extract` 时原文件写入 `<root>/incoming/<token>__<清洗后文件名>`，返回随机 hex `file_token`
+   - 确认入库成功后前端调 `POST /api/ai/archive`，文件移入 `<root>/archived/<YYYY-MM-DD>/<时间戳>_<文件名>`，token 随即失效
+   - 安全：token 仅允许 32 位小写 hex；文件名经 `sanitizeFilename` 去路径分隔与 `..`，定位文件按 token 前缀匹配，杜绝路径穿越
+5. **不写业务库**：提取阶段仅返回预览，实际入账复用 `POST /api/hosts` / `POST /api/zero-trusts` 的既有校验与审计
 
 
 ## 主机搜索/筛选

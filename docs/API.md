@@ -122,9 +122,13 @@
 |------|------|-----------|------|
 | GET | `/api/ai/settings` | `ai.GetSettings` | 读取 AI 接入配置，返回 `{api_url, api_key_masked, api_key_set, model}`；`api_key` 仅回显末四位（如 `****1234`），绝不返回明文（T-067） |
 | PUT | `/api/ai/settings` | `ai.SaveSettings` | 保存配置（`api_url`/`model` 必填）；`api_key` 传空表示**保留原值**（前端脱敏回显无法回传明文），非空则加密后更新。变更写审计（`resource_type=ai_setting`），审计不落 API Key 明文 |
+| POST | `/api/ai/extract` | `ai.Extract` | 上传申请表单（multipart 字段 `file`，`.docx`/`.xlsx`，≤20MB），调用大模型按文档内容识别类型（`host_apply` 主机申请 / `zero_trust_apply` 零信任申请）并提取字段；返回 `{doc_type, doc_type_name, fields, warnings, text_preview, file_token}`，**不写业务库**（T-068）。原文件暂存至后端 `incoming/` 目录并返回 `file_token` |
+| POST | `/api/ai/archive` | `ai.Archive` | 归档已成功入库的源文件（body `{file_token}`）：将文件从 `incoming/` 移入 `archived/<YYYY-MM-DD>/`，返回 `{archived_path}`；token 非法/不存在/已归档返回 `40001`（T-068） |
 
 - 配置为**单条全局记录**（`ai_settings` 表主键恒为 1），全站共用
 - `api_key` 以 **AES-GCM 密文**落库，密钥由环境变量 `AI_SECRET_KEY` 经 SHA-256 派生；未配置该变量时降级明文存储并记录告警（T-067）
+- AI 上传文件根目录由环境变量 `AI_UPLOAD_DIR` 配置（默认 `./data/ai_uploads`）；`extract` 落盘 `<AI_UPLOAD_DIR>/incoming/`，`archive` 移至 `<AI_UPLOAD_DIR>/archived/<YYYY-MM-DD>/`（T-068）
+- `extract` 错误码：未配置 AI 接口 / 不支持的文档类型 / 解析失败 / 大模型调用失败均返回 `40001`
 
 ### 云资源总览（需 JWT）
 

@@ -141,6 +141,11 @@ go/
 │   │   ├── audit_snapshot.go      # 资产变更字段快照（主机/零信任/映射 before/after，T-066）
 │   │   ├── data_exchange.go       # 数据备份公共定义（8 sheet 规格 + 导入报告）
 │   │   ├── ai_setting_service.go  # AI 接入配置业务逻辑（脱敏/保留原值/内部取明文 Key，T-067）
+│   │   ├── ai_doc_parser.go       # AI 申请表单解析（docx 标准库 zip+xml / xlsx excelize 转文本，T-068）
+│   │   ├── ai_schema.go           # AI 提取 schema（文档类型 + 字段清单 + 提示词，T-068）
+│   │   ├── ai_llm_client.go       # OpenAI 兼容大模型客户端（net/http，T-068）
+│   │   ├── ai_extract_service.go  # AI 提取编排（解析→LLM→归一化+暂存，T-068）
+│   │   ├── ai_file_store.go       # AI 上传文件暂存/归档（incoming/archived，防穿越，T-068）
 │   │   ├── export_service.go      # 数据备份导出（8 sheet xlsx）
 │   │   ├── import_service.go      # 数据备份导入（自然键 upsert + 单事务回滚）
 │   │   ├── testdb_test.go         # 测试基建：sqlite 内存库注入 database.DB（T-006）
@@ -151,8 +156,11 @@ go/
 │   │   ├── stats_service_test.go  # 探测状态机/TCP/ICMP 单测（T-011）
 │   │   ├── zero_trust_service_test.go # 接入目标子表 CRUD/按主机搜索/多端口表达式/批量端口组单测（T-052/T-056）
 │   │   ├── port_mapping_service_test.go # 端口协议/范围归一化、展开配对、整组判重单测（T-055）
-│   │   └── data_exchange_test.go  # 空库 xlsx 回灌（零信任子表/映射协议列往返）单测（T-052/T-055）
-│   │   └── ai_setting_service_test.go # AI 配置脱敏/空 key 保留原值单测（T-067）
+│   │   ├── data_exchange_test.go  # 空库 xlsx 回灌（零信任子表/映射协议列往返）单测（T-052/T-055）
+│   │   ├── ai_setting_service_test.go # AI 配置脱敏/空 key 保留原值单测（T-067）
+│   │   ├── ai_doc_parser_test.go  # docx/xlsx 解析、提示词、代码块剥离单测（T-068）
+│   │   ├── ai_file_store_test.go  # 暂存/归档、路径穿越防护、非法 token 单测（T-068）
+│   │   └── ai_extract_service_test.go # 提取编排（fake LLM 服务）单测（T-068）
 │   │
 │   ├── routes/
 │   │   ├── routes.go              # 路由协调：CORS + JWT 受保护组收口 + 分发各域
