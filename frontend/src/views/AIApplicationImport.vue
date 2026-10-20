@@ -350,7 +350,7 @@ const hostFields = [
   { key: 'cpu', label: 'CPU核数' },
   { key: 'cpu_arch', label: 'CPU架构', hint: 'C86/X86/ARM' },
   { key: 'memory', label: '内存(GB)' },
-  { key: 'disk', label: '磁盘(GB)' },
+  { key: 'object_storage', label: '对象存储(GB)' },
   { key: 'system_disk', label: '系统盘(GB)' },
   { key: 'data_disk', label: '数据盘(GB)' },
   { key: 'env_type', label: '环境类型', hint: '测试/生产' },
@@ -473,7 +473,7 @@ async function handleExtract() {
 }
 
 function buildHostPayload() {
-  const numericKeys = ['cpu', 'memory', 'disk', 'system_disk', 'data_disk']
+  const numericKeys = ['cpu', 'memory', 'object_storage', 'system_disk', 'data_disk']
   const payload = {}
   hostFields.forEach((f) => {
     const v = (hostForm[f.key] || '').trim()

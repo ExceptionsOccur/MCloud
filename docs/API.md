@@ -74,7 +74,7 @@
 
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
-| GET | `/api/hosts` | `host.Filter` | 分页 + 搜索 + 筛选列表 |
+| GET | `/api/hosts` | `host.Filter` | 分页 + 搜索 + 筛选列表，按创建时间倒序（`id DESC`，最新创建在前，T-072） |
 | GET | `/api/hosts/regions` | `host.ListRegions` | 区域列表（hosts 中非空 region 去重） |
 | GET | `/api/hosts/:id` | `host.Get` | 单条详情 |
 | POST | `/api/hosts` | `host.Create` | 新增主机 |
@@ -101,8 +101,8 @@
 
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
-| GET | `/api/export/all` | `dataExchange.Export` | 导出 8 个业务 sheet 为单个 xlsx（附件下载） |
-| POST | `/api/import/all` | `dataExchange.Import` | 上传 xlsx 整体导入（multipart 字段 `file`，upsert + 单事务回滚） |
+| GET | `/api/export/all` | `dataExchange.Export` | 导出 8 个业务 sheet 为单个 xlsx 并**加密**为 `.mcbak` 包（query `password` 必填，缺失返回 `40001`；T-072） |
+| POST | `/api/import/all` | `dataExchange.Import` | 上传备份整体导入（multipart 字段 `file` + 可选 `password`；加密包须密码、明文 `.xlsx` 可无密码；upsert + 单事务回滚） |
 
 ### 审计日志（需 JWT）
 
@@ -270,6 +270,7 @@ POST /api/batch/hosts
       "env_type": "生产",
       "cpu": 4,
       "memory": 8,
+      "object_storage": 500,
       "system_disk": 50,
       "data_disk": 100,
       "applicant": "张三",
@@ -427,17 +428,20 @@ POST /api/port-mappings/batch
 
 ## 数据备份 xlsx 导出/导入
 
-`GET /api/export/all` 返回附件（`Content-Disposition: attachment`，文件名 `mcloud_backup_YYYY-MM-DD.xlsx`），单文件含 8 个工作表（T-063 起为中文名），顺序即导入依赖顺序：
+`GET /api/export/all?password=xxx` 先生成单文件 8 个工作表（T-063 起为中文名，顺序即导入依赖顺序），再以密码加密（T-072）后返回附件（`Content-Disposition: attachment`，文件名 `mcloud_backup_YYYY-MM-DD.xlsx.mcbak`，`Content-Type: application/octet-stream`）：
 
 `人员` → `公网IP` → `云资源` → `网段` → `主机` → `主机申请信息` → `零信任` → `端口映射`
 
 - 工作表按中文名匹配：导入要求工作表名与上表一致（**不兼容旧英文名 persons/hosts/… 备份**）
 - 不含 `users`，不含自增 id/时间戳列；关联一律用自然键表达：`主机` 用「人员姓名/人员联系方式」列、`主机申请信息` 与 `端口映射` 用宿主「内网IP」、`零信任` 的「接入目标」为 `内网IP:端口表达式/协议`（T-056 起端口可为范围/列表；T-065 起段尾可带 `/协议`，如 `10.0.0.1:53/udp`，缺省 tcp）
 - **`零信任` 按「每个接入目标一行」导出（T-065）**：一条记录含 N 个接入目标时输出 N 行，表头字段（申请单位/账户名/…）逐行重复，每行「接入目标」为单个 `内网IP:端口表达式/协议`；无接入目标时输出一行「接入目标」为空。导入按账户名合并、接入目标并集去重，故分行导出→导入往返不丢（多行同账户名会合并回一条）
+- `主机` sheet 的「对象存储」列为 `hosts.object_storage`（T-072，原「磁盘」列，旧备份列头「磁盘」导入时兼容读取）；主机列表「对象存储」列展示的是申请信息 `host_applications.object_storage_size`
 - `主机.ip_mapped` 为派生列不导出（导入后由后端重算）；`端口映射` 无运营商/出口位置列（`T-049` 起派生字段，库中不存），从资源池带出；`端口映射` 含「外网协议/内网协议」列（T-055，旧备份文件缺列时导入默认 tcp）；`零信任` 的「接入地区」列为独立存储字段（T-061，替代原「公网IP」列；T-065 支持多值，逗号分隔）
 - 导入按各表复合自然键 upsert：`人员`=姓名+联系方式、`公网IP`=公网IP、`云资源`=区域、`网段`=网段CIDR、`主机`=内网IP、`主机申请信息`=宿主内网IP、`零信任`=账户名（T-058 合并语义：接入目标并集、空字段补录、非空保留，同文件多行同账户名同样合并）、`端口映射`=公网IP+宿主内网IP+外网端口+外网协议
 - 语义：**仅新增与更新，不删除**已有数据；sheet 与列头按名匹配（列顺序可变），全空行跳过
-- `POST /api/import/all`：`multipart/form-data`，字段 `file`，仅 `.xlsx`，≤ 20MB
+- `POST /api/import/all`：`multipart/form-data`，字段 `file`（`.mcbak` 加密备份或 `.xlsx`，≤ 20MB）+ 可选字段 `password`；加密包缺密码/密码错误均返回 `40001`
+
+加密包格式（T-072）：`magic(MCLBK1) | version(1) | iterations(4 BE) | salt(16) | nonce(12) | ciphertext`；密钥 = PBKDF2-HMAC-SHA256(密码, salt, 210000) 取 32 字节，AES-256-GCM 加密，版本/迭代次数/盐纳入 AAD。
 
 导入响应 `data`（导入报告）：
 

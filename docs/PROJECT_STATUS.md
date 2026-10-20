@@ -11,7 +11,7 @@
 | 模块 | 状态 | 说明 |
 |------|------|------|
 | 用户认证 | ✅ 完成 | JWT 登录/登出/改密码、失败 5 次锁定 15 分钟、bcrypt 存储（旧 `salt$hash` 登录自动升级） |
-| 主机资产管理 | ✅ 完成 | CRUD、批量增改、CSV 导入导出（多编码）、多条件筛选 |
+| 主机资产管理 | ✅ 完成 | CRUD、批量增改、CSV 导入导出（多编码）、多条件筛选；`T-072` 技术信息「磁盘」更名「对象存储」(`object_storage`)、列表新增对象存储列（取申请信息）并按创建时间倒序 |
 | 云资源总览 | ✅ 完成 | 按区域维护总资源，设置菜单「云资源录入」手动录入 |
 | 资源统计 | ✅ 完成 | 饼图展示 运行中/已停止/未使用 占比，表格含总量/已用/剩余/运行中/已停止 |
 | IP 统计 | ✅ 完成 | /24 位图（10×26 坐标）、单点/全量探测、WebSocket 实时返回、网段在线增删改 |
@@ -27,7 +27,7 @@
 | 自动化测试 | ✅ 完成 | `T-006` 测试骨架：后端 services 表驱动单测（主机 CRUD/登录锁定，sqlite 内存库注入 `database.DB`）+ utils 密码；前端 Vitest 冒烟（`npm run test`） |
 | Goose 迁移执行器 | ✅ 完成 | `T-016` 启动时 goose 执行 `migrations/*.sql`（embed），AutoMigrate 兜底；存量 dev 库首跑+幂等已实测 |
 | 公网 IP 资源录入 | ✅ 完成 | `T-031` `public_ips` 资源池（IP/运营商/备注），设置菜单 + `/public-ip` 独立页 |
-| 数据备份 | ✅ 完成 | `T-038` 8 个业务 sheet 导出为单个 xlsx / 导入自然键 upsert（单事务失败整体回滚），`/data-backup` 页 + 设置菜单入口 |
+| 数据备份 | ✅ 完成 | `T-038` 8 个业务 sheet 导出为单个 xlsx / 导入自然键 upsert（单事务失败整体回滚）；`T-072` 导出强制密码加密为 `.mcbak`（PBKDF2+AES-GCM），导入加密包须密码、明文 xlsx 可无密码 |
 | 审计日志 | ✅ 完成 | `T-047` `audit_logs` 全资源 CUD/导入审计（操作人快照/diff/request_id）+ `GET /api/audit-logs`；`T-066` 改为资产变更记录：移除独立审计页，主机/零信任/映射详情弹窗「变更记录」时间线（`GET /api/audit-logs/resource`），点击资产行打开只读详情 |
 | AI 接入配置 | ✅ 完成 | `T-067` 后端地基：`ai_settings` 单条全局配置（API 地址/加密 Key/模型）+ `GET/PUT /api/ai/settings`（Key 回显脱敏、空值保留原值、变更写审计）；`T-069` 前端 `/ai-settings` 设置页（API 地址/API Key 脱敏/模型名，设置菜单入口）；API Key 以 AES-GCM 密文存储（`AI_SECRET_KEY` 派生密钥，缺失降级明文并告警） |
 | AI 申请表单提取 | ✅ 完成 | `T-068` 后端：`POST /api/ai/extract` 上传 docx/xlsx（≤20MB）→ 大模型识别类型（主机/零信任申请）并提取字段返回预览（不写库）；`POST /api/ai/archive` 将已入账源文件从 `incoming/` 归档至 `archived/<日期>/`（`AI_UPLOAD_DIR` 配置）；文件暂存/归档防路径穿越；`T-070` 前端 `/ai-import` 上传→解析预览可编辑→确认入账（复用现有 Create）→归档源文件 |
@@ -35,6 +35,10 @@
 ## 近期变更记录
 
 > 按日期倒序，保留最近 3 个月；每条注明提交号，完整历史用 `git log --oneline`。文风：每条 ≤ 120 字一行摘要，禁止枚举（见 [DEVELOPMENT.md](./DEVELOPMENT.md) 文档回写文风）。
+
+### 2026-10-20
+
+- `4810e48` `feat:` **T-072** 主机「磁盘」更名对象存储（`hosts.object_storage` + RENAME 迁移）、列表对象存储列与 `id DESC` 倒序、数据备份导出强制密码加密（AES-256-GCM `.mcbak`，导入可选密码）
 
 ### 2026-10-16
 

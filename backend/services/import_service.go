@@ -82,7 +82,7 @@ func parseWorkbook(data []byte) (map[string]*importSheet, error) {
 		}
 		var missing []string
 		for _, need := range spec.Headers {
-			if _, ok := colIdx[need]; !ok {
+			if !sheetHasColumn(colIdx, spec.Name, need) {
 				missing = append(missing, need)
 			}
 		}
@@ -92,6 +92,33 @@ func parseWorkbook(data []byte) (map[string]*importSheet, error) {
 		sheets[spec.Name] = &importSheet{name: spec.Name, colIdx: colIdx, rows: rows[1:]}
 	}
 	return sheets, nil
+}
+
+// legacyColumnAliases 旧备份版本列头 → 当前列头（T-072）；仅用于缺失列判定与取值兜底
+var legacyColumnAliases = map[string]map[string]string{
+	"主机": {"对象存储": "磁盘"},
+}
+
+// sheetHasColumn 当前列头存在，或存在其旧列头别名
+func sheetHasColumn(colIdx map[string]int, sheet, header string) bool {
+	if _, ok := colIdx[header]; ok {
+		return true
+	}
+	alias, ok := legacyColumnAliases[sheet][header]
+	if !ok {
+		return false
+	}
+	_, ok = colIdx[alias]
+	return ok
+}
+
+// ImportWithPassword 导入备份：加密包须提供密码，明文 xlsx 可无密码（T-072）
+func (s *DataExchangeService) ImportWithPassword(data []byte, password string, op Operator, requestID string) (*ImportReport, error) {
+	plain, err := DecryptBackup(data, password)
+	if err != nil {
+		return nil, err
+	}
+	return s.Import(plain, op, requestID)
 }
 
 // Import 导入 xlsx 并按依赖序 upsert 8 表；单事务，任意行失败整体回滚
@@ -488,6 +515,14 @@ func (s *DataExchangeService) applySubnets(tx *gorm.DB, sh *importSheet, report 
 	return nil
 }
 
+// hostObjectStorageCell 取「对象存储」列；T-072 前的旧备份列头为「磁盘」，兼容读取
+func hostObjectStorageCell(c *rowCtx) string {
+	if v := c.get("对象存储"); v != "" {
+		return v
+	}
+	return c.get("磁盘")
+}
+
 // applyHosts 自然键 private_ip；人员列按姓名(+联系方式)解析 person_id
 func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *ImportReport) error {
 	var existing []models.Host
@@ -531,9 +566,9 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 			fail(report, c, fmt.Errorf("内存: %v", err))
 			return
 		}
-		disk, err := parseIntCell(c.get("磁盘"))
+		objectStorage, err := parseIntCell(hostObjectStorageCell(c))
 		if err != nil {
-			fail(report, c, fmt.Errorf("磁盘: %v", err))
+			fail(report, c, fmt.Errorf("对象存储: %v", err))
 			return
 		}
 		systemDisk, err := parseIntCell(c.get("系统盘"))
@@ -574,14 +609,14 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 		updates := map[string]interface{}{
 			"region": region, "instance_id": f.instanceID, "name": name,
 			"asset_type": f.assetType, "os": f.os, "cpu": cpu, "cpu_arch": f.cpuArch,
-			"memory": memory, "disk": disk, "system_disk": systemDisk, "data_disk": dataDisk,
+			"memory": memory, "object_storage": objectStorage, "system_disk": systemDisk, "data_disk": dataDisk,
 			"env_type": f.envType, "is_db_server": isDB, "status": f.status,
 			"open_ports": f.openPorts, "tags": f.tags, "person_id": personID,
 		}
 		if cur, ok := byKey[privateIP]; ok {
 			if cur.Region == f.region && cur.InstanceID == f.instanceID && cur.Name == name &&
 				cur.AssetType == f.assetType && cur.OS == f.os && cur.CPU == cpu &&
-				cur.CPUArch == f.cpuArch && cur.Memory == memory && cur.Disk == disk &&
+				cur.CPUArch == f.cpuArch && cur.Memory == memory && cur.ObjectStorage == objectStorage &&
 				cur.SystemDisk == systemDisk && cur.DataDisk == dataDisk &&
 				cur.EnvType == f.envType && cur.IsDBServer == isDB &&
 				cur.Status == f.status && cur.OpenPorts == f.openPorts && cur.Tags == f.tags &&
@@ -599,7 +634,7 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 		h := models.Host{
 			Region: region, InstanceID: f.instanceID, Name: name, PrivateIP: privateIP,
 			AssetType: f.assetType, OS: f.os, CPU: cpu, CPUArch: f.cpuArch, Memory: memory,
-			Disk: disk, SystemDisk: systemDisk, DataDisk: dataDisk, EnvType: f.envType,
+			ObjectStorage: objectStorage, SystemDisk: systemDisk, DataDisk: dataDisk, EnvType: f.envType,
 			IsDBServer: isDB, Status: f.status, OpenPorts: f.openPorts, Tags: f.tags,
 			PersonID: personID,
 		}

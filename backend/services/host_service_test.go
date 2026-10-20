@@ -202,7 +202,7 @@ func TestHostFilter(t *testing.T) {
 	newTestDB(t)
 	s := NewHostService()
 
-	id1 := mustCreateHost(t, s, "10.3.1.1")
+	mustCreateHost(t, s, "10.3.1.1")
 	id2 := mustCreateHost(t, s, "10.3.1.2")
 	if err := s.Update(id2, UpdateHostRequest{EnvType: "测试", Status: "已停止"}, testOp, NewRequestID()); err != nil {
 		t.Fatalf("Update 失败: %v", err)
@@ -215,10 +215,11 @@ func TestHostFilter(t *testing.T) {
 		wantFirst uint
 	}{
 		{
+			// T-072：列表倒序（最新创建在前）
 			name:      "无筛选全量",
 			req:       FilterHostRequest{},
 			wantTotal: 2,
-			wantFirst: id1,
+			wantFirst: id2,
 		},
 		{
 			name:      "按环境过滤",
@@ -236,7 +237,7 @@ func TestHostFilter(t *testing.T) {
 			name:      "分页默认值纠正",
 			req:       FilterHostRequest{Page: 0, PageSize: 0},
 			wantTotal: 2,
-			wantFirst: id1,
+			wantFirst: id2,
 		},
 	}
 
@@ -259,5 +260,69 @@ func TestHostFilter(t *testing.T) {
 				t.Fatalf("分页参数未纠正: page=%d size=%d", resp.Page, resp.Size)
 			}
 		})
+	}
+}
+
+// TestHostFilterOrderDesc T-072：列表按创建时间（id）倒序，最新创建的排最前
+func TestHostFilterOrderDesc(t *testing.T) {
+	newTestDB(t)
+	s := NewHostService()
+
+	ids := make([]uint, 0, 3)
+	for _, ip := range []string{"10.4.1.1", "10.4.1.2", "10.4.1.3"} {
+		ids = append(ids, mustCreateHost(t, s, ip))
+	}
+
+	resp, err := s.Filter(FilterHostRequest{Page: 1, PageSize: 10})
+	if err != nil {
+		t.Fatalf("Filter 失败: %v", err)
+	}
+	if len(resp.Hosts) != 3 {
+		t.Fatalf("条数=%d，期望 3", len(resp.Hosts))
+	}
+	for i, want := range []uint{ids[2], ids[1], ids[0]} {
+		if resp.Hosts[i].ID != want {
+			t.Fatalf("第 %d 条 id=%d，期望 %d（应为 id DESC）", i, resp.Hosts[i].ID, want)
+		}
+	}
+
+	// 分页：第二页为最早创建的一条
+	page2, err := s.Filter(FilterHostRequest{Page: 2, PageSize: 2})
+	if err != nil {
+		t.Fatalf("Filter 分页失败: %v", err)
+	}
+	if len(page2.Hosts) != 1 || page2.Hosts[0].ID != ids[0] {
+		t.Fatalf("第二页不符: %+v", page2.Hosts)
+	}
+}
+
+// TestHostObjectStorageField T-072：对象存储字段（原 disk）创建/更新/查询往返
+func TestHostObjectStorageField(t *testing.T) {
+	newTestDB(t)
+	s := NewHostService()
+
+	req := baseHostReq("10.4.2.1")
+	req.ObjectStorage = 500
+	id, err := s.Create(req, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("Create 失败: %v", err)
+	}
+	host, err := s.GetByID(id)
+	if err != nil {
+		t.Fatalf("GetByID 失败: %v", err)
+	}
+	if host.ObjectStorage != 500 {
+		t.Fatalf("object_storage=%d，期望 500", host.ObjectStorage)
+	}
+
+	if err = s.Update(id, UpdateHostRequest{ObjectStorage: 1024}, testOp, NewRequestID()); err != nil {
+		t.Fatalf("Update 失败: %v", err)
+	}
+	host, err = s.GetByID(id)
+	if err != nil {
+		t.Fatalf("GetByID 失败: %v", err)
+	}
+	if host.ObjectStorage != 1024 {
+		t.Fatalf("更新后 object_storage=%d，期望 1024", host.ObjectStorage)
 	}
 }

@@ -54,10 +54,10 @@ func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, 
 	memory := atoiOrZero(row[9])
 	systemDisk := atoiOrZero(row[10])
 	dataDisk := atoiOrZero(row[11])
-	// 磁盘为 27 列新文件可选尾列（T-050）；旧 26 列文件无该列，保持 0
-	disk := 0
+	// 对象存储为 27 列新文件可选尾列（T-050/T-072）；旧 26 列文件无该列，保持 0
+	objectStorage := 0
 	if len(row) >= 27 {
-		disk = atoiOrZero(row[26])
+		objectStorage = atoiOrZero(row[26])
 	}
 
 	isDB := strings.TrimSpace(row[13]) == "是" || strings.TrimSpace(row[13]) == "true" || strings.TrimSpace(row[13]) == "1"
@@ -72,7 +72,7 @@ func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, 
 		CPU:               cpu,
 		CPUArch:           strings.TrimSpace(row[8]),
 		Memory:            memory,
-		Disk:              disk,
+		ObjectStorage:     objectStorage,
 		SystemDisk:        systemDisk,
 		DataDisk:          dataDisk,
 		EnvType:           strings.TrimSpace(row[12]),
@@ -170,7 +170,7 @@ func (s *HostService) ExportToCSVRows(hosts []models.Host) [][]string {
 		} else {
 			row = append(row, "", "", "", "", "", "", "", "", "")
 		}
-		row = append(row, strconv.Itoa(h.Disk))
+		row = append(row, strconv.Itoa(h.ObjectStorage))
 		rows = append(rows, row)
 	}
 	return rows

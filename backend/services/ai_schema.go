@@ -38,7 +38,7 @@ var hostApplyFields = []AIField{
 	{Key: "cpu", Label: "CPU核数", Hint: "整数"},
 	{Key: "cpu_arch", Label: "CPU架构", Hint: "C86/X86/ARM"},
 	{Key: "memory", Label: "内存(GB)", Hint: "整数"},
-	{Key: "disk", Label: "磁盘(GB)", Hint: "整数"},
+	{Key: "object_storage", Label: "对象存储(GB)", Hint: "整数"},
 	{Key: "system_disk", Label: "系统盘(GB)", Hint: "整数"},
 	{Key: "data_disk", Label: "数据盘(GB)", Hint: "整数"},
 	{Key: "env_type", Label: "环境类型", Hint: "测试/生产"},

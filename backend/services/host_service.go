@@ -120,7 +120,7 @@ func (s *HostService) Filter(req FilterHostRequest) (*ListHostResponse, error) {
 
 	var hosts []models.Host
 	offset := (req.Page - 1) * req.PageSize
-	result := db.Preload("Application").Preload("Person").Offset(offset).Limit(req.PageSize).Order("id ASC").Find(&hosts)
+	result := db.Preload("Application").Preload("Person").Offset(offset).Limit(req.PageSize).Order("id DESC").Find(&hosts)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -181,24 +181,24 @@ func (o *OptionalUint) UnmarshalJSON(b []byte) error {
 }
 
 type CreateHostRequest struct {
-	Region     string       `json:"region" binding:"required"`
-	InstanceID string       `json:"instance_id"`
-	Name       string       `json:"name" binding:"required"`
-	PrivateIP  string       `json:"private_ip" binding:"required"`
-	AssetType  string       `json:"asset_type"`
-	OS         string       `json:"os"`
-	CPU        int          `json:"cpu"`
-	CPUArch    string       `json:"cpu_arch"`
-	Memory     int          `json:"memory"`
-	Disk       int          `json:"disk"`
-	SystemDisk int          `json:"system_disk"`
-	DataDisk   int          `json:"data_disk"`
-	EnvType    string       `json:"env_type"`
-	IsDBServer *bool        `json:"is_db_server"`
-	Status     string       `json:"status"`
-	OpenPorts  string       `json:"open_ports"`
-	Tags       string       `json:"tags"`
-	PersonID   OptionalUint `json:"person_id"`
+	Region        string       `json:"region" binding:"required"`
+	InstanceID    string       `json:"instance_id"`
+	Name          string       `json:"name" binding:"required"`
+	PrivateIP     string       `json:"private_ip" binding:"required"`
+	AssetType     string       `json:"asset_type"`
+	OS            string       `json:"os"`
+	CPU           int          `json:"cpu"`
+	CPUArch       string       `json:"cpu_arch"`
+	Memory        int          `json:"memory"`
+	ObjectStorage int          `json:"object_storage"`
+	SystemDisk    int          `json:"system_disk"`
+	DataDisk      int          `json:"data_disk"`
+	EnvType       string       `json:"env_type"`
+	IsDBServer    *bool        `json:"is_db_server"`
+	Status        string       `json:"status"`
+	OpenPorts     string       `json:"open_ports"`
+	Tags          string       `json:"tags"`
+	PersonID      OptionalUint `json:"person_id"`
 
 	ApplyUnit         string `json:"apply_unit"`
 	Applicant         string `json:"applicant"`
@@ -227,22 +227,22 @@ func (s *HostService) Create(req CreateHostRequest, op Operator, requestID strin
 	tx := database.DB.Begin()
 
 	host := models.Host{
-		Region:     req.Region,
-		InstanceID: req.InstanceID,
-		Name:       req.Name,
-		PrivateIP:  req.PrivateIP,
-		AssetType:  req.AssetType,
-		OS:         req.OS,
-		CPU:        req.CPU,
-		CPUArch:    req.CPUArch,
-		Memory:     req.Memory,
-		Disk:       req.Disk,
-		SystemDisk: req.SystemDisk,
-		DataDisk:   req.DataDisk,
-		EnvType:    req.EnvType,
-		Status:     req.Status,
-		OpenPorts:  req.OpenPorts,
-		Tags:       req.Tags,
+		Region:        req.Region,
+		InstanceID:    req.InstanceID,
+		Name:          req.Name,
+		PrivateIP:     req.PrivateIP,
+		AssetType:     req.AssetType,
+		OS:            req.OS,
+		CPU:           req.CPU,
+		CPUArch:       req.CPUArch,
+		Memory:        req.Memory,
+		ObjectStorage: req.ObjectStorage,
+		SystemDisk:    req.SystemDisk,
+		DataDisk:      req.DataDisk,
+		EnvType:       req.EnvType,
+		Status:        req.Status,
+		OpenPorts:     req.OpenPorts,
+		Tags:          req.Tags,
 	}
 
 	if req.IsDBServer != nil {
@@ -287,24 +287,24 @@ func (s *HostService) Create(req CreateHostRequest, op Operator, requestID strin
 }
 
 type UpdateHostRequest struct {
-	Region     string       `json:"region"`
-	InstanceID string       `json:"instance_id"`
-	Name       string       `json:"name"`
-	PrivateIP  string       `json:"private_ip"`
-	AssetType  string       `json:"asset_type"`
-	OS         string       `json:"os"`
-	CPU        int          `json:"cpu"`
-	CPUArch    string       `json:"cpu_arch"`
-	Memory     int          `json:"memory"`
-	Disk       int          `json:"disk"`
-	SystemDisk int          `json:"system_disk"`
-	DataDisk   int          `json:"data_disk"`
-	EnvType    string       `json:"env_type"`
-	IsDBServer *bool        `json:"is_db_server"`
-	Status     string       `json:"status"`
-	OpenPorts  string       `json:"open_ports"`
-	Tags       string       `json:"tags"`
-	PersonID   OptionalUint `json:"person_id"`
+	Region        string       `json:"region"`
+	InstanceID    string       `json:"instance_id"`
+	Name          string       `json:"name"`
+	PrivateIP     string       `json:"private_ip"`
+	AssetType     string       `json:"asset_type"`
+	OS            string       `json:"os"`
+	CPU           int          `json:"cpu"`
+	CPUArch       string       `json:"cpu_arch"`
+	Memory        int          `json:"memory"`
+	ObjectStorage int          `json:"object_storage"`
+	SystemDisk    int          `json:"system_disk"`
+	DataDisk      int          `json:"data_disk"`
+	EnvType       string       `json:"env_type"`
+	IsDBServer    *bool        `json:"is_db_server"`
+	Status        string       `json:"status"`
+	OpenPorts     string       `json:"open_ports"`
+	Tags          string       `json:"tags"`
+	PersonID      OptionalUint `json:"person_id"`
 
 	ApplyUnit         *string `json:"apply_unit"`
 	Applicant         *string `json:"applicant"`
@@ -378,8 +378,8 @@ func (s *HostService) Update(id uint, req UpdateHostRequest, op Operator, reques
 	if req.Memory > 0 {
 		updates["memory"] = req.Memory
 	}
-	if req.Disk > 0 {
-		updates["disk"] = req.Disk
+	if req.ObjectStorage > 0 {
+		updates["object_storage"] = req.ObjectStorage
 	}
 	if req.SystemDisk > 0 {
 		updates["system_disk"] = req.SystemDisk

@@ -73,7 +73,7 @@
 
 | 字段 | 值 |
 |------|-----|
-| last_updated | 2026-10-16 |
+| last_updated | 2026-10-20 |
 | in_progress | 无 |
 | next_task | 无（todo 队列已清空） |
 | todo（P1） | 无 |

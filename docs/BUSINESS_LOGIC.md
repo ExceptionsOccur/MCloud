@@ -138,7 +138,7 @@ var CSVHeaders = []string{
     "资产类型", "操作系统", "CPU核数", "CPU架构", "内存(GB)",
     "系统盘(GB)", "数据盘(GB)", "环境类型", "是否数据库服务器",
     "状态", "开放端口", "标签", "申请单位", "申请人", "申请人联系方式",
-    "所属项目", "申请理由", "申请配置", "申请时间", "对象存储大小", "备注", "磁盘(GB)",
+    "所属项目", "申请理由", "申请配置", "申请时间", "对象存储大小", "备注", "对象存储(GB)",
 }
 ```
 
@@ -154,13 +154,19 @@ var CSVHeaders = []string{
 
 ### 导出
 
-- `GET /api/export/all` 返回单个 `.xlsx`（excelize），8 个 sheet 按导入依赖序排列：`人员` → `公网IP` → `云资源` → `网段` → `主机` → `主机申请信息` → `零信任` → `端口映射`（T-063 起 sheet 名为中文，导入按中文名匹配、不再兼容旧英文名备份）
+- `GET /api/export/all` 先生成单个 `.xlsx`（excelize，8 个 sheet 按导入依赖序排列），再用请求参数 `password` 加密为 `.mcbak` 包（T-072，见下「导出加密」）：`人员` → `公网IP` → `云资源` → `网段` → `主机` → `主机申请信息` → `零信任` → `端口映射`（T-063 起 sheet 名为中文，导入按中文名匹配、不再兼容旧英文名备份）
 - 列头为中文、按名匹配；不导出 `users`、自增 id 与时间戳；关联用自然键表达：`hosts` 人员列（姓名+联系方式，由 `person_id` 解析）、宿主一律用「内网IP」、零信任「接入目标」由 `zero_trust_targets` 子表配对（`host_id` → 内网IP）拼出 `内网IP:端口表达式/协议`（T-056 起端口可为范围/列表；T-065 起段尾可带 `/协议`，缺省 tcp；**T-065 按「每个接入目标一行」导出**，表头字段逐行重复，导入按账户名合并、接入目标并集去重故往返不丢；导入解析与 `normalizeTargetPairs` 归一化后写子表）
 - 派生列不导出：`hosts.ip_mapped`、`port_mappings` 的运营商/出口位置（由公网IP资源池带出）；`port_mappings` 导出「外网协议/内网协议」列（与端口等长并行，T-055）；`zero_trusts` 导出「接入地区」列（T-061 独立存储，替代原「公网IP」列）
 
+### 导出加密（T-072）
+
+- 导出**必须设置密码**：缺 `password` 返回 `40001`「导出必须设置密码」
+- 加密格式：`magic(MCLBK1) | version(1) | iterations(4, BE) | salt(16) | nonce(12) | ciphertext`；密钥 = PBKDF2-HMAC-SHA256(password, salt, 210000) → 32 字节，AES-256-GCM 加密，头部纳入 AAD 防篡改
+- 导入自动识别：加密包须密码（无密码 → `40001`「该文件为加密备份，请输入导出时设置的密码」，错密码/篡改 → `40001`「备份密码错误或文件已损坏」）；明文 `.xlsx` 可不带密码直接导入
+
 ### 导入（upsert）
 
-- 结构校验先行：非 `.xlsx`、缺 sheet、缺列、表头重复直接返回结构错误（`40001`），不进入事务
+- 结构校验先行：既非 `.mcbak` 加密包也非 `.xlsx`、缺 sheet、缺列、表头重复直接返回结构错误（`40001`），不进入事务；`主机` sheet「对象存储」列兼容旧备份列头「磁盘」（T-072）
 - 逐行解析复用既有规范化：`normalizeCIDR`（/24）、`parsePortExpr`（单端口或 `A-B` 连续范围 token 规范化，T-055/T-056；`expandPortCount` 展开后数量等长校验在 `applyPortMappings` 与 `normalizePortMapping`，范围可与单口混搭）、`parseProtocols`（协议列缺省 tcp、仅 tcp/udp、与端口 **token** 等长，T-055）、`normalizeTargetPairs`（配对去重，端口为表达式并兼容旧 `port` 数字入参，协议缺省 tcp，T-056/T-065）、`splitPortGroups`（零信任批量申请端口列分组：列值含 `;` 按 `;` 分组表达多IP各自多端口，无 `;` 时顶层逗号+引号分组；T-059 无 `;` 且仅 1 个端口组时广播到全部 IP——多IP相同端口写 `22` 即可、相同多端口列表用重复分组 `22,443;22,443`；T-065 端口组可带 `/协议` 后缀，单主机多端口协议须一致）、`ValidateDateOnly`（`host_applications.申请时间` 严格 `YYYY-MM-DD`）；人员按姓名(+联系方式)解析 `person_id`、主机按内网IP解析 `host_id`、映射行填写公网IP时必须在 `public_ips` 资源池（空值合法放行）；零信任「接入地区」为独立字段（T-061，可多值逗号分隔、不做强制校验，T-065）
 - 申请时间口径统一只到日期（T-065）：`host_applications` 与 `zero_trusts` 均存 `YYYY-MM-DD`（API/批量/表单严格 `utils.ValidateDateOnly`，`zero_trusts` 空值缺省服务器当天）；**xlsx 导入宽容归一**（`utils.NormalizeDateLenient`：接受 `2026/9/10`、`2026-9-1`、`2026.9.10`、`2026年9月10日`、`20260910` 等，归一化为 `YYYY-MM-DD`，两位年份与带时刻报错）；审计类 `created_at`/`updated_at` 等保留完整时间戳
 - 每个 sheet 按自然键定位已有记录：值一致 → `skipped`，不一致 → `updated`，不存在 → `created`；`zero_trusts` 自然键为**账户名**（T-058 合并语义：接入目标 `unionTargetPairs` 与接入地区 `unionExitLocations` 并集去重（已有在前，T-065）、`account_name_zh`/`applicant`/`contact`/`system_name`/`remark` 空补录非空保留、`apply_time` 保留已有，同文件多行同账户名同样合并，无变化 → `skipped`；`POST /api/zero-trusts` 新增与批量行走同一合并口径，`PUT` 编辑不合并，存量同名多条不迁移、合并目标取 id 最小一条）；**仅新增与更新，不执行删除**
@@ -259,18 +265,23 @@ var CSVHeaders = []string{
 | 列 | 宽度 | 说明 |
 |----|------|------|
 | 选择 | 50px | 复选框 |
-| # | 60px | 序号（基于当前页） |
+| # | 50px | 序号（基于当前页连续计数，与数据库 id 无关） |
 | 区域 | 100px | |
 | 主机名称 | min 140px | 含环境标签 + DB标签 |
 | 内网IP | 140px | |
 | 是否映射公网 | 120px | 布尔标签 是/否 |
 | 资产类型 | min 120px | 含 CPU 架构标签 |
-| 规格 | min 200px | `4vCPU/8G/100G/50G`，缺失显示 `-` |
+| 规格 | min 90px | `4vCPU/8G/100G/50G`（CPU/内存/系统盘/数据盘），缺失显示 `-` |
+| 对象存储 | 110px | 申请信息 `host_applications.object_storage_size` 原文（如 `500GB`），空显示 `-`（T-072） |
 | 状态 | 90px | 颜色徽章 |
 | 项目 | min 120px | 申请信息表，tooltip |
 | 申请人 | min 100px | 申请信息表，tooltip |
 | 操作 | 140px | 固定右侧 |
 
+### 列表排序
+
+- 主机列表后端固定 `ORDER BY id DESC`（最新创建在前），分页跨页顺序一致；前端序号列仅按当前页位置连续计数（T-072）
+
 ### 表单约定
 
-- CPU核数、内存、系统盘、数据盘：普通 `el-input`，数字校验正则 `/^\d*$/`，提交时 `Number()` 转换
+- CPU核数、内存、对象存储(GB)、系统盘、数据盘：普通 `el-input`，数字校验正则 `/^\d*$/`，提交时 `Number()` 转换

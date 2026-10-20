@@ -120,7 +120,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 		}
 		hostRows = append(hostRows, []interface{}{
 			h.Region, h.InstanceID, h.Name, h.PrivateIP, h.AssetType, h.OS,
-			h.CPU, h.CPUArch, h.Memory, h.Disk, h.SystemDisk, h.DataDisk,
+			h.CPU, h.CPUArch, h.Memory, h.ObjectStorage, h.SystemDisk, h.DataDisk,
 			h.EnvType, isDB, h.Status, h.OpenPorts, h.Tags,
 			personName, personContact,
 		})

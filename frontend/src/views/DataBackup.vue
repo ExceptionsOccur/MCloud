@@ -72,24 +72,32 @@
           type="info"
           :closable="false"
           show-icon
-          title="单个 xlsx 包含 8 张业务表（人员/公网IP/云资源/IP网段/主机/申请信息/零信任/端口映射），关联用自然键表达（人员姓名、内网IP），不包含账号密码。"
+          title="单个备份包包含 8 张业务表（人员/公网IP/云资源/IP网段/主机/申请信息/零信任/端口映射），关联用自然键表达（人员姓名、内网IP），不包含账号密码。"
         />
         <el-alert
           type="warning"
           :closable="false"
           show-icon
           style="margin-top: 10px;"
-          title="导入仅新增与更新（不删除已有数据）；任一行校验失败将整体回滚，库数据不变。"
+          title="导出必须设置密码（AES-256-GCM 加密，文件后缀 .mcbak）；导入加密备份须输入同一密码，明文 .xlsx 可直接导入。导入仅新增与更新（不删除已有数据），任一行失败将整体回滚。"
         />
 
         <div class="action-row">
+          <el-input
+            v-model="exportPassword"
+            type="password"
+            show-password
+            clearable
+            placeholder="导出密码（必填，至少 6 位）"
+            style="max-width: 320px;"
+          />
           <el-button
             type="primary"
             :loading="exporting"
             @click="handleExport"
           >
             <el-icon><Download /></el-icon>
-            导出全部数据
+            导出全部数据（加密）
           </el-button>
         </div>
 
@@ -100,7 +108,7 @@
           drag
           :auto-upload="false"
           :limit="1"
-          accept=".xlsx"
+          accept=".xlsx,.mcbak"
           :on-change="handleFileChange"
           :on-remove="handleFileRemove"
         >
@@ -111,16 +119,24 @@
             <Upload />
           </el-icon>
           <div class="el-upload__text">
-            将 .xlsx 备份文件拖到此处，或<em>点击上传</em>
+            将 .mcbak 加密备份或 .xlsx 文件拖到此处，或<em>点击上传</em>
           </div>
           <template #tip>
             <div class="el-upload__tip">
-              仅支持本页导出的 .xlsx 文件，最大 20MB
+              支持本页导出的 .mcbak 加密备份或 .xlsx 文件，最大 20MB
             </div>
           </template>
         </el-upload>
 
         <div class="action-row">
+          <el-input
+            v-model="importPassword"
+            type="password"
+            show-password
+            clearable
+            placeholder="导入密码（加密备份必填，明文 xlsx 可留空）"
+            style="max-width: 320px;"
+          />
           <el-button
             type="success"
             :loading="importing"
@@ -227,6 +243,8 @@ const exporting = ref(false)
 const importing = ref(false)
 const file = ref(null)
 const report = ref(null)
+const exportPassword = ref('')
+const importPassword = ref('')
 
 onMounted(() => {
   authStore.fetchUserInfo()
@@ -252,11 +270,15 @@ function handleCommand(command) {
 }
 
 async function handleExport() {
+  if (exportPassword.value.length < 6) {
+    ElMessage.warning('请设置至少 6 位的导出密码')
+    return
+  }
   exporting.value = true
   try {
-    const blob = await exportAll()
-    downloadBlob(blob, `mcloud_backup_${formatDate()}.xlsx`)
-    ElMessage.success('导出成功')
+    const blob = await exportAll(exportPassword.value)
+    downloadBlob(blob, `mcloud_backup_${formatDate()}.mcbak`)
+    ElMessage.success('导出成功（已加密）')
   } finally {
     exporting.value = false
   }
@@ -272,8 +294,13 @@ function handleFileRemove() {
 
 async function handleImport() {
   if (!file.value) return
-  if (!file.value.name.toLowerCase().endsWith('.xlsx')) {
-    ElMessage.warning('仅支持 .xlsx 文件')
+  const name = file.value.name.toLowerCase()
+  if (!name.endsWith('.xlsx') && !name.endsWith('.mcbak')) {
+    ElMessage.warning('仅支持 .mcbak 加密备份或 .xlsx 文件')
+    return
+  }
+  if (name.endsWith('.mcbak') && !importPassword.value) {
+    ElMessage.warning('加密备份须输入导出时设置的密码')
     return
   }
   try {
@@ -289,7 +316,7 @@ async function handleImport() {
   importing.value = true
   report.value = null
   try {
-    const res = await importAll(file.value)
+    const res = await importAll(file.value, importPassword.value)
     // 拦截器返回响应体 {code, message, data}，导入报告在 data 内
     report.value = res.data
     if (report.value?.committed) {
@@ -297,6 +324,7 @@ async function handleImport() {
     }
     uploadRef.value?.clearFiles()
     file.value = null
+    importPassword.value = ''
   } catch {
     // 结构性/执行错误已由拦截器弹出 ElMessage
   } finally {
@@ -356,6 +384,10 @@ async function handleImport() {
 
 .action-row {
   margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .report {

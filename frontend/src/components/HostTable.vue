@@ -54,7 +54,7 @@
       />
       <el-table-column
         label="是否映射公网"
-        width="120"
+        width="110"
         align="center"
       >
         <template #default="{ row }">
@@ -89,6 +89,15 @@
         </template>
       </el-table-column>
       <el-table-column
+        label="对象存储"
+        width="90"
+        align="center"
+      >
+        <template #default="{ row }">
+          {{ row.application?.object_storage_size || '-' }}
+        </template>
+      </el-table-column>
+      <el-table-column
         prop="status"
         label="状态"
         width="80"
@@ -117,7 +126,7 @@
       </el-table-column>
       <el-table-column
         label="操作"
-        width="180"
+        width="160"
         fixed="right"
       >
         <template #default="{ row }">

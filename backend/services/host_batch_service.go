@@ -48,7 +48,7 @@ type BatchCreateItem struct {
 	CPU               int    `json:"cpu"`
 	CPUArch           string `json:"cpu_arch"`
 	Memory            int    `json:"memory"`
-	Disk              int    `json:"disk"`
+	ObjectStorage     int    `json:"object_storage"`
 	SystemDisk        int    `json:"system_disk"`
 	DataDisk          int    `json:"data_disk"`
 	EnvType           string `json:"env_type"`
@@ -174,7 +174,7 @@ func (s *HostService) BatchCreate(req BatchCreateRequest, op Operator, requestID
 			CPU:               item.CPU,
 			CPUArch:           item.CPUArch,
 			Memory:            item.Memory,
-			Disk:              item.Disk,
+			ObjectStorage:     item.ObjectStorage,
 			SystemDisk:        item.SystemDisk,
 			DataDisk:          item.DataDisk,
 			EnvType:           item.EnvType,
