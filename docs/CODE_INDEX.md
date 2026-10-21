@@ -212,7 +212,8 @@
 
 | 文件 | 职责 | 使用页面 |
 |------|------|----------|
-| `AppNav.vue` | 顶部导航 6 个 Tab（T-019 抽取，11 页共用）；`variant` prop 保留 DataBackup 历史样式变体保证视觉零变化 | 全部 11 个功能页 |
+| `AppHeader.vue` | 页头（T-089 抽取）：logo 区 + `AppNav` + 用户名 + 设置下拉菜单（云资源录入/人员录入/公网IP录入/数据备份/AI 接入设置/AI 申请入账/修改密码/退出登录）；内置 `ChangePasswordDialog`/`CloudResourceDialog`，`handleCommand` 收口于此；菜单项禁用态按当前路由自动判断；`navVariant` prop（`default`/`backup`）保留数据备份页历史样式变体 | 全部 12 个功能页 |
+| `AppNav.vue` | 顶部导航 Tab（T-019 抽取，12 页共用，经 `AppHeader` 使用）；`variant` prop 保留 DataBackup 历史样式变体保证视觉零变化 | 经 `AppHeader` 用于全部功能页 |
 | `SearchToolbar.vue` | 搜索框、筛选下拉、操作按钮 | HostManagement |
 | `HostTable.vue` | 主机列表表格 + 分页（行操作：编辑/复制/删除；点击数据行打开只读详情，T-066） | HostManagement |
 | `HostFormDialog.vue` | 新增/编辑/复制/详情弹窗（技术+申请双 Tab；申请时间为空时默认当天（T-082）；「区域」可创建下拉、选项取数据库已有区域（T-079）；`view` 模式另有「关联台账」「变更记录」时间线 Tab，含人员选择/手输自动建人员；复制模式预填所选行、内网IP/实例ID 置空） | HostManagement |
@@ -254,7 +255,7 @@
 | 功能 | 后端 | 前端 |
 |------|------|------|
 | **登录/认证** | `controllers/auth.go` `services/auth_service.go` `middleware/jwt.go` | `views/Login.vue` `stores/auth.js` `api/auth.js` |
-| **顶部导航** | —（纯前端路由） | `components/AppNav.vue`（7 Tab 12 页共用，T-019/T-088） |
+| **顶部导航与页头** | —（纯前端路由） | `components/AppHeader.vue`（页头 + 设置菜单，12 页共用，T-089）`components/AppNav.vue`（7 Tab，T-019/T-088） |
 | **审计日志** | `controllers/audit_log.go` `services/audit_service.go` `models/audit_log.go` `routes/audit.go` | `api/audit.js`（`/audit-logs/resource`）+ `components/AuditTimeline.vue`（资产详情「变更记录」时间线，T-066） |
 | **AI 接入配置** | `controllers/ai.go`（`GetSettings`/`SaveSettings`）`services/ai_setting_service.go`（脱敏/保留原值）`models/ai_setting.go` `routes/ai.go` `utils/crypto.go`（AES-GCM） | `views/AISettings.vue`（`/ai-settings`，T-069）`api/ai.js` |
 | **AI 申请表单提取与归档** | `controllers/ai.go`（`Extract`/`Archive`）`services/ai_extract_service.go`（编排）`services/ai_doc_parser.go`（docx/xlsx 转文本）`services/ai_schema.go`（类型/字段 schema）`services/ai_llm_client.go`（大模型调用）`services/ai_file_store.go`（incoming/archived 落盘） | `views/AIApplicationImport.vue`（`/ai-import`，T-070）`api/ai.js` |

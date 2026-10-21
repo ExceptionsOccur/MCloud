@@ -39,6 +39,8 @@
 
 ### 2026-10-21
 
+- `-` `refactor:` **T-089** 抽取 `AppHeader` 页头组件（logo/AppNav/用户名/设置菜单 + 内置改密与云资源弹窗），12 页去除重复模板与 scoped 样式，菜单禁用态改按路由自动判断
+
 - `410e803` `feat:` **T-088** 对象存储独立台账（`object_storages` + 多主机配对子表）与 `/object-storage` 顶部 Tab 页，`hosts.has_object_storage` 改为由配对自动判别的派生标记，备份扩为 10 个 sheet
 
 - `810e2b8` `perf:` **T-087** 新增 `/api/stats/region-usage` 单条 SQL 聚合区域用量，资源统计请求数从「区域数×页数」降为 3 个，接口耗时 5ms
@@ -221,7 +223,7 @@
 
 | 问题 | 说明 |
 |------|------|
-| 前端大组件 | `IpStatistics` 已拆（T-005，835→300 行）+ composables 抽取（T-004）+ 顶部导航去重（T-019，`AppNav` 9 页共用）；剩 `ZeroTrustLedger` 922 行、`HostFormDialog` 784 行等 |
+| 前端大组件 | `IpStatistics` 已拆（T-005，835→300 行）+ composables 抽取（T-004）+ 顶部导航去重（T-019，`AppNav` 9 页共用）+ 页头去重（T-089，`AppHeader` 12 页共用，净删约 1550 行）；剩 `ZeroTrustLedger` 约 790 行、`HostFormDialog` 784 行等 |
 | GORM 列名 | 缩写字段（如 `CIDR`）默认命名异常（`c_id_r`），须显式 `gorm:"column:xxx"` |
 
 ## 注意事项

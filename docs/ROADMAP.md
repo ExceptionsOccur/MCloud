@@ -26,13 +26,6 @@
 
 ## in_progress
 
-- [ ] **T-089** 抽取 `AppHeader` 组件，消除 12 页重复的 header/设置菜单并统一禁用口径 ｜ 负责：opencode（deepseek-v4，2026-10-21）｜ 优先级：P1
-  - 内容：新建 `components/AppHeader.vue` 承载 `<el-header class="app-header">`（logo 区 + `AppNav`（透传 `variant`）+ 用户名 + 设置下拉菜单），并把 `handleCommand` 的「修改密码 / 云资源录入」两个弹窗内置到组件；导航类菜单项统一 `router.push`，**禁用项按当前路由自动判断**（当前页 + 数据备份页自身），移除各页手写 `:disabled`；12 个页面（含 Login 外的全部功能页）删除重复 header 模板、`AppNav`/`ChangePasswordDialog`/`CloudResourceDialog` 引入与相关 ref/`handleCommand`，改为 `<AppHeader />`；保持视觉与行为一致
-  - 验收标准：`frontend/src/views/*.vue` 中不再出现 `class="app-header"`（仅 `AppHeader.vue` 保留）、不再出现 `handleCommand`/`changePasswordDialog`/`cloudResourceDialog`；`npm run lint:check`、`npm run test`、`npm run build` 全绿；设置菜单在 12 页入口项一致（无重复/缺失的禁用态）；`bash scripts/check_docs.sh` 0 errors
-  - 定位：`frontend/src/components/AppHeader.vue`、`frontend/src/components/AppNav.vue`、`frontend/src/views/*.vue`（12 页）、`frontend/src/components/ApplyStatusBar.vue`（无）、`docs/CODE_INDEX.md`、`docs/PROJECT_STATUS.md`
-  - 分支：`refactor/app-header`
-  - 回写：`docs/CODE_INDEX.md`（组件表与功能映射）、`docs/PROJECT_STATUS.md`（技术债/变更记录）、`docs/ROADMAP.md`、`AGENTS.md`
-
 ## blocked
 
 （无。填写格式：`- [ ] **T-xxx** … ｜ blocked 原因：具体条件` —— 泛泛的"困难"不算 blocked）
@@ -48,6 +41,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
+| T-089 | 抽取 `AppHeader` 组件，消除 12 页重复的 header/设置菜单并统一禁用口径 | 2026-10-21 | `-` | 验收：模板与 scoped 样式仅在 `AppHeader.vue` 保留（12 页净删 1551 行）；设置菜单禁用态按路由自动判断、入口项 12 页一致；lint:check/test/build 全绿；dev 服务器实测 12 页正常渲染；check_docs 0 errors |
 | T-088 | 对象存储独立台账（多主机共享）＋`hosts.object_storage` 改为布尔 `has_object_storage` | 2026-10-21 | `410e803` | 验收：存储桶含 AccessKey/SecretKey 访问凭证（SecretKey 密文存储、末四位脱敏回显、留空保留、审计脱敏、备份往返）；`hosts.has_object_storage` 为派生字段（同 `ip_mapped`），由存储桶配对自动重算、主机接口不接受手填；新增 service 单测（桶名唯一/用途必填/主机至少1台/主机不存在/引用删除40901/多主机往返/xlsx 10 sheet 往返幂等/自动判别增改删）与三端门禁全绿；迁移 dev 库实测应用；`/object-storage` 顶部 Tab 页上线（设置菜单不设入口）；接口 dev 实测 |
 | T-087 | 资源统计加载过慢——改为后端一次性聚合 | 2026-10-21 | `810e2b8` | 验收：聚合单测（运行中/已停止拆分、云外与裸金属/物理机排除）；与旧前端逐区域汇总口径实测一致（青年云 31 台、南宁云 171 台）；接口耗时 5ms；三端门禁全绿 |
 | T-086 | 资源统计仅统计含「云」区域 + 主机页脚计数彻底与筛选解耦 | 2026-10-21 | `af6ba7b` | 验收：`filterCloudRegions` 单测（含云/不含云/空输入）；新增 `/api/hosts/stats` 单测与 dev 实测（205/202/3 恒定）；区域实测仅保留 青年云/南宁云；三端门禁全绿 |

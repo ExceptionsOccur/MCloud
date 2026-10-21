@@ -1,67 +1,6 @@
 <template>
   <div class="object-storage-ledger">
-    <el-header class="app-header">
-      <div class="header-left">
-        <h1>MCloud</h1>
-        <span>云平台资产管理</span>
-      </div>
-      <AppNav />
-      <div class="header-right">
-        <span
-          v-if="authStore.user"
-          class="user-info"
-        >{{ authStore.user.username }}</span>
-        <el-dropdown @command="handleCommand">
-          <el-button text>
-            <el-icon><Setting /></el-icon>
-          </el-button>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item command="cloudResource">
-                云资源录入
-              </el-dropdown-item>
-              <el-dropdown-item
-                command="personnel"
-                :disabled="$route.path === '/personnel'"
-              >
-                人员录入
-              </el-dropdown-item>
-              <el-dropdown-item
-                command="publicIP"
-                :disabled="$route.path === '/public-ip'"
-              >
-                公网IP录入
-              </el-dropdown-item>
-              <el-dropdown-item command="dataBackup">
-                数据备份
-              </el-dropdown-item>
-              <el-dropdown-item
-                command="aiSettings"
-                :disabled="$route.path === '/ai-settings'"
-              >
-                AI 接入设置
-              </el-dropdown-item>
-              <el-dropdown-item
-                command="aiImport"
-                :disabled="$route.path === '/ai-import'"
-              >
-                AI 申请入账
-              </el-dropdown-item>
-              <el-dropdown-item command="changePassword">
-                修改密码
-              </el-dropdown-item>
-              <el-dropdown-item
-                command="logout"
-                divided
-              >
-                退出登录
-              </el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-      </div>
-    </el-header>
-
+    <AppHeader />
     <div class="main-content">
       <div class="toolbar">
         <el-input
@@ -319,29 +258,16 @@
         </el-button>
       </template>
     </el-dialog>
-
-    <ChangePasswordDialog ref="changePasswordDialog" />
-    <CloudResourceDialog ref="cloudResourceDialog" />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { useAuthStore } from '../stores/auth'
 import { getObjectStorages, createObjectStorage, updateObjectStorage, deleteObjectStorage } from '../api/object_storage'
 import { getHosts } from '../api/host'
 import { formatTime } from '../utils'
-import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
-import CloudResourceDialog from '../components/CloudResourceDialog.vue'
-import AppNav from '../components/AppNav.vue'
-
-const router = useRouter()
-const authStore = useAuthStore()
-
-const changePasswordDialog = ref(null)
-const cloudResourceDialog = ref(null)
+import AppHeader from '../components/AppHeader.vue'
 
 const records = ref([])
 const hostOptions = ref([])
@@ -370,7 +296,6 @@ const dialogTitle = computed(() => (editId.value ? '编辑对象存储' : '新�
 const totalSize = computed(() => records.value.reduce((sum, r) => sum + (Number(r.size_gb) || 0), 0))
 
 onMounted(() => {
-  authStore.fetchUserInfo()
   loadHostOptions()
   loadList()
 })
@@ -457,26 +382,6 @@ async function handleDelete(id) {
   }
 }
 
-function handleCommand(command) {
-  if (command === 'logout') {
-    authStore.logout()
-    router.push('/login')
-  } else if (command === 'changePassword') {
-    changePasswordDialog.value?.open()
-  } else if (command === 'dataBackup') {
-    router.push('/data-backup')
-  } else if (command === 'cloudResource') {
-    cloudResourceDialog.value?.open()
-  } else if (command === 'personnel') {
-    router.push('/personnel')
-  } else if (command === 'publicIP') {
-    router.push('/public-ip')
-  } else if (command === 'aiSettings') {
-    router.push('/ai-settings')
-  } else if (command === 'aiImport') {
-    router.push('/ai-import')
-  }
-}
 </script>
 
 <style scoped>
@@ -486,44 +391,6 @@ function handleCommand(command) {
   flex-direction: column;
 }
 
-.app-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 24px;
-  height: 60px;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
-  z-index: 10;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-left h1 {
-  font-size: 20px;
-  color: #409eff;
-  font-weight: 700;
-}
-
-.header-left span {
-  font-size: 14px;
-  color: #909399;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.user-info {
-  font-size: 14px;
-  color: #606266;
-}
 
 .main-content {
   flex: 1;

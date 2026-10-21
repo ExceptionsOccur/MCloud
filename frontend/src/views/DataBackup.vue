@@ -1,68 +1,6 @@
 <template>
   <div class="data-backup">
-    <el-header class="app-header">
-      <div class="header-left">
-        <h1>MCloud</h1>
-        <span>云平台资产管理</span>
-      </div>
-      <AppNav
-        variant="backup"
-      />
-      <div class="header-right">
-        <span
-          v-if="authStore.user"
-          class="user-info"
-        >{{ authStore.user.username }}</span>
-        <el-dropdown @command="handleCommand">
-          <el-button text>
-            <el-icon><Setting /></el-icon>
-          </el-button>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item command="cloudResource">
-                云资源录入
-              </el-dropdown-item>
-              <el-dropdown-item command="personnel">
-                人员录入
-              </el-dropdown-item>
-              <el-dropdown-item
-                command="publicIP"
-              >
-                公网IP录入
-              </el-dropdown-item>
-              <el-dropdown-item
-                command="dataBackup"
-                disabled
-              >
-                数据备份
-              </el-dropdown-item>
-              <el-dropdown-item
-                command="aiSettings"
-                :disabled="$route.path === '/ai-settings'"
-              >
-                AI 接入设置
-              </el-dropdown-item>
-              <el-dropdown-item
-                command="aiImport"
-                :disabled="$route.path === '/ai-import'"
-              >
-                AI 申请入账
-              </el-dropdown-item>
-              <el-dropdown-item command="changePassword">
-                修改密码
-              </el-dropdown-item>
-              <el-dropdown-item
-                command="logout"
-                divided
-              >
-                退出登录
-              </el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-      </div>
-    </el-header>
-
+    <AppHeader nav-variant="backup" />
     <div class="main-content">
       <el-card shadow="never">
         <template #header>
@@ -219,25 +157,17 @@
         </div>
       </el-card>
     </div>
-
-    <ChangePasswordDialog ref="changePasswordDialog" />
   </div>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useAuthStore } from '../stores/auth'
 import { exportAll, importAll } from '../api/dataExchange'
 import { downloadBlob, formatDate } from '../utils'
 import { encryptXlsx, decryptXlsx } from '../utils/xlsxCrypto'
-import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
-import AppNav from '../components/AppNav.vue'
+import AppHeader from '../components/AppHeader.vue'
 
-const router = useRouter()
-const authStore = useAuthStore()
-const changePasswordDialog = ref(null)
 const uploadRef = ref(null)
 
 const exporting = ref(false)
@@ -250,27 +180,7 @@ const exportPassword = ref('')
 const importPassword = ref('')
 
 onMounted(() => {
-  authStore.fetchUserInfo()
 })
-
-function handleCommand(command) {
-  if (command === 'logout') {
-    authStore.logout()
-    router.push('/login')
-  } else if (command === 'changePassword') {
-    changePasswordDialog.value?.open()
-  } else if (command === 'cloudResource') {
-    router.push('/')
-  } else if (command === 'personnel') {
-    router.push('/personnel')
-  } else if (command === 'aiSettings') {
-    router.push('/ai-settings')
-  } else if (command === 'aiImport') {
-    router.push('/ai-import')
-  } else if (command === 'publicIP') {
-    router.push('/public-ip')
-  }
-}
 
 async function handleExport() {
   if (exportPassword.value.length < 6) {
@@ -357,38 +267,6 @@ async function handleImport() {
   display: flex;
   flex-direction: column;
   background: #f5f7fa;
-}
-
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  height: 60px;
-  background: #fff;
-  border-bottom: 1px solid #e4e7ed;
-}
-
-.header-left h1 {
-  display: inline;
-  font-size: 18px;
-  margin: 0 8px 0 0;
-}
-
-.header-left span {
-  color: #909399;
-  font-size: 13px;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.user-info {
-  color: #606266;
-  font-size: 14px;
 }
 
 .main-content {
