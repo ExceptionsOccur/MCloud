@@ -39,7 +39,7 @@
 
 ### 2026-10-21
 
-- `-` `feat:` **T-088** 对象存储独立台账（`object_storages` + 多主机配对子表）与 `/object-storage` 顶部 Tab 页，`hosts.has_object_storage` 改为由配对自动判别的派生标记，备份扩为 10 个 sheet
+- `410e803` `feat:` **T-088** 对象存储独立台账（`object_storages` + 多主机配对子表）与 `/object-storage` 顶部 Tab 页，`hosts.has_object_storage` 改为由配对自动判别的派生标记，备份扩为 10 个 sheet
 
 - `810e2b8` `perf:` **T-087** 新增 `/api/stats/region-usage` 单条 SQL 聚合区域用量，资源统计请求数从「区域数×页数」降为 3 个，接口耗时 5ms
 
