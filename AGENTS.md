@@ -74,7 +74,7 @@
 | 字段 | 值 |
 |------|-----|
 | last_updated | 2026-10-21 |
-| in_progress | T-085 图表容器尺寸告警修复（AI 会话，2026-10-21） |
+| in_progress | 无 |
 | next_task | 无（todo 队列已清空） |
 | todo（P1） | 无 |
 | todo（P2） | 无 |
