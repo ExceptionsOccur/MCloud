@@ -254,3 +254,78 @@ func TestPortMappingXLSXProtocolRoundtrip(t *testing.T) {
 		t.Fatalf("二次导入统计不符: %+v", pmStat2)
 	}
 }
+
+// TestZeroTrustImportMergeByExitLocation T-077：同账户名不同接入地区在备份导入时各自独立成记录
+func TestZeroTrustImportMergeByExitLocation(t *testing.T) {
+	newTestDB(t)
+	hs := NewHostService()
+	zs := NewZeroTrustService()
+	hostA := makeHost(t, hs, "rt-loc-a", "10.68.1.1")
+	hostB := makeHost(t, hs, "rt-loc-b", "10.68.1.2")
+
+	// 同账户名两个地区：南宁（2 个目标）、青年（1 个目标）
+	if _, err := zs.Create(ZeroTrustRequest{
+		ApplyUnit: "地区回灌", AccountName: "rt-loc", ExitLocation: "南宁", ApplyTime: "2026-04-01",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}, {HostID: hostB, Ports: "443"}},
+	}, testOp, NewRequestID()); err != nil {
+		t.Fatalf("种子南宁失败: %v", err)
+	}
+	if _, err := zs.Create(ZeroTrustRequest{
+		ApplyUnit: "地区回灌", AccountName: "rt-loc", ExitLocation: "青年", ApplyTime: "2026-04-02",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "8080"}},
+	}, testOp, NewRequestID()); err != nil {
+		t.Fatalf("种子青年失败: %v", err)
+	}
+
+	data, err := NewDataExchangeService().Export()
+	if err != nil {
+		t.Fatalf("导出失败: %v", err)
+	}
+
+	openTestDB(t, t.Name()+"_target")
+	hostSvc := NewHostService()
+	mustCreateHost(t, hostSvc, "10.68.1.1")
+	mustCreateHost(t, hostSvc, "10.68.1.2")
+	importer := NewDataExchangeService()
+	report, err := importer.Import(data, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("导入失败: %v", err)
+	}
+	if !report.Committed || len(report.Errors) != 0 {
+		t.Fatalf("导入异常: committed=%v errors=%+v", report.Committed, report.Errors)
+	}
+
+	var recs []models.ZeroTrust
+	if err = database.DB.Where("account_name = ?", "rt-loc").Order("exit_location ASC").Find(&recs).Error; err != nil {
+		t.Fatalf("查记录失败: %v", err)
+	}
+	if len(recs) != 2 {
+		t.Fatalf("同账户名不同地区应回灌为 2 条记录，实际 %d: %+v", len(recs), recs)
+	}
+	locs := map[string]models.ZeroTrust{}
+	for _, r := range recs {
+		locs[r.ExitLocation] = r
+	}
+	if _, ok := locs["南宁"]; !ok {
+		t.Fatalf("缺南宁记录: %+v", recs)
+	}
+	if _, ok := locs["青年"]; !ok {
+		t.Fatalf("缺青年记录: %+v", recs)
+	}
+	if rows := ztTargetRows(t, locs["南宁"].ID); len(rows) != 2 {
+		t.Fatalf("南宁目标数应为 2，实际 %+v", rows)
+	}
+	if rows := ztTargetRows(t, locs["青年"].ID); len(rows) != 1 || rows[0].Ports != "8080" {
+		t.Fatalf("青年目标不符: %+v", rows)
+	}
+
+	// 二次导入幂等：两条记录均 skip，不新增不更新
+	report2, err := importer.Import(data, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("二次导入失败: %v", err)
+	}
+	st := report2.stat("零信任")
+	if st == nil || st.Created != 0 || st.Updated != 0 || st.Skipped != st.Rows {
+		t.Fatalf("二次导入应全部 skip: %+v", st)
+	}
+}

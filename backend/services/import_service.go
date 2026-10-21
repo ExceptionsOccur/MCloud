@@ -758,13 +758,13 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 			fail(report, c, errors.New("账户名不能为空"))
 			return
 		}
-		key := accountName
-
 		accountNameZh := c.get("账号姓名")
 		applicant := c.get("申请人")
 		contact := c.get("账户联系方式")
 		exitLocation := c.get("接入地区")
 		remark := c.get("备注")
+		// T-077：自然键含接入地区，不同地区各自独立成记录
+		key := zeroTrustMergeKey(accountName, exitLocation)
 
 		// T-073：接入目标改「内网IP + tcp端口 + udp端口」三列（不再有旧「接入目标」列，不兼容旧备份）。
 		// 内网IP 列沿用旧语义：支持 `;` 分组广播（首段为 IP，后续段仅为该 IP 的端口组），不做 CIDR 展开；
@@ -911,9 +911,10 @@ func targetPairsEqual(a, b []ZeroTrustTarget) bool {
 	return true
 }
 
-// zeroTrustKey 零信任导入自然键 = 账户名（T-058，同账户名合并）
+// zeroTrustKey 零信任导入自然键 = 账户名 + 接入地区（T-058/T-077）：
+// 同一账户名在不同接入地区的资源不同，须各自独立成记录，不能被合并
 func zeroTrustKey(z models.ZeroTrust) string {
-	return z.AccountName
+	return zeroTrustMergeKey(z.AccountName, z.ExitLocation)
 }
 
 // applyPortMappings 自然键 public_ip+宿主ID+外网端口+外网协议；公网IP须在资源池；

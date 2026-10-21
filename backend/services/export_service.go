@@ -146,13 +146,15 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 	}
 
 	// zero_trusts（T-073：按「账户名 + 内网IP」一行导出，同一主机的端口按协议分别并集到
-	// 「tcp端口」「udp端口」两列；同账户名不同内网IP 各占一行，其余字段取首条非空）
+	// 「tcp端口」「udp端口」两列；同账户名不同内网IP 各占一行，其余字段取首条非空。
+	// T-077：分组键再带上接入地区——同账户名在不同地区的资源不同，不得合并成同一行）
 	ztRows := make([][]interface{}, 0, len(zeroTrusts))
 	rowIdx := make(map[string]int, len(zeroTrusts))
 	for _, z := range zeroTrusts {
 		groups := groupZeroTrustTargets(ztPairs[z.ID], hostIPByID)
+		locKey := exitLocationKey(z.ExitLocation)
 		if len(groups) == 0 {
-			key := z.AccountName + "|"
+			key := z.AccountName + "|" + locKey + "|"
 			if idx, ok := rowIdx[key]; ok {
 				ztRows[idx] = fillZeroTrustRow(ztRows[idx], zeroTrustRow(z, "", "", ""))
 				continue
@@ -162,7 +164,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 			continue
 		}
 		for _, g := range groups {
-			key := z.AccountName + "|" + g.IP
+			key := z.AccountName + "|" + locKey + "|" + g.IP
 			row := zeroTrustRow(z, g.IP, g.TCP, g.UDP)
 			if idx, ok := rowIdx[key]; ok {
 				ztRows[idx] = fillZeroTrustRow(ztRows[idx], row)

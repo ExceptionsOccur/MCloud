@@ -397,14 +397,14 @@ func TestZeroTrustCreateMergeByAccount(t *testing.T) {
 	}
 
 	var n int64
-	if err := database.DB.Model(&models.ZeroTrust{}).Where("account_name = ?", "mg-acct").Count(&n).Error; err != nil {
+	if err = database.DB.Model(&models.ZeroTrust{}).Where("account_name = ?", "mg-acct").Count(&n).Error; err != nil {
 		t.Fatalf("计数失败: %v", err)
 	}
 	if n != 1 {
 		t.Fatalf("同账户名应仅 1 条记录，实际 %d", n)
 	}
 	var rec models.ZeroTrust
-	if err := database.DB.First(&rec, id1).Error; err != nil {
+	if err = database.DB.First(&rec, id1).Error; err != nil {
 		t.Fatalf("查记录失败: %v", err)
 	}
 	if rec.ApplyUnit != "合并单位" || rec.Contact != "李四" || rec.SystemName != "新系统" || rec.Remark != "备注补录" {
@@ -416,52 +416,146 @@ func TestZeroTrustCreateMergeByAccount(t *testing.T) {
 	}
 
 	// 完全重复的新增：无变化仍返回同 id，不新增不改行
-	if id3, err := s.Create(ZeroTrustRequest{
+	id3, err := s.Create(ZeroTrustRequest{
 		ApplyUnit: "合并单位", AccountName: "mg-acct", Contact: "李四",
 		SystemName: "新系统", Remark: "备注补录",
 		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}, {HostID: hostB, Ports: "8080"}},
-	}, testOp, NewRequestID()); err != nil || id3 != id1 {
+	}, testOp, NewRequestID())
+	if err != nil || id3 != id1 {
 		t.Fatalf("重复新增应无变化返回原 id：%d / %v", id3, err)
 	}
 
-	// 接入地区：已有记录该字段为空 → 补录
-	if _, err := s.Create(ZeroTrustRequest{
+	// 接入地区是合并键的一部分（T-077）：不同地区各自独立成记录，绝不合并
+	var otherID uint
+	otherID, err = s.Create(ZeroTrustRequest{
 		ApplyUnit: "合并单位", AccountName: "mg-acct", ExitLocation: "南宁",
 		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
-	}, testOp, NewRequestID()); err != nil {
-		t.Fatalf("接入地区补录失败: %v", err)
+	}, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("新增其他地区失败: %v", err)
 	}
-	if err := database.DB.First(&rec, id1).Error; err != nil {
+	if otherID == id1 {
+		t.Fatal("同账户名不同接入地区不应合并（T-077）")
+	}
+	var other models.ZeroTrust
+	if err = database.DB.First(&other, otherID).Error; err != nil {
+		t.Fatalf("查地区记录失败: %v", err)
+	}
+	if other.ExitLocation != "南宁" {
+		t.Fatalf("新记录接入地区不符: %q", other.ExitLocation)
+	}
+	// 原记录不应被补录地区
+	if err = database.DB.First(&rec, id1).Error; err != nil {
 		t.Fatalf("查记录失败: %v", err)
 	}
-	if rec.ExitLocation != "南宁" {
-		t.Fatalf("接入地区补录不符，实际 %q", rec.ExitLocation)
+	if rec.ExitLocation != "" {
+		t.Fatalf("原记录接入地区不应被其他地区补录，实际 %q", rec.ExitLocation)
 	}
-	// 已有接入地区 → 新值并集去重（T-065，非覆盖）
-	if _, err := s.Create(ZeroTrustRequest{
-		ApplyUnit: "合并单位", AccountName: "mg-acct", ExitLocation: "青年",
-		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
-	}, testOp, NewRequestID()); err != nil {
-		t.Fatalf("接入地区并集失败: %v", err)
-	}
-	if err := database.DB.First(&rec, id1).Error; err != nil {
-		t.Fatalf("查记录失败: %v", err)
-	}
-	if rec.ExitLocation != "南宁,青年" {
-		t.Fatalf("接入地区应并集去重，实际 %q", rec.ExitLocation)
-	}
-	// 重复地区不再追加
-	if _, err := s.Create(ZeroTrustRequest{
+
+	// 同地区重复新增 → 合并回该地区记录
+	again, err := s.Create(ZeroTrustRequest{
 		ApplyUnit: "合并单位", AccountName: "mg-acct", ExitLocation: "南宁",
+		Targets: []ZeroTrustTarget{{HostID: hostB, Ports: "8080"}},
+	}, testOp, NewRequestID())
+	if err != nil || again != otherID {
+		t.Fatalf("同地区新增应合并回该地区记录：%d / %v", again, err)
+	}
+	if rows := ztTargetRows(t, otherID); len(rows) != 2 {
+		t.Fatalf("同地区合并后应 2 个目标，实际 %+v", rows)
+	}
+
+	// 多值地区：顺序不同视为同一组（南宁,青年 与 青年,南宁）
+	multiID, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "合并单位", AccountName: "mg-acct", ExitLocation: "南宁,青年",
+		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "443"}},
+	}, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("新增多值地区失败: %v", err)
+	}
+	mergedID, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "合并单位", AccountName: "mg-acct", ExitLocation: "青年、南宁",
+		Targets: []ZeroTrustTarget{{HostID: hostB, Ports: "9000"}},
+	}, testOp, NewRequestID())
+	if err != nil || mergedID != multiID {
+		t.Fatalf("多值地区顺序不同应合并：%d / %v", mergedID, err)
+	}
+
+	// 空地区自成一组：与「南宁」不合并
+	blankID, err := s.Create(ZeroTrustRequest{
+		ApplyUnit: "合并单位", AccountName: "mg-acct",
 		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22"}},
-	}, testOp, NewRequestID()); err != nil {
-		t.Fatalf("接入地区重复合并失败: %v", err)
+	}, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("新增空地区失败: %v", err)
 	}
-	if err := database.DB.First(&rec, id1).Error; err != nil {
-		t.Fatalf("查记录失败: %v", err)
+	if blankID != id1 {
+		t.Fatalf("空地区应合并回空地区记录 %d，实际 %d", id1, blankID)
 	}
-	if rec.ExitLocation != "南宁,青年" {
-		t.Fatalf("接入地区重复值应去重，实际 %q", rec.ExitLocation)
+}
+
+// TestZeroTrustExitLocationKey 地区比较键：规整去重 + 排序（T-077）
+func TestZeroTrustExitLocationKey(t *testing.T) {
+	cases := []struct {
+		a, b string
+		same bool
+	}{
+		{"南宁", "南宁", true},
+		{"南宁,青年", "青年,南宁", true},
+		{"南宁、青年", "青年，南宁", true},
+		{"南宁", "青年", false},
+		{"", "", true},
+		{"", "南宁", false},
+		{"南宁,南宁", "南宁", true},
+	}
+	for _, c := range cases {
+		if got := exitLocationKey(c.a) == exitLocationKey(c.b); got != c.same {
+			t.Fatalf("exitLocationKey(%q) vs (%q) 期望 same=%v，实际 %v", c.a, c.b, c.same, got)
+		}
+	}
+}
+
+// TestZeroTrustBatchMergeByExitLocation 批量文本：同账户名同地区合并、不同地区各自成条（T-077）
+func TestZeroTrustBatchMergeByExitLocation(t *testing.T) {
+	newTestDB(t)
+	hs := NewHostService()
+	makeHost(t, hs, "bl-a", "10.66.5.1")
+	makeHost(t, hs, "bl-b", "10.66.5.2")
+	s := NewZeroTrustService()
+
+	// 第 11 列为接入地区
+	text := strings.Join([]string{
+		`地区单位,bl-acct,,,,10.66.5.1,22,系统X,,,南宁`,
+		`地区单位,bl-acct,,,,10.66.5.2,443,系统Y,,,南宁`,
+		`地区单位,bl-acct,,,,10.66.5.1,8080,系统Z,,,青年`,
+	}, "\n")
+	resp, err := s.BatchCreateText(text, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("批量添加失败: %v", err)
+	}
+	if resp.Success != 3 || resp.Errors != 0 {
+		t.Fatalf("统计期望 成功3/失败0，实际 %+v：%+v", resp, resp.LineErrors)
+	}
+	var n int64
+	if err := database.DB.Model(&models.ZeroTrust{}).Where("account_name = ?", "bl-acct").Count(&n).Error; err != nil {
+		t.Fatalf("计数失败: %v", err)
+	}
+	if n != 2 {
+		t.Fatalf("同账户名不同地区应 2 条记录，实际 %d", n)
+	}
+
+	var nanning models.ZeroTrust
+	if err := database.DB.Where("account_name = ? AND exit_location = ?", "bl-acct", "南宁").First(&nanning).Error; err != nil {
+		t.Fatalf("查南宁记录失败: %v", err)
+	}
+	if rows := ztTargetRows(t, nanning.ID); len(rows) != 2 {
+		t.Fatalf("南宁应合并为 2 个目标，实际 %+v", rows)
+	}
+	var qingnian models.ZeroTrust
+	if err := database.DB.Where("account_name = ? AND exit_location = ?", "bl-acct", "青年").First(&qingnian).Error; err != nil {
+		t.Fatalf("查青年记录失败: %v", err)
+	}
+	if rows := ztTargetRows(t, qingnian.ID); len(rows) != 1 || rows[0].Ports != "8080" {
+		t.Fatalf("青年目标不符: %+v", rows)
 	}
 }
 

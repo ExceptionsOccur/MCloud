@@ -81,7 +81,7 @@
 | `services/business_stats.go` | 业务统计聚合 | `GetBusinessStats`（项目/公司/人员三维聚合） |
 | `services/subnet_service.go` | IP 网段管理 | `List`/`Create`/`Update`/`Delete`、`normalizeCIDR`（/24 校验） |
 | `services/person_service.go` | 人员管理 | `List`/`Create`/`Update`/`Delete`、`normalizePerson`；删除时校验关联主机数 |
-| `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`/`ListExitLocations`（接入地区候选取 `public_ips.exit_location` 去重，T-061）；`normalizeTargetPairs`（端口表达式校验+去重，兼容旧 `port` 数字入参，T-056；协议归一化缺省 tcp，T-065）；`splitGroupProtocol`/`mergeGroupProtocols`（批量端口组 `/协议` 后缀解析与单主机多端口协议合并，T-065）；`splitPortGroups`（批量申请端口分组：`;` 分组表达多IP各自多端口，无 `;` 时顶层逗号+引号分组，T-056/T-058；无 `;` 且单端口组广播到全部 IP，T-059）；`mergeZeroTrustInto`/`unionTargetPairs`/`unionExitLocations`（同账户名新增合并：targets 与接入地区并集去重+其余空字段补录，含 `account_name_zh`/`applicant`，T-058/T-060/T-061/T-063/T-065）；`loadZeroTrustTargetPairs`/`insertZeroTrustTargets`（接入目标子表读写，T-052）；`joinTargetPairs`（派生串 `host_id:ports:protocol` 以 `;` 分隔，T-056/T-065）；`HostReferencedByZeroTrust`（子表去重计数）/`ZeroTrustsByHost` |
+| `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`/`ListExitLocations`（接入地区候选取 `public_ips.exit_location` 去重，T-061）；`normalizeTargetPairs`（端口表达式校验+去重，兼容旧 `port` 数字入参，T-056；协议归一化缺省 tcp，T-065）；`splitGroupProtocol`/`mergeGroupProtocols`（批量端口组 `/协议` 后缀解析与单主机多端口协议合并，T-065）；`splitPortGroups`（批量申请端口分组：`;` 分组表达多IP各自多端口，无 `;` 时顶层逗号+引号分组，T-056/T-058；无 `;` 且单端口组广播到全部 IP，T-059）；`exitLocationKey`/`zeroTrustMergeKey`/`findMergeTarget`（合并键 = 账户名 + 接入地区，地区规整去重后排序比较，T-077）、`mergeZeroTrustInto`/`unionTargetPairs`（同键新增合并：targets 并集去重+其余空字段补录，含 `account_name_zh`/`applicant`，T-058/T-060/T-061/T-063/T-065/T-077）；`loadZeroTrustTargetPairs`/`insertZeroTrustTargets`（接入目标子表读写，T-052）；`joinTargetPairs`（派生串 `host_id:ports:protocol` 以 `;` 分隔，T-056/T-065）；`HostReferencedByZeroTrust`（子表去重计数）/`ZeroTrustsByHost` |
 | `services/port_mapping_service.go` | 端口映射台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`parsePortExpr`/`expandPortCount`/`parseProtocols`（端口 token 含 `A-B` 范围与协议归一化、展开后配对，T-055）；`ErrPortMappingExists` 整组判重（`host_id+public_ip+external_ports+external_protocols`）；`refreshHostIPMapped` |
 | `services/public_ip_service.go` | 公网IP资源台账 | `List`/`Create`/`Update`/`Delete`、`normalizePublicIP`（IP 唯一/格式校验）、`countPublicIPRefs`/`ErrPublicIPReferenced` 引用保护 |
 | `services/audit_service.go` | 审计日志 | `Record`（写入，失败不阻断业务）、`List`（分页筛选）、`ListByResource`（按 `resource_type`+`resource_id` 取单资产变更记录，T-066）、`GetOperator`、`NewRequestID` |
@@ -94,7 +94,7 @@
 | `services/ai_file_store.go` | AI 上传文件暂存/归档（T-068） | `SaveIncoming`、`Archive`、`sanitizeFilename`/`isValidToken`（防路径穿越） |
 | `services/export_service.go` | 数据备份导出 | `Export`（8 sheet 依赖序写入）、`ExportFilename`、`groupZeroTrustTargets`/`zeroTrustRow`/`fillZeroTrustRow`（零信任按账户名+内网IP 聚合 tcp/udp 端口，T-073） |
 | `services/port_set.go` | 端口集合工具（T-073） | `parsePortSet`（掩码 `*`/列表/`A-B` 范围解析）、`mergePortSpans`/`formatPortSpans`（区间合并规整）、`unionPortText`、`portSetToTokens` |
-| `services/import_service.go` | 数据备份导入 | `Import`（单事务 + 回滚；非 xlsx 报结构错误，T-074）、`parseWorkbook`（结构校验）、`hostObjectStorageCell`/`sheetHasColumn`（「对象存储」列及旧列头「磁盘」兼容）、`apply*`（按自然键 upsert；`zero_trusts` 自然键=账户名合并，T-058）、`zeroTrustKey` |
+| `services/import_service.go` | 数据备份导入 | `Import`（单事务 + 回滚；非 xlsx 报结构错误，T-074）、`parseWorkbook`（结构校验）、`hostObjectStorageCell`/`sheetHasColumn`（「对象存储」列及旧列头「磁盘」兼容）、`apply*`（按自然键 upsert；`zero_trusts` 自然键=账户名+接入地区，T-058/T-077）、`zeroTrustKey` |
 
 ### 中间件与工具
 
@@ -114,10 +114,10 @@
 | `services/host_csv_service_test.go` | CSV 导入行映射 + 导出复用列表筛选、导出行数=列表 total 一致性（T-008） |
 | `services/auth_service_test.go` | 登录表驱动（成功签发/用户不存在/失败计数/锁定拒绝/成功清零）+ 旧格式登录自动升级 bcrypt（T-009） |
 | `services/stats_service_test.go` | 探测颜色状态机（dead/alive 分支）、`probeTCP` 开/闭端口、ICMP 回环/不可达（环境无 ICMP socket 时跳过，T-011） |
-| `services/zero_trust_service_test.go` | 接入目标子表 CRUD/替换/反查、`zero_trusts` 无 `targets` 列、按主机名/内网IP 搜索（sqlite ILIKE 降级，T-052）；多端口表达式/旧 port 兼容/批量端口组（T-056）；`;` 分号分组/单IP整列多端口、按账户名合并（并集/补录/接入地区规则/批量合并，T-058/T-061）；单端口组广播/重复分组/`;` 按位回归（T-059）；申请人字段独立存储/合并补录保留/批量第 4 列（T-060）；账号姓名字段独立存储/合并补录保留/搜索命中（T-063）；接入目标协议（udp/缺省 tcp/非法报错/派生串/批量 `/协议`，T-065）；`zero_trusts` 无 `public_ip` 列/有 `exit_location` 列、地区候选去重、接入地区落库回显与搜索（T-061）；接入地区多值（逗号/顿号规整去重、多值回显、任一地区搜索命中、合并并集，T-065） |
+| `services/zero_trust_service_test.go` | 接入目标子表 CRUD/替换/反查、`zero_trusts` 无 `targets` 列、按主机名/内网IP 搜索（sqlite ILIKE 降级，T-052）；多端口表达式/旧 port 兼容/批量端口组（T-056）；`;` 分号分组/单IP整列多端口、按账户名合并（并集/补录/接入地区规则/批量合并，T-058/T-061）；单端口组广播/重复分组/`;` 按位回归（T-059）；申请人字段独立存储/合并补录保留/批量第 4 列（T-060）；账号姓名字段独立存储/合并补录保留/搜索命中（T-063）；接入目标协议（udp/缺省 tcp/非法报错/派生串/批量 `/协议`，T-065）；`zero_trusts` 无 `public_ip` 列/有 `exit_location` 列、地区候选去重、接入地区落库回显与搜索（T-061）；接入地区多值（逗号/顿号规整去重、多值回显、任一地区搜索命中，T-065）；按接入地区合并（`exitLocationKey` 排序比较、同账户名不同地区不合并、多值顺序无关、空地区独立，T-077） |
 | `services/port_mapping_service_test.go` | 端口协议归一化（缺省补 tcp/大小写/数量不一致/非法值）+ 范围 token（规范化、展开配对、非法范围）+ 整组判重含外网协议维度（同端口不同协议放行，T-055） |
 | `services/port_set_test.go` | 端口集合解析（掩码/列表/范围/越界）与零信任备份端口列导出分组、掩码展开导入、旧列头报错单测（T-073） |
-| `services/data_exchange_test.go` | 空库 xlsx 回灌：零信任字段+子表往返、二次导入幂等 skip（T-052）；端口映射协议列往返+含协议自然键 skip（T-055）；零信任同账户名合并（字段补录+targets 并集，T-058） |
+| `services/data_exchange_test.go` | 空库 xlsx 回灌：零信任字段+子表往返、二次导入幂等 skip（T-052）；端口映射协议列往返+含协议自然键 skip（T-055）；零信任同账户名合并（字段补录+targets 并集，T-058）；同账户名不同接入地区各自回灌为独立记录+二次导入幂等（T-077） |
 | `utils/password_test.go` | bcrypt 往返、旧 `salt$hash` 兼容、非法存储拒绝、盐唯一性 |
 | `utils/datetime_test.go` | 导入宽容日期归一：标准/斜杠/点/中文年月日/紧凑写法归一 `YYYY-MM-DD`、空串合法、两位年份与带时刻/非法值报错（T-065） |
 | `middleware/jwt_test.go` | `ValidateToken` 表驱动：有效/过期/伪造签名/非法串/缺 user_id/none 算法（T-022） |
@@ -340,8 +340,8 @@ GET/POST /api/zero-trusts、GET /api/zero-trusts/exit-locations、PUT/DELETE /ap
   → services/zero_trust_service.go
        ├─ List()（keyword 模糊 + loadZeroTrustTargetPairs 子表回填主机简要；接入地区为独立字段 T-061）
        ├─ ListExitLocations()（接入地区候选取 public_ips.exit_location 去重非空，T-061；接入地区支持多值逗号分隔，T-065）
-       ├─ Create()（normalizeTargetPairs 配对校验 + 主机存在校验 + 同账户名 mergeZeroTrustInto 合并，T-058）/Update()（同前但不合并）
-       └─ BatchCreateText()（逐行 11 列：第 3 列账号姓名（T-063）、第 4 列申请人（T-060）、第 5 列账户联系方式、第 11 列接入地区（T-061）、内网IP 定位主机、IP 与端口等长配对（`;` 分组/单IP整列多端口，T-058；单端口组广播到全部 IP，T-059）、申请时间第 9 列纯日期校验、同账户名行合并（复用 mergeZeroTrustInto，T-058）、合法行全量插入）
+       ├─ Create()（normalizeTargetPairs 配对校验 + 主机存在校验 + `findMergeTarget` 按账户名+接入地区查找后 mergeZeroTrustInto 合并，T-058/T-077）/Update()（同前但不合并）
+       └─ BatchCreateText()（逐行 11 列：第 3 列账号姓名（T-063）、第 4 列申请人（T-060）、第 5 列账户联系方式、第 11 列接入地区（T-061）、内网IP 定位主机、IP 与端口等长配对（`;` 分组/单IP整列多端口，T-058；单端口组广播到全部 IP，T-059）、申请时间第 9 列纯日期校验、同账户名且同接入地区的行合并（复用 `Create`→`findMergeTarget`+mergeZeroTrustInto，T-058/T-077；不同地区各自独立）、合法行全量插入）
 ```
 
 ---

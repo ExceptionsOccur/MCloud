@@ -73,8 +73,8 @@
 
 | 字段 | 值 |
 |------|-----|
-| last_updated | 2026-10-20 |
-| in_progress | 无 |
+| last_updated | 2026-10-21 |
+| in_progress | T-077 零信任按账户名+接入地区合并（AI 会话，2026-10-21） |
 | next_task | 无（todo 队列已清空） |
 | todo（P1） | 无 |
 | todo（P2） | 无 |

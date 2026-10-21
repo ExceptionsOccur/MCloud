@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -258,9 +259,22 @@ func normalizeExitLocations(raw string) string {
 	return strings.Join(out, ",")
 }
 
-// unionExitLocations 两组多值接入地区并集去重（已有在前、新值追加），返回逗号分隔串（T-065）
-func unionExitLocations(existing, incoming string) string {
-	return normalizeExitLocations(existing + "," + incoming)
+// exitLocationKey 接入地区的比较键（T-077）：多值规整去重后**排序**，使「南宁,青年」与「青年,南宁」等价；
+// 空地区返回空串（自成一组）
+func exitLocationKey(raw string) string {
+	norm := normalizeExitLocations(raw)
+	if norm == "" {
+		return ""
+	}
+	parts := strings.Split(norm, ",")
+	sort.Strings(parts)
+	return strings.Join(parts, ",")
+}
+
+// zeroTrustMergeKey 零信任合并键（T-077）：账户名 + 接入地区。
+// 同一账户名在不同接入地区资源不同，须各自独立成记录，不能被合并。
+func zeroTrustMergeKey(accountName, exitLocation string) string {
+	return strings.TrimSpace(accountName) + "\x00" + exitLocationKey(exitLocation)
 }
 
 func normalizeZeroTrust(req ZeroTrustRequest) (ZeroTrustRequest, []ZeroTrustTarget, error) {
@@ -388,7 +402,23 @@ func unionTargetPairs(existing, incoming []ZeroTrustTarget) []ZeroTrustTarget {
 	return out
 }
 
-// mergeZeroTrustInto 把一次新增合并进同账户名已有记录（T-058）：
+// findMergeTarget 查找可合并的已有记录：账户名精确匹配 + 接入地区键等价（T-077）。
+// 同账户名多地区时取该地区组内 id 最小的一条；地区比较在内存完成（地区多值需排序规整）。
+func findMergeTarget(accountName, exitLocation string) (models.ZeroTrust, error) {
+	var candidates []models.ZeroTrust
+	if err := database.DB.Where("account_name = ?", strings.TrimSpace(accountName)).Order("id ASC").Find(&candidates).Error; err != nil {
+		return models.ZeroTrust{}, err
+	}
+	want := exitLocationKey(exitLocation)
+	for _, c := range candidates {
+		if exitLocationKey(c.ExitLocation) == want {
+			return c, nil
+		}
+	}
+	return models.ZeroTrust{}, gorm.ErrRecordNotFound
+}
+
+// mergeZeroTrustInto 把一次新增合并进同账户名、同接入地区的已有记录（T-058/T-077）：
 // 接入目标取并集去重；其余字段已有非空保留、新值仅补空位（含接入地区 T-061）；
 // 申请时间保留已有；无实际变化时不写库
 func mergeZeroTrustInto(dst *models.ZeroTrust, req ZeroTrustRequest, newPairs []ZeroTrustTarget, op Operator, requestID string) (uint, error) {
@@ -422,9 +452,10 @@ func mergeZeroTrustInto(dst *models.ZeroTrust, req ZeroTrustRequest, newPairs []
 		dst.Contact = req.Contact
 		changed = true
 	}
-	// 接入地区多值：取并集去重（T-065）
-	if mergedLoc := unionExitLocations(dst.ExitLocation, req.ExitLocation); mergedLoc != dst.ExitLocation {
-		dst.ExitLocation = mergedLoc
+	// 接入地区已是合并键的一部分（T-077），同键下两者键等价，
+	// 故仅在全量规整结果与存量不同时回写（保证存量写法归一），不做并集（避免键漂移）
+	if normLoc := normalizeExitLocations(dst.ExitLocation); normLoc != dst.ExitLocation {
+		dst.ExitLocation = normLoc
 		changed = true
 	}
 	if dst.SystemName == "" && req.SystemName != "" {
@@ -470,7 +501,7 @@ func mergeZeroTrustInto(dst *models.ZeroTrust, req ZeroTrustRequest, newPairs []
 	return dst.ID, nil
 }
 
-// Create 新增零信任；同账户名已有记录时合并进 id 最小的一条（T-058，存量同名多条不迁移）
+// Create 新增零信任；同账户名**且同接入地区**已有记录时合并进 id 最小的一条（T-058/T-077，存量同名多条不迁移）
 func (s *ZeroTrustService) Create(req ZeroTrustRequest, op Operator, requestID string) (uint, error) {
 	req, pairs, err := normalizeZeroTrust(req)
 	if err != nil {
@@ -480,8 +511,7 @@ func (s *ZeroTrustService) Create(req ZeroTrustRequest, op Operator, requestID s
 		return 0, err
 	}
 
-	var existing models.ZeroTrust
-	findErr := database.DB.Where("account_name = ?", req.AccountName).Order("id ASC").First(&existing).Error
+	existing, findErr := findMergeTarget(req.AccountName, req.ExitLocation)
 	if findErr == nil {
 		return mergeZeroTrustInto(&existing, req, pairs, op, requestID)
 	}
@@ -636,7 +666,7 @@ func ZeroTrustsByHost(hostID uint) ([]models.ZeroTrust, error) {
 // 无 `;` 且仅 1 个端口组时广播到全部 IP（T-059，多IP相同端口）；单IP+整列逗号端口视为该主机多端口；
 // 每个端口组可带 `/协议` 后缀（T-065，tcp/udp，缺省 tcp，作用于该组整行），如 `22/tcp`、`22,443/udp`；
 // 接入地区第11列选填（T-061，值取自公网IP资源池去重的接入地区；T-065 支持逗号/顿号分隔多值，如 `南宁,青年`）；主机按内网IP定位，不存在则该行失败；
-// 合法行全部插入；同账户名行合并进已有记录（T-058）
+// 合法行全部插入；同账户名且同接入地区的行合并进已有记录（T-058/T-077）
 func (s *ZeroTrustService) BatchCreateText(text string, op Operator, requestID string) (*BatchCreateResponse, error) {
 	resp := &BatchCreateResponse{}
 	headerSkipped := false
