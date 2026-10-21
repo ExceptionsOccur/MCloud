@@ -216,15 +216,14 @@ type CreateHostRequest struct {
 	Tags          string       `json:"tags"`
 	PersonID      OptionalUint `json:"person_id"`
 
-	ApplyUnit         string `json:"apply_unit"`
-	Applicant         string `json:"applicant"`
-	ApplicantContact  string `json:"applicant_contact"`
-	Project           string `json:"project"`
-	ApplyReason       string `json:"apply_reason"`
-	ApplyConfig       string `json:"apply_config"`
-	ApplyTime         string `json:"apply_time"`
-	ObjectStorageSize string `json:"object_storage_size"`
-	Remark            string `json:"remark"`
+	ApplyUnit        string `json:"apply_unit"`
+	Applicant        string `json:"applicant"`
+	ApplicantContact string `json:"applicant_contact"`
+	Project          string `json:"project"`
+	ApplyReason      string `json:"apply_reason"`
+	ApplyConfig      string `json:"apply_config"`
+	ApplyTime        string `json:"apply_time"`
+	Remark           string `json:"remark"`
 }
 
 func (s *HostService) Create(req CreateHostRequest, op Operator, requestID string) (uint, error) {
@@ -282,16 +281,15 @@ func (s *HostService) Create(req CreateHostRequest, op Operator, requestID strin
 	}
 
 	app := models.HostApplication{
-		HostID:            host.ID,
-		ApplyUnit:         req.ApplyUnit,
-		Applicant:         req.Applicant,
-		ApplicantContact:  req.ApplicantContact,
-		Project:           req.Project,
-		ApplyReason:       req.ApplyReason,
-		ApplyConfig:       req.ApplyConfig,
-		ApplyTime:         req.ApplyTime,
-		ObjectStorageSize: req.ObjectStorageSize,
-		Remark:            req.Remark,
+		HostID:           host.ID,
+		ApplyUnit:        req.ApplyUnit,
+		Applicant:        req.Applicant,
+		ApplicantContact: req.ApplicantContact,
+		Project:          req.Project,
+		ApplyReason:      req.ApplyReason,
+		ApplyConfig:      req.ApplyConfig,
+		ApplyTime:        req.ApplyTime,
+		Remark:           req.Remark,
 	}
 
 	if err := tx.Create(&app).Error; err != nil {
@@ -326,15 +324,14 @@ type UpdateHostRequest struct {
 	Tags          string       `json:"tags"`
 	PersonID      OptionalUint `json:"person_id"`
 
-	ApplyUnit         *string `json:"apply_unit"`
-	Applicant         *string `json:"applicant"`
-	ApplicantContact  *string `json:"applicant_contact"`
-	Project           *string `json:"project"`
-	ApplyReason       *string `json:"apply_reason"`
-	ApplyConfig       *string `json:"apply_config"`
-	ApplyTime         *string `json:"apply_time"`
-	ObjectStorageSize *string `json:"object_storage_size"`
-	Remark            *string `json:"remark"`
+	ApplyUnit        *string `json:"apply_unit"`
+	Applicant        *string `json:"applicant"`
+	ApplicantContact *string `json:"applicant_contact"`
+	Project          *string `json:"project"`
+	ApplyReason      *string `json:"apply_reason"`
+	ApplyConfig      *string `json:"apply_config"`
+	ApplyTime        *string `json:"apply_time"`
+	Remark           *string `json:"remark"`
 }
 
 func (s *HostService) Update(id uint, req UpdateHostRequest, op Operator, requestID string) error {
@@ -463,9 +460,6 @@ func (s *HostService) Update(id uint, req UpdateHostRequest, op Operator, reques
 		}
 		if req.ApplyTime != nil {
 			appUpdates["apply_time"] = *req.ApplyTime
-		}
-		if req.ObjectStorageSize != nil {
-			appUpdates["object_storage_size"] = *req.ObjectStorageSize
 		}
 		if req.Remark != nil {
 			appUpdates["remark"] = *req.Remark

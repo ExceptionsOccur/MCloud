@@ -54,7 +54,6 @@ var hostApplyFields = []AIField{
 	{Key: "apply_reason", Label: "申请理由"},
 	{Key: "apply_config", Label: "申请配置"},
 	{Key: "apply_time", Label: "申请时间", Hint: "严格 YYYY-MM-DD，如 2026-10-16"},
-	{Key: "object_storage_size", Label: "对象存储大小"},
 	{Key: "remark", Label: "备注"},
 }
 

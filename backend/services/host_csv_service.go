@@ -46,56 +46,56 @@ func atoiOrZero(s string) int {
 }
 
 func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, error) {
-	if len(row) < 26 {
-		return CreateHostRequest{}, fmt.Errorf("列数不足，至少26列，实际%d列", len(row))
+	if len(row) < 25 {
+		return CreateHostRequest{}, fmt.Errorf("列数不足，至少25列，实际%d列", len(row))
 	}
 
 	cpu := atoiOrZero(row[7])
 	memory := atoiOrZero(row[9])
 	systemDisk := atoiOrZero(row[10])
 	dataDisk := atoiOrZero(row[11])
-	// 对象存储为 27 列新文件可选尾列（T-050/T-072）；旧 26 列文件无该列，保持 0
+	// T-080：申请信息不再有「对象存储大小」列，基础 25 列 + 可选尾列「对象存储(GB)」「是否云外主机」
+	// 对象存储为可选尾列（T-050/T-072）；旧文件无该列，保持 0
 	objectStorage := 0
-	if len(row) >= 27 {
-		objectStorage = atoiOrZero(row[26])
+	if len(row) >= 26 {
+		objectStorage = atoiOrZero(row[25])
 	}
-	// 是否云外主机为 28 列新文件可选尾列（T-078）；旧文件无该列，默认云内
+	// 是否云外主机为可选尾列（T-078）；旧文件无该列，默认云内
 	isExternal := false
-	if len(row) >= 28 {
-		v := strings.TrimSpace(row[27])
+	if len(row) >= 27 {
+		v := strings.TrimSpace(row[26])
 		isExternal = v == "是" || v == "true" || v == "1"
 	}
 
 	isDB := strings.TrimSpace(row[13]) == "是" || strings.TrimSpace(row[13]) == "true" || strings.TrimSpace(row[13]) == "1"
 
 	return CreateHostRequest{
-		Region:            strings.TrimSpace(row[0]),
-		InstanceID:        strings.TrimSpace(row[1]),
-		Name:              strings.TrimSpace(row[2]),
-		PrivateIP:         strings.TrimSpace(row[3]),
-		AssetType:         strings.TrimSpace(row[5]),
-		OS:                strings.TrimSpace(row[6]),
-		CPU:               cpu,
-		CPUArch:           strings.TrimSpace(row[8]),
-		Memory:            memory,
-		ObjectStorage:     objectStorage,
-		SystemDisk:        systemDisk,
-		DataDisk:          dataDisk,
-		EnvType:           strings.TrimSpace(row[12]),
-		IsDBServer:        &isDB,
-		IsExternal:        &isExternal,
-		Status:            strings.TrimSpace(row[14]),
-		OpenPorts:         strings.TrimSpace(row[15]),
-		Tags:              strings.TrimSpace(row[16]),
-		ApplyUnit:         strings.TrimSpace(row[17]),
-		Applicant:         strings.TrimSpace(row[18]),
-		ApplicantContact:  strings.TrimSpace(row[19]),
-		Project:           strings.TrimSpace(row[20]),
-		ApplyReason:       strings.TrimSpace(row[21]),
-		ApplyConfig:       strings.TrimSpace(row[22]),
-		ApplyTime:         strings.TrimSpace(row[23]),
-		ObjectStorageSize: strings.TrimSpace(row[24]),
-		Remark:            strings.TrimSpace(row[25]),
+		Region:           strings.TrimSpace(row[0]),
+		InstanceID:       strings.TrimSpace(row[1]),
+		Name:             strings.TrimSpace(row[2]),
+		PrivateIP:        strings.TrimSpace(row[3]),
+		AssetType:        strings.TrimSpace(row[5]),
+		OS:               strings.TrimSpace(row[6]),
+		CPU:              cpu,
+		CPUArch:          strings.TrimSpace(row[8]),
+		Memory:           memory,
+		ObjectStorage:    objectStorage,
+		SystemDisk:       systemDisk,
+		DataDisk:         dataDisk,
+		EnvType:          strings.TrimSpace(row[12]),
+		IsDBServer:       &isDB,
+		IsExternal:       &isExternal,
+		Status:           strings.TrimSpace(row[14]),
+		OpenPorts:        strings.TrimSpace(row[15]),
+		Tags:             strings.TrimSpace(row[16]),
+		ApplyUnit:        strings.TrimSpace(row[17]),
+		Applicant:        strings.TrimSpace(row[18]),
+		ApplicantContact: strings.TrimSpace(row[19]),
+		Project:          strings.TrimSpace(row[20]),
+		ApplyReason:      strings.TrimSpace(row[21]),
+		ApplyConfig:      strings.TrimSpace(row[22]),
+		ApplyTime:        strings.TrimSpace(row[23]),
+		Remark:           strings.TrimSpace(row[24]),
 	}, nil
 }
 
@@ -176,10 +176,10 @@ func (s *HostService) ExportToCSVRows(hosts []models.Host) [][]string {
 			row = append(row,
 				h.Application.ApplyUnit, h.Application.Applicant, h.Application.ApplicantContact,
 				h.Application.Project, h.Application.ApplyReason, h.Application.ApplyConfig,
-				h.Application.ApplyTime, h.Application.ObjectStorageSize, h.Application.Remark,
+				h.Application.ApplyTime, h.Application.Remark,
 			)
 		} else {
-			row = append(row, "", "", "", "", "", "", "", "", "")
+			row = append(row, "", "", "", "", "", "", "", "")
 		}
 		row = append(row, strconv.Itoa(h.ObjectStorage), isExternal)
 		rows = append(rows, row)

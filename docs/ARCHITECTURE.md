@@ -317,7 +317,6 @@ go/
 | 申请理由 | `apply_reason` | TEXT | |
 | 申请配置 | `apply_config` | TEXT | |
 | 申请时间 | `apply_time` | VARCHAR(32) | |
-| 对象存储大小 | `object_storage_size` | VARCHAR(32) | 如 "500GB"、"1TB" |
 | 备注 | `remark` | TEXT | |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
 | 更新时间 | `updated_at` | TIMESTAMPTZ | DEFAULT NOW() |

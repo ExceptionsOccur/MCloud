@@ -35,7 +35,6 @@ func hostSnapshot(h models.Host, app *models.HostApplication) map[string]interfa
 		snap["apply_reason"] = app.ApplyReason
 		snap["apply_config"] = app.ApplyConfig
 		snap["apply_time"] = app.ApplyTime
-		snap["object_storage_size"] = app.ObjectStorageSize
 		snap["remark"] = app.Remark
 	}
 	return snap

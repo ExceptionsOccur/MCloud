@@ -276,9 +276,6 @@
             <el-col :span="6">
               <el-form-item label="云外主机">
                 <el-switch v-model="form.is_external" />
-                <div class="muted-tip">
-                  云外服务器（如 VPN 可访问的外部机器），默认云内
-                </div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -482,7 +479,7 @@ const form = reactive({
   system_disk: '', data_disk: '', env_type: '', is_db_server: false, is_external: false,
   status: '', open_ports: '', tags: '', person_id: '',
   apply_unit: '', applicant: '', applicant_contact: '', project: '',
-  apply_reason: '', apply_config: '', apply_time: '', object_storage_size: '', remark: ''
+  apply_reason: '', apply_config: '', apply_time: '', remark: ''
 })
 
 const relations = reactive({
@@ -649,7 +646,6 @@ function fillFormFromHost(h) {
     form.apply_reason = h.application.apply_reason || ''
     form.apply_config = h.application.apply_config || ''
     form.apply_time = (h.application.apply_time || '').slice(0, 10)
-    form.object_storage_size = h.application.object_storage_size || ''
     form.remark = h.application.remark || ''
   }
 

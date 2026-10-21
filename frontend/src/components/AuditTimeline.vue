@@ -113,7 +113,6 @@ const FIELD_LABELS = {
   apply_reason: '申请理由',
   apply_config: '申请配置',
   apply_time: '申请时间',
-  object_storage_size: '对象存储',
   remark: '备注',
   account_name: '账户名',
   account_name_zh: '账号姓名',

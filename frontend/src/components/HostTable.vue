@@ -98,7 +98,7 @@
         align="center"
       >
         <template #default="{ row }">
-          {{ row.application?.object_storage_size || '-' }}
+          {{ row.object_storage ? row.object_storage + 'G' : '-' }}
         </template>
       </el-table-column>
       <el-table-column

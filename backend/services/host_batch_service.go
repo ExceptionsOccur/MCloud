@@ -39,33 +39,32 @@ func parsePersonID(v interface{}) (*uint, error) {
 }
 
 type BatchCreateItem struct {
-	Region            string `json:"region" binding:"required"`
-	InstanceID        string `json:"instance_id"`
-	Name              string `json:"name" binding:"required"`
-	PrivateIP         string `json:"private_ip" binding:"required"`
-	AssetType         string `json:"asset_type"`
-	OS                string `json:"os"`
-	CPU               int    `json:"cpu"`
-	CPUArch           string `json:"cpu_arch"`
-	Memory            int    `json:"memory"`
-	ObjectStorage     int    `json:"object_storage"`
-	SystemDisk        int    `json:"system_disk"`
-	DataDisk          int    `json:"data_disk"`
-	EnvType           string `json:"env_type"`
-	IsDBServer        *bool  `json:"is_db_server"`
-	IsExternal        *bool  `json:"is_external"`
-	Status            string `json:"status"`
-	OpenPorts         string `json:"open_ports"`
-	Tags              string `json:"tags"`
-	Applicant         string `json:"applicant"`
-	Project           string `json:"project"`
-	ApplyUnit         string `json:"apply_unit"`
-	ApplyReason       string `json:"apply_reason"`
-	ApplyConfig       string `json:"apply_config"`
-	ApplyTime         string `json:"apply_time"`
-	ObjectStorageSize string `json:"object_storage_size"`
-	Remark            string `json:"remark"`
-	ApplicantContact  string `json:"applicant_contact"`
+	Region           string `json:"region" binding:"required"`
+	InstanceID       string `json:"instance_id"`
+	Name             string `json:"name" binding:"required"`
+	PrivateIP        string `json:"private_ip" binding:"required"`
+	AssetType        string `json:"asset_type"`
+	OS               string `json:"os"`
+	CPU              int    `json:"cpu"`
+	CPUArch          string `json:"cpu_arch"`
+	Memory           int    `json:"memory"`
+	ObjectStorage    int    `json:"object_storage"`
+	SystemDisk       int    `json:"system_disk"`
+	DataDisk         int    `json:"data_disk"`
+	EnvType          string `json:"env_type"`
+	IsDBServer       *bool  `json:"is_db_server"`
+	IsExternal       *bool  `json:"is_external"`
+	Status           string `json:"status"`
+	OpenPorts        string `json:"open_ports"`
+	Tags             string `json:"tags"`
+	Applicant        string `json:"applicant"`
+	Project          string `json:"project"`
+	ApplyUnit        string `json:"apply_unit"`
+	ApplyReason      string `json:"apply_reason"`
+	ApplyConfig      string `json:"apply_config"`
+	ApplyTime        string `json:"apply_time"`
+	Remark           string `json:"remark"`
+	ApplicantContact string `json:"applicant_contact"`
 }
 
 type BatchCreateRequest struct {
@@ -166,33 +165,32 @@ func (s *HostService) BatchCreate(req BatchCreateRequest, op Operator, requestID
 		}
 
 		req2 := CreateHostRequest{
-			Region:            item.Region,
-			InstanceID:        item.InstanceID,
-			Name:              item.Name,
-			PrivateIP:         item.PrivateIP,
-			AssetType:         item.AssetType,
-			OS:                item.OS,
-			CPU:               item.CPU,
-			CPUArch:           item.CPUArch,
-			Memory:            item.Memory,
-			ObjectStorage:     item.ObjectStorage,
-			SystemDisk:        item.SystemDisk,
-			DataDisk:          item.DataDisk,
-			EnvType:           item.EnvType,
-			IsDBServer:        item.IsDBServer,
-			IsExternal:        item.IsExternal,
-			Status:            item.Status,
-			OpenPorts:         item.OpenPorts,
-			Tags:              item.Tags,
-			Applicant:         item.Applicant,
-			Project:           item.Project,
-			ApplyUnit:         item.ApplyUnit,
-			ApplyReason:       item.ApplyReason,
-			ApplyConfig:       item.ApplyConfig,
-			ApplyTime:         item.ApplyTime,
-			ObjectStorageSize: item.ObjectStorageSize,
-			Remark:            item.Remark,
-			ApplicantContact:  item.ApplicantContact,
+			Region:           item.Region,
+			InstanceID:       item.InstanceID,
+			Name:             item.Name,
+			PrivateIP:        item.PrivateIP,
+			AssetType:        item.AssetType,
+			OS:               item.OS,
+			CPU:              item.CPU,
+			CPUArch:          item.CPUArch,
+			Memory:           item.Memory,
+			ObjectStorage:    item.ObjectStorage,
+			SystemDisk:       item.SystemDisk,
+			DataDisk:         item.DataDisk,
+			EnvType:          item.EnvType,
+			IsDBServer:       item.IsDBServer,
+			IsExternal:       item.IsExternal,
+			Status:           item.Status,
+			OpenPorts:        item.OpenPorts,
+			Tags:             item.Tags,
+			Applicant:        item.Applicant,
+			Project:          item.Project,
+			ApplyUnit:        item.ApplyUnit,
+			ApplyReason:      item.ApplyReason,
+			ApplyConfig:      item.ApplyConfig,
+			ApplyTime:        item.ApplyTime,
+			Remark:           item.Remark,
+			ApplicantContact: item.ApplicantContact,
 		}
 
 		_, err := s.Create(req2, op, requestID)
@@ -221,7 +219,7 @@ func (s *HostService) BatchUpdate(req BatchUpdateRequest, op Operator, requestID
 	appFields := map[string]bool{
 		"apply_unit": true, "applicant": true, "applicant_contact": true,
 		"project": true, "apply_reason": true, "apply_config": true,
-		"apply_time": true, "object_storage_size": true, "remark": true,
+		"apply_time": true, "remark": true,
 	}
 
 	// Separate host fields and application fields

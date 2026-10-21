@@ -74,7 +74,7 @@
 | 字段 | 值 |
 |------|-----|
 | last_updated | 2026-10-21 |
-| in_progress | 无 |
+| in_progress | T-080 删除申请信息冗余对象存储字段（AI 会话，2026-10-21） |
 | next_task | 无（todo 队列已清空） |
 | todo（P1） | 无 |
 | todo（P2） | 无 |

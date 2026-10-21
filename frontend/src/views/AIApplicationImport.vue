@@ -366,7 +366,6 @@ const hostFields = [
   { key: 'apply_reason', label: '申请理由' },
   { key: 'apply_config', label: '申请配置' },
   { key: 'apply_time', label: '申请时间', hint: 'YYYY-MM-DD' },
-  { key: 'object_storage_size', label: '对象存储大小' },
   { key: 'remark', label: '备注' }
 ]
 

@@ -665,7 +665,7 @@ func (s *DataExchangeService) applyHostApplications(tx *gorm.DB, sh *importSheet
 	}
 	seen := make(map[string]int)
 
-	strCols := []string{"申请单位", "申请人", "申请人联系方式", "所属项目", "申请理由", "申请配置", "申请时间", "对象存储大小", "备注"}
+	strCols := []string{"申请单位", "申请人", "申请人联系方式", "所属项目", "申请理由", "申请配置", "申请时间", "备注"}
 	iterRows(sh, report, func(c *rowCtx, stat *SheetStat) {
 		privateIP := c.get("内网IP")
 		if privateIP == "" {
@@ -698,12 +698,12 @@ func (s *DataExchangeService) applyHostApplications(tx *gorm.DB, sh *importSheet
 		updates := map[string]interface{}{
 			"apply_unit": vals[0], "applicant": vals[1], "applicant_contact": vals[2],
 			"project": vals[3], "apply_reason": vals[4], "apply_config": vals[5],
-			"apply_time": vals[6], "object_storage_size": vals[7], "remark": vals[8],
+			"apply_time": vals[6], "remark": vals[7],
 		}
 		if cur, ok := byHost[hostID]; ok {
 			if cur.ApplyUnit == vals[0] && cur.Applicant == vals[1] && cur.ApplicantContact == vals[2] &&
 				cur.Project == vals[3] && cur.ApplyReason == vals[4] && cur.ApplyConfig == vals[5] &&
-				cur.ApplyTime == vals[6] && cur.ObjectStorageSize == vals[7] && cur.Remark == vals[8] {
+				cur.ApplyTime == vals[6] && cur.Remark == vals[7] {
 				stat.Skipped++
 				return
 			}
@@ -717,7 +717,7 @@ func (s *DataExchangeService) applyHostApplications(tx *gorm.DB, sh *importSheet
 		a := models.HostApplication{
 			HostID: hostID, ApplyUnit: vals[0], Applicant: vals[1], ApplicantContact: vals[2],
 			Project: vals[3], ApplyReason: vals[4], ApplyConfig: vals[5],
-			ApplyTime: vals[6], ObjectStorageSize: vals[7], Remark: vals[8],
+			ApplyTime: vals[6], Remark: vals[7],
 		}
 		if err := tx.Create(&a).Error; err != nil {
 			fail(report, c, err)

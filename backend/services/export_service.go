@@ -142,7 +142,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 		}
 		appRows = append(appRows, []interface{}{
 			h.PrivateIP, a.ApplyUnit, a.Applicant, a.ApplicantContact, a.Project,
-			a.ApplyReason, a.ApplyConfig, a.ApplyTime, a.ObjectStorageSize, a.Remark,
+			a.ApplyReason, a.ApplyConfig, a.ApplyTime, a.Remark,
 		})
 	}
 	if err := writeSheetRows(f, "主机申请信息", appRows); err != nil {
