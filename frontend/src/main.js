@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
@@ -8,6 +9,9 @@ import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import App from './App.vue'
 import router from './router'
 import './styles/global.css'
+
+// officecrypto-tool（数据备份 xlsx 加解密，T-074）依赖 Node Buffer，浏览器端注入 polyfill
+globalThis.Buffer = globalThis.Buffer || Buffer
 
 const app = createApp(App)
 

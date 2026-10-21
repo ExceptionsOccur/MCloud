@@ -94,8 +94,7 @@
 | `services/ai_file_store.go` | AI 上传文件暂存/归档（T-068） | `SaveIncoming`、`Archive`、`sanitizeFilename`/`isValidToken`（防路径穿越） |
 | `services/export_service.go` | 数据备份导出 | `Export`（8 sheet 依赖序写入）、`ExportFilename`、`groupZeroTrustTargets`/`zeroTrustRow`/`fillZeroTrustRow`（零信任按账户名+内网IP 聚合 tcp/udp 端口，T-073） |
 | `services/port_set.go` | 端口集合工具（T-073） | `parsePortSet`（掩码 `*`/列表/`A-B` 范围解析）、`mergePortSpans`/`formatPortSpans`（区间合并规整）、`unionPortText`、`portSetToTokens` |
-| `services/backup_crypto.go` | 备份加密包（T-072） | `EncryptBackup`（密码必填）、`DecryptBackup`（加密包/明文自动识别）、`IsEncryptedBackup`、`EncryptBackupExt`、PBKDF2-SHA256 + AES-256-GCM |
-| `services/import_service.go` | 数据备份导入 | `ImportWithPassword`（加密包解密，T-072）、`Import`（单事务 + 回滚）、`parseWorkbook`（结构校验）、`hostObjectStorageCell`/`sheetHasColumn`（「对象存储」列及旧列头「磁盘」兼容）、`apply*`（按自然键 upsert；`zero_trusts` 自然键=账户名合并，T-058）、`zeroTrustKey` |
+| `services/import_service.go` | 数据备份导入 | `Import`（单事务 + 回滚；非 xlsx 报结构错误，T-074）、`parseWorkbook`（结构校验）、`hostObjectStorageCell`/`sheetHasColumn`（「对象存储」列及旧列头「磁盘」兼容）、`apply*`（按自然键 upsert；`zero_trusts` 自然键=账户名合并，T-058）、`zeroTrustKey` |
 
 ### 中间件与工具
 
@@ -118,7 +117,6 @@
 | `services/zero_trust_service_test.go` | 接入目标子表 CRUD/替换/反查、`zero_trusts` 无 `targets` 列、按主机名/内网IP 搜索（sqlite ILIKE 降级，T-052）；多端口表达式/旧 port 兼容/批量端口组（T-056）；`;` 分号分组/单IP整列多端口、按账户名合并（并集/补录/接入地区规则/批量合并，T-058/T-061）；单端口组广播/重复分组/`;` 按位回归（T-059）；申请人字段独立存储/合并补录保留/批量第 4 列（T-060）；账号姓名字段独立存储/合并补录保留/搜索命中（T-063）；接入目标协议（udp/缺省 tcp/非法报错/派生串/批量 `/协议`，T-065）；`zero_trusts` 无 `public_ip` 列/有 `exit_location` 列、地区候选去重、接入地区落库回显与搜索（T-061）；接入地区多值（逗号/顿号规整去重、多值回显、任一地区搜索命中、合并并集，T-065） |
 | `services/port_mapping_service_test.go` | 端口协议归一化（缺省补 tcp/大小写/数量不一致/非法值）+ 范围 token（规范化、展开配对、非法范围）+ 整组判重含外网协议维度（同端口不同协议放行，T-055） |
 | `services/port_set_test.go` | 端口集合解析（掩码/列表/范围/越界）与零信任备份端口列导出分组、掩码展开导入、旧列头报错单测（T-073） |
-| `services/backup_crypto_test.go` | 备份加密往返/空密码拒绝/错密码与篡改报错/加密包与明文导入、CSV 与 xlsx「对象存储」列头往返及旧列头兼容（T-072） |
 | `services/data_exchange_test.go` | 空库 xlsx 回灌：零信任字段+子表往返、二次导入幂等 skip（T-052）；端口映射协议列往返+含协议自然键 skip（T-055）；零信任同账户名合并（字段补录+targets 并集，T-058） |
 | `utils/password_test.go` | bcrypt 往返、旧 `salt$hash` 兼容、非法存储拒绝、盐唯一性 |
 | `utils/datetime_test.go` | 导入宽容日期归一：标准/斜杠/点/中文年月日/紧凑写法归一 `YYYY-MM-DD`、空串合法、两位年份与带时刻/非法值报错（T-065） |
@@ -155,7 +153,7 @@
 | `api/auth.js` | `/auth/login`、`/auth/me`、`/auth/password` |
 | `api/host.js` | `/hosts/*`、`/batch/hosts` |
 | `api/csv.js` | `/import`、`/export`、`/template` |
-| `api/dataExchange.js` | `/export/all`（`password` 必填，T-072）、`/import/all`（`file` + 可选 `password`） |
+| `api/dataExchange.js` | `/export/all`（xlsx 字节，加密由前端完成，T-074）、`/import/all`（`file`，加密文件前端先解密） |
 | `api/cloud_resource.js` | `/cloud-resources` |
 | `api/stats.js` | `/stats/ip-usage`、`/stats/probe`、`/stats/business` |
 | `api/subnet.js` | `/ip-subnets` |
@@ -229,6 +227,7 @@
 | 文件 | 职责 |
 |------|------|
 | `utils/index.js` | `downloadBlob`、`formatTime`、各下拉选项常量 |
+| `utils/xlsxCrypto.js` | 数据备份 xlsx 标准 Office 加密解密（T-074）：`isEncryptedXlsx`（OLE magic 判断）、`encryptXlsx`、`decryptXlsx`（Agile 解密为异步） |
 | `styles/global.css` | 全局样式、状态/标签 CSS class |
 
 ---
@@ -254,7 +253,7 @@
 | **主机筛选/搜索** | `services/host_service.go` → `Filter` | `components/SearchToolbar.vue` |
 | **批量增改** | `controllers/batch.go` `services/host_batch_service.go` → `BatchCreate`/`BatchUpdate` | `components/BatchAddDialog.vue` `components/BatchEditDialog.vue` |
 | **CSV 导入导出** | `controllers/csv.go` `services/host_csv_service.go` `utils/csv.go` | `components/ImportDialog.vue` `api/csv.js` |
-| **数据备份 xlsx 导出/导入（密码加密，T-072）** | `controllers/data_exchange.go` `services/export_service.go` `services/import_service.go` `services/backup_crypto.go` | `views/DataBackup.vue` `api/dataExchange.js` |
+| **数据备份 xlsx 导出/导入（前端密码加密，T-074）** | `controllers/data_exchange.go` `services/export_service.go` `services/import_service.go` `services/port_set.go` | `views/DataBackup.vue` `api/dataExchange.js` `utils/xlsxCrypto.js` |
 | **云资源录入** | `controllers/cloud_resource.go` `services/cloud_resource_service.go` | `components/CloudResourceDialog.vue` `stores/cloudResource.js` |
 | **资源统计** | `controllers/cloud_resource.go` + `GET /api/hosts` | `views/ResourceStatistics.vue` `stores/cloudResource.js` `composables/useChartOption.js` |
 | **IP 使用位图** | `controllers/stats.go` → `IPUsage` `services/stats_service.go` → `GetIPUsage` | `views/IpStatistics.vue` `components/ip/SubnetCard.vue` `stores/stats.js` |

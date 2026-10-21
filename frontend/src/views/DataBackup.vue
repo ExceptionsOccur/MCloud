@@ -72,14 +72,14 @@
           type="info"
           :closable="false"
           show-icon
-          title="单个备份包包含 8 张业务表（人员/公网IP/云资源/IP网段/主机/申请信息/零信任/端口映射），关联用自然键表达（人员姓名、内网IP），不包含账号密码。"
+          title="单个 Excel 包含 8 张业务表（人员/公网IP/云资源/IP网段/主机/申请信息/零信任/端口映射），关联用自然键表达（人员姓名、内网IP），不包含账号密码。"
         />
         <el-alert
           type="warning"
           :closable="false"
           show-icon
           style="margin-top: 10px;"
-          title="导出必须设置密码（AES-256-GCM 加密，文件后缀 .mcbak）；导入加密备份须输入同一密码，明文 .xlsx 可直接导入。导入仅新增与更新（不删除已有数据），任一行失败将整体回滚。"
+          title="导出必须设置密码：文件为 Excel 标准加密的 .xlsx，可用 Excel/WPS 输密码打开、修改后另存再导入。导入时填写密码即先解密；未加密的 .xlsx 可直接导入。导入仅新增与更新（不删除已有数据），任一行失败将整体回滚。"
         />
 
         <div class="action-row">
@@ -88,7 +88,7 @@
             type="password"
             show-password
             clearable
-            placeholder="导出密码（必填，至少 6 位）"
+            placeholder="导出密码（必填，至少 6 位，用于加密 Excel）"
             style="max-width: 320px;"
           />
           <el-button
@@ -108,7 +108,7 @@
           drag
           :auto-upload="false"
           :limit="1"
-          accept=".xlsx,.mcbak"
+          accept=".xlsx"
           :on-change="handleFileChange"
           :on-remove="handleFileRemove"
         >
@@ -119,11 +119,11 @@
             <Upload />
           </el-icon>
           <div class="el-upload__text">
-            将 .mcbak 加密备份或 .xlsx 文件拖到此处，或<em>点击上传</em>
+            将 .xlsx 备份文件（可加密）拖到此处，或<em>点击上传</em>
           </div>
           <template #tip>
             <div class="el-upload__tip">
-              支持本页导出的 .mcbak 加密备份或 .xlsx 文件，最大 20MB
+              支持本页导出的加密 .xlsx 或未加密 .xlsx，最大 20MB
             </div>
           </template>
         </el-upload>
@@ -134,7 +134,7 @@
             type="password"
             show-password
             clearable
-            placeholder="导入密码（加密备份必填，明文 xlsx 可留空）"
+            placeholder="打开密码（加密 Excel 必填，未加密可留空）"
             style="max-width: 320px;"
           />
           <el-button
@@ -231,6 +231,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { exportAll, importAll } from '../api/dataExchange'
 import { downloadBlob, formatDate } from '../utils'
+import { encryptXlsx, decryptXlsx } from '../utils/xlsxCrypto'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import AppNav from '../components/AppNav.vue'
 
@@ -243,6 +244,8 @@ const exporting = ref(false)
 const importing = ref(false)
 const file = ref(null)
 const report = ref(null)
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
 const exportPassword = ref('')
 const importPassword = ref('')
 
@@ -276,8 +279,16 @@ async function handleExport() {
   }
   exporting.value = true
   try {
-    const blob = await exportAll(exportPassword.value)
-    downloadBlob(blob, `mcloud_backup_${formatDate()}.mcbak`)
+    const blob = await exportAll()
+    const plain = await blob.arrayBuffer()
+    let bytes
+    try {
+      bytes = encryptXlsx(plain, exportPassword.value)
+    } catch (err) {
+      ElMessage.error('加密失败：' + (err?.message || '未知错误'))
+      return
+    }
+    downloadBlob(new Blob([bytes], { type: XLSX_MIME }), `mcloud_backup_${formatDate()}.xlsx`)
     ElMessage.success('导出成功（已加密）')
   } finally {
     exporting.value = false
@@ -295,12 +306,8 @@ function handleFileRemove() {
 async function handleImport() {
   if (!file.value) return
   const name = file.value.name.toLowerCase()
-  if (!name.endsWith('.xlsx') && !name.endsWith('.mcbak')) {
-    ElMessage.warning('仅支持 .mcbak 加密备份或 .xlsx 文件')
-    return
-  }
-  if (name.endsWith('.mcbak') && !importPassword.value) {
-    ElMessage.warning('加密备份须输入导出时设置的密码')
+  if (!name.endsWith('.xlsx')) {
+    ElMessage.warning('仅支持 .xlsx 文件')
     return
   }
   try {
@@ -316,7 +323,18 @@ async function handleImport() {
   importing.value = true
   report.value = null
   try {
-    const res = await importAll(file.value, importPassword.value)
+    // 加密 Excel 先在前端解密（密码不正确时直接提示，不上传）；未加密文件原样上传
+    let uploadFile = file.value
+    if (importPassword.value) {
+      try {
+        const bytes = await decryptXlsx(await file.value.arrayBuffer(), importPassword.value)
+        uploadFile = new File([bytes], file.value.name, { type: XLSX_MIME })
+      } catch (err) {
+        ElMessage.error('解密失败：' + (err?.message || '密码错误'))
+        return
+      }
+    }
+    const res = await importAll(uploadFile)
     // 拦截器返回响应体 {code, message, data}，导入报告在 data 内
     report.value = res.data
     if (report.value?.committed) {

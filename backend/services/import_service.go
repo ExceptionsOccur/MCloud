@@ -112,17 +112,11 @@ func sheetHasColumn(colIdx map[string]int, sheet, header string) bool {
 	return ok
 }
 
-// ImportWithPassword 导入备份：加密包须提供密码，明文 xlsx 可无密码（T-072）
-func (s *DataExchangeService) ImportWithPassword(data []byte, password string, op Operator, requestID string) (*ImportReport, error) {
-	plain, err := DecryptBackup(data, password)
-	if err != nil {
-		return nil, err
-	}
-	return s.Import(plain, op, requestID)
-}
-
 // Import 导入 xlsx 并按依赖序 upsert 8 表；单事务，任意行失败整体回滚
 func (s *DataExchangeService) Import(data []byte, op Operator, requestID string) (*ImportReport, error) {
+	if !workbookIsXLSX(data) {
+		return nil, fmt.Errorf("%w: 文件不是有效的 .xlsx（若为加密 Excel，请在导入时填写密码）", ErrImportStructure)
+	}
 	sheets, err := parseWorkbook(data)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrImportStructure, err.Error())
@@ -513,6 +507,11 @@ func (s *DataExchangeService) applySubnets(tx *gorm.DB, sh *importSheet, report 
 		stat.Created++
 	})
 	return nil
+}
+
+// workbookIsXLSX 判断字节是否 xlsx（zip 包以 PK 开头；用于前端未解密就上传时给出明确提示，T-074）
+func workbookIsXLSX(data []byte) bool {
+	return len(data) >= 4 && data[0] == 'P' && data[1] == 'K' && data[2] == 3 && data[3] == 4
 }
 
 // hostObjectStorageCell 取「对象存储」列；T-072 前的旧备份列头为「磁盘」，兼容读取

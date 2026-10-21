@@ -205,7 +205,7 @@
               </el-form-item>
             </el-col>
             <el-col :span="12">
-            <el-form-item label="CPU架构">
+              <el-form-item label="CPU架构">
                 <el-select
                   v-model="form.cpu_arch"
                   placeholder="请选择"
@@ -219,7 +219,6 @@
                   />
                 </el-select>
               </el-form-item>
-              
             </el-col>
           </el-row>
           <el-row :gutter="16">

@@ -101,8 +101,8 @@
 
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
-| GET | `/api/export/all` | `dataExchange.Export` | 导出 8 个业务 sheet 为单个 xlsx 并**加密**为 `.mcbak` 包（query `password` 必填，缺失返回 `40001`；T-072） |
-| POST | `/api/import/all` | `dataExchange.Import` | 上传备份整体导入（multipart 字段 `file` + 可选 `password`；加密包须密码、明文 `.xlsx` 可无密码；upsert + 单事务回滚） |
+| GET | `/api/export/all` | `dataExchange.Export` | 导出 8 个业务 sheet 为单个 xlsx（附件下载）；**加密由前端完成**（T-074，导出为 Excel 标准加密 `.xlsx`） |
+| POST | `/api/import/all` | `dataExchange.Import` | 上传 xlsx 整体导入（multipart 字段 `file`；加密 Excel 由前端先解密；upsert + 单事务回滚） |
 
 ### 审计日志（需 JWT）
 
@@ -428,7 +428,7 @@ POST /api/port-mappings/batch
 
 ## 数据备份 xlsx 导出/导入
 
-`GET /api/export/all?password=xxx` 先生成单文件 8 个工作表（T-063 起为中文名，顺序即导入依赖顺序），再以密码加密（T-072）后返回附件（`Content-Disposition: attachment`，文件名 `mcloud_backup_YYYY-MM-DD.xlsx.mcbak`，`Content-Type: application/octet-stream`）：
+`GET /api/export/all` 返回单文件 8 个工作表（T-063 起为中文名，顺序即导入依赖顺序）的 xlsx 附件（`Content-Disposition: attachment`，文件名 `mcloud_backup_YYYY-MM-DD.xlsx`）；前端拿到字节后用密码加密为 Excel 标准加密 `.xlsx` 再下载（T-074）：
 
 `人员` → `公网IP` → `云资源` → `网段` → `主机` → `主机申请信息` → `零信任` → `端口映射`
 
@@ -439,9 +439,9 @@ POST /api/port-mappings/batch
 - `主机.ip_mapped` 为派生列不导出（导入后由后端重算）；`端口映射` 无运营商/出口位置列（`T-049` 起派生字段，库中不存），从资源池带出；`端口映射` 含「外网协议/内网协议」列（T-055，旧备份文件缺列时导入默认 tcp）；`零信任` 的「接入地区」列为独立存储字段（T-061，替代原「公网IP」列；T-065 支持多值，逗号分隔）
 - 导入按各表复合自然键 upsert：`人员`=姓名+联系方式、`公网IP`=公网IP、`云资源`=区域、`网段`=网段CIDR、`主机`=内网IP、`主机申请信息`=宿主内网IP、`零信任`=账户名（T-058 合并语义：接入目标并集、空字段补录、非空保留，同文件多行同账户名同样合并）、`端口映射`=公网IP+宿主内网IP+外网端口+外网协议
 - 语义：**仅新增与更新，不删除**已有数据；sheet 与列头按名匹配（列顺序可变），全空行跳过
-- `POST /api/import/all`：`multipart/form-data`，字段 `file`（`.mcbak` 加密备份或 `.xlsx`，≤ 20MB）+ 可选字段 `password`；加密包缺密码/密码错误均返回 `40001`
+- `POST /api/import/all`：`multipart/form-data`，字段 `file`，仅 `.xlsx`，≤ 20MB；**加密 Excel 由前端凭密码解密后再上传**（T-074，后端只接收明文 xlsx；上传未解密的加密文件返回 `40001`「文件不是有效的 .xlsx（若为加密 Excel，请在导入时填写密码）」）
 
-加密包格式（T-072）：`magic(MCLBK1) | version(1) | iterations(4 BE) | salt(16) | nonce(12) | ciphertext`；密钥 = PBKDF2-HMAC-SHA256(密码, salt, 210000) 取 32 字节，AES-256-GCM 加密，版本/迭代次数/盐纳入 AAD。
+加密方式（T-074）：前端 `officecrypto-tool` 生成 ECMA-376 标准 Office 加密 xlsx，用户可用 Excel/WPS 输入密码打开、另存修改后重新导入；T-072 的自定义 `.mcbak` 加密包已移除。
 
 导入响应 `data`（导入报告）：
 

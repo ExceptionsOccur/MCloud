@@ -74,7 +74,7 @@
 | 字段 | 值 |
 |------|-----|
 | last_updated | 2026-10-20 |
-| in_progress | 无 |
+| in_progress | T-074 数据备份导出改为标准 Office 加密 xlsx（AI 会话，2026-10-20） |
 | next_task | 无（todo 队列已清空） |
 | todo（P1） | 无 |
 | todo（P2） | 无 |
