@@ -74,7 +74,7 @@
 | 字段 | 值 |
 |------|-----|
 | last_updated | 2026-10-21 |
-| in_progress | 无 |
+| in_progress | T-082 申请时间为空默认当天（AI 会话，2026-10-21） |
 | next_task | 无（todo 队列已清空） |
 | todo（P1） | 无 |
 | todo（P2） | 无 |

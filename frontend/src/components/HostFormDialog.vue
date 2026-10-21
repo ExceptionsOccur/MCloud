@@ -459,7 +459,7 @@ import { useCloudResourceStore } from '../stores/cloudResource'
 import { getPersons, createPerson } from '../api/person'
 import { getHost } from '../api/host'
 import { ElMessage } from 'element-plus'
-import { statusOptions, envTypeOptions, assetTypeOptions, cpuArchOptions } from '../utils'
+import { statusOptions, envTypeOptions, assetTypeOptions, cpuArchOptions, formatDate } from '../utils'
 import AuditTimeline from './AuditTimeline.vue'
 
 const hostStore = useHostStore()
@@ -715,6 +715,9 @@ async function open(data) {
       }
     }
   }
+
+  // T-082：申请时间为空（新增或历史数据缺值）时默认当天，有值保留原值
+  if (!form.apply_time) form.apply_time = formatDate()
 
   visible.value = true
 }
