@@ -38,7 +38,7 @@
 
 ### 2026-10-21
 
-- `-` `fix:` **T-084** ECharts 注册 `GraphicComponent` 消除 graphic 告警；主机页脚总数与云内/云外计数改为全库统计，不再随筛选变化
+- `d6ecce5` `fix:` **T-084** ECharts 注册 `GraphicComponent` 消除 graphic 告警；主机页脚总数与云内/云外计数改为全库统计，不再随筛选变化
 
 - `52f51cb` `refactor:` **T-083** 移除主机「开放端口」字段（模型/API/CSV 26 列/xlsx 备份/审计/AI schema/前端表单全链路，迁移删列）
 

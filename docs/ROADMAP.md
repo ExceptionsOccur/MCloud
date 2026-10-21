@@ -41,7 +41,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
-| T-084 | 修复 ECharts graphic 未注册告警 + 主机页脚计数改为全库总数 | 2026-10-21 | `-` | 验收：`useChartOption` 内置注册 GraphicComponent（产物含 graphic model/view）；`internal_count`/`external_count` 改为全库统计，dev 实测 5 种筛选下恒为 202/3；单测补充筛选不影响计数；三端门禁全绿 |
+| T-084 | 修复 ECharts graphic 未注册告警 + 主机页脚计数改为全库总数 | 2026-10-21 | `d6ecce5` | 验收：`useChartOption` 内置注册 GraphicComponent（产物含 graphic model/view）；`internal_count`/`external_count` 改为全库统计，dev 实测 5 种筛选下恒为 202/3；单测补充筛选不影响计数；三端门禁全绿 |
 | T-083 | 移除主机「开放端口」字段（全链路） | 2026-10-21 | `52f51cb` | 验收：dev 库迁移删列（5 条存量按确认丢弃）；CSV 26 列/xlsx 往返无该字段；全仓无残留；三端门禁全绿 |
 | T-082 | 编辑弹窗打开时申请时间为空则默认填充当天（修正 T-081 口径） | 2026-10-21 | `f3a76be` | 验收：主机四模式与零信任新增/编辑/复制弹窗空值默认当天、有值保留；前端 lint/build/test 全绿 |
 | T-080 | 移除申请信息冗余「对象存储大小」字段（统一取 `hosts.object_storage`） | 2026-10-21 | `33789ae` | 验收：迁移 dev 实测删列（存量 205 行全空）；导入导出往返不含该字段、备份申请信息 sheet 9 列；全仓无残留；三端门禁全绿 |
