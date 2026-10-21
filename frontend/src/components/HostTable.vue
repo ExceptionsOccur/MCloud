@@ -170,7 +170,7 @@
 
     <div class="table-footer">
       <span class="host-counts">
-        共 {{ hostStore.total }} 台（云内 {{ internalCount }} 台 / 云外 {{ externalCount }} 台）
+        全库共 {{ totalCount }} 台（云内 {{ internalCount }} 台 / 云外 {{ externalCount }} 台）
       </span>
     </div>
 
@@ -189,7 +189,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useHostStore } from '../stores/host'
 import { ElMessage } from 'element-plus'
@@ -200,6 +200,8 @@ const emit = defineEmits(['selection-change'])
 const selectedIds = ref([])
 
 const { internalCount, externalCount } = storeToRefs(hostStore)
+// T-084：页脚总数为全库总数（不受筛选影响）
+const totalCount = computed(() => internalCount.value + externalCount.value)
 
 function handleSelectionChange(selection) {
   selectedIds.value = selection.map(row => row.id)

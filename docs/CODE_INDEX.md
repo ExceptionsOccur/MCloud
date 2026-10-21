@@ -179,7 +179,7 @@
 | 文件 | 职责 |
 |------|------|
 | `composables/useProbeWebSocket.js` | 探测 WS 连接管理：连接/3s 重连/发送/卸载清理，`onMessage` 回调交回调用方处理业务帧 |
-| `composables/useChartOption.js` | ECharts 按需注册（CanvasRenderer 内置）+ 返回 `VChart`（模板 `<v-chart>`） |
+| `composables/useChartOption.js` | ECharts 按需注册（`CanvasRenderer` 与 `GraphicComponent` 内置，T-084）+ 返回 `VChart`（模板 `<v-chart>`） |
 | `composables/usePagedTable.js` | 分页列表通用态：页码/页大小/筛选/加载/总数、`fetchPage`/`setFilter`/`setPage`/`resetFilters` |
 | `composables/useProbeGrid.js` | 位图探测状态机（T-005）：颜色/单点探测/批量测试/网段计数，`onUnmounted` 清理 resolver |
 

@@ -37,7 +37,7 @@ type ListHostResponse struct {
 	Total int64         `json:"total"`
 	Page  int           `json:"page"`
 	Size  int           `json:"page_size"`
-	// T-078：全量（命中筛选后）云内/云外汇总计数，供列表页脚分开显示
+	// T-084：全库云内/云外汇总计数（不受筛选影响），供列表页脚分开显示；页脚总数 = 两者之和
 	InternalCount int64 `json:"internal_count"`
 	ExternalCount int64 `json:"external_count"`
 }
@@ -124,12 +124,11 @@ func (s *HostService) Filter(req FilterHostRequest) (*ListHostResponse, error) {
 	db := applyHostFilter(database.DB.Model(&models.Host{}), req)
 
 	var total int64
-	// T-078：页脚分开统计云内/云外；用独立 Session 避免 Count 条件串联到后续查询
-	base := db.Session(&gorm.Session{})
-	base.Count(&total)
+	db.Count(&total)
+	// T-084：页脚展示全库总数与云内/云外拆分，不受筛选条件影响（始终统计整表）
 	var internalCount, externalCount int64
-	base.Where("is_external = ?", false).Count(&internalCount)
-	base.Where("is_external = ?", true).Count(&externalCount)
+	database.DB.Model(&models.Host{}).Where("is_external = ?", false).Count(&internalCount)
+	database.DB.Model(&models.Host{}).Where("is_external = ?", true).Count(&externalCount)
 
 	var hosts []models.Host
 	offset := (req.Page - 1) * req.PageSize

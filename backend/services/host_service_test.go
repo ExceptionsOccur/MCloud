@@ -362,6 +362,10 @@ func TestHostExternalFlag(t *testing.T) {
 	if onlyInternal.Total != 1 || onlyInternal.Hosts[0].ID == ext2 || onlyInternal.Hosts[0].IsExternal {
 		t.Fatalf("云内筛选不符: %+v", onlyInternal.Hosts)
 	}
+	// T-084：筛选不应影响页脚全库计数（total 随筛选变化，internal/external 恒定）
+	if onlyInternal.InternalCount != 1 || onlyInternal.ExternalCount != 1 {
+		t.Fatalf("筛选后全库计数应不变: internal=%d external=%d", onlyInternal.InternalCount, onlyInternal.ExternalCount)
+	}
 
 	onlyExternal, err := s.Filter(FilterHostRequest{Page: 1, PageSize: 10, IsExternal: "1"})
 	if err != nil {
@@ -369,6 +373,21 @@ func TestHostExternalFlag(t *testing.T) {
 	}
 	if onlyExternal.Total != 1 || onlyExternal.Hosts[0].ID != ext2 || !onlyExternal.Hosts[0].IsExternal {
 		t.Fatalf("云外筛选不符: %+v", onlyExternal.Hosts)
+	}
+	if onlyExternal.InternalCount != 1 || onlyExternal.ExternalCount != 1 {
+		t.Fatalf("筛选后全库计数应不变: internal=%d external=%d", onlyExternal.InternalCount, onlyExternal.ExternalCount)
+	}
+
+	// 关键字筛选同样不影响全库计数
+	byKeyword, err := s.Filter(FilterHostRequest{Page: 1, PageSize: 10, Keyword: "不存在的关键字"})
+	if err != nil {
+		t.Fatalf("Filter 关键字失败: %v", err)
+	}
+	if byKeyword.Total != 0 {
+		t.Fatalf("无关关键字应命中 0 条，实际 %d", byKeyword.Total)
+	}
+	if byKeyword.InternalCount != 1 || byKeyword.ExternalCount != 1 {
+		t.Fatalf("关键字筛选后全库计数应不变: internal=%d external=%d", byKeyword.InternalCount, byKeyword.ExternalCount)
 	}
 
 	// 更新为云内
