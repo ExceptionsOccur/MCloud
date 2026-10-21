@@ -54,7 +54,8 @@ go/
 ├── AGENTS.md                      # 项目总纲（统一入口）
 ├── .gitignore                     # Git 忽略规则（.env、dist/、node_modules、IDE/OS 文件）
 ├── scripts/                       # 仓库自动化脚本
-│   └── check_docs.sh              # 文档一致性校验（链接/目录树/状态快照/计数/提交号）
+│   ├── check_docs.sh              # 文档一致性校验（链接/目录树/状态快照/计数/提交号）
+│   └── check_frontend_bundle.sh   # 打包产物运行时校验：无全局 Buffer 沙箱内跑 xlsx 加解密（T-076）
 │
 ├── docs/                          # 工程文档
 │   ├── ROADMAP.md                 # 任务队列（任务状态唯一事实来源）
@@ -201,10 +202,11 @@ go/
     ├── package-lock.json
     ├── .eslintrc.cjs              # ESLint 配置（eslint:recommended + vue 插件）
     ├── .eslintignore              # ESLint 忽略：dist/、node_modules/
-    ├── vite.config.js             # 代理 /api 到后端（ws: true 支持 WebSocket）
+    ├── vite.config.js             # 代理 /api 到后端（ws: true）；Node polyfill（buffer/crypto，T-076）
     │
     └── src/
-        ├── main.js                # 入口：注册 Vue Router、Pinia、Element Plus
+        ├── main.js                # 入口：注册 Vue Router、Pinia、Element Plus（首行 import './polyfills'）
+        ├── polyfills.js           # 浏览器端 Buffer 全局注入（须早于任何依赖 Buffer 的库，T-076）
         ├── App.vue                # 根组件（路由出口）
         │
         ├── router/

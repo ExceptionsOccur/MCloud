@@ -143,7 +143,7 @@
 | `frontend/src/main.js` | 注册 Pinia、Vue Router、Element Plus、图标、全局样式 |
 | `frontend/src/App.vue` | 根组件（`<router-view />`） |
 | `frontend/src/router/index.js` | 路由配置 + 登录守卫 |
-| `frontend/vite.config.js` | 开发代理 `/api` → 后端（`ws: true` 支持 WebSocket） |
+| `frontend/vite.config.js` | 开发代理 `/api` → 后端（`ws: true`）；`vite-plugin-node-polyfills` 提供 buffer/crypto/stream（officecrypto 依赖，T-076） |
 
 ### API 封装（api/）
 
@@ -227,7 +227,7 @@
 | 文件 | 职责 |
 |------|------|
 | `utils/index.js` | `downloadBlob`、`formatTime`、各下拉选项常量 |
-| `utils/xlsxCrypto.js` | 数据备份 xlsx 标准 Office 加密解密（T-074）：`isEncryptedXlsx`（OLE magic 判断）、`encryptXlsx`、`decryptXlsx`（Agile 解密为异步） |
+| `utils/xlsxCrypto.js` | 数据备份 xlsx 标准 Office 加密解密（T-074）：`isEncryptedXlsx`（OLE magic 判断）、`encryptXlsx`、`decryptXlsx`（Agile 解密为异步）；浏览器依赖 `polyfills.js` + Vite polyfill（T-076） |
 | `styles/global.css` | 全局样式、状态/标签 CSS class |
 
 ---
@@ -237,6 +237,7 @@
 | 文件 | 职责 |
 |------|------|
 | `scripts/check_docs.sh` | 文档一致性校验 5 项（links/tree/snapshot/counts/shas），AGENTS「验证命令」文档改动项，支持 `--only`/`--list` |
+| `scripts/check_frontend_bundle.sh` | 前端打包产物运行时校验（T-076）：产物中不得出现空 crypto 桩、须含 Buffer 注入；无全局 Buffer 沙箱内跑 xlsx 加密-解密往返 |
 
 ---
 

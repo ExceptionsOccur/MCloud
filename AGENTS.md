@@ -74,7 +74,7 @@
 | 字段 | 值 |
 |------|-----|
 | last_updated | 2026-10-20 |
-| in_progress | 无 |
+| in_progress | T-076 修复数据备份加解密浏览器运行时崩溃（AI 会话，2026-10-20） |
 | next_task | 无（todo 队列已清空） |
 | todo（P1） | 无 |
 | todo（P2） | 无 |
@@ -174,6 +174,8 @@ cd backend && go build ./... && golangci-lint run ./...
 
 # 前端改动（门禁用 lint:check；npm run lint 带 --fix 会改写文件，仅用于本地修复）
 cd frontend && npm run lint:check && npm run build
+# 涉及 Node polyfill / 第三方浏览器库时追加（lint/test/build 不覆盖运行时）
+bash scripts/check_frontend_bundle.sh
 
 # 文档改动（链接/锚点、目录树、状态快照、计数、提交号一致性全量校验）
 bash scripts/check_docs.sh

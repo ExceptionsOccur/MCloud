@@ -414,6 +414,14 @@ docker-compose -f docker-compose.prod.yml up -d --build
    - 合并回 `main`，删除功能分支
 4. **多任务会话**：合并回 `main` 并删除本任务分支后，方可认领下一条任务；下一条分支从更新后的 `main` 拉出（串行合并，见上）
 
+### 浏览器端 Node 依赖（polyfill）
+
+前端打包**不得直接依赖 Node 内置模块**。确需使用（如 `officecrypto-tool` 依赖 `buffer` / `crypto`）时：
+
+- Node 内置模块必须在 `vite.config.js` 用 `vite-plugin-node-polyfills` 做**真实 polyfill**；Vite 默认会把未声明的 Node 模块替换为空对象，调用时才在浏览器报错（T-074 事故：`crypto.randomBytes is not a function`）
+- 需要注入全局的（如 `Buffer`）放在 `src/polyfills.js`，并在 `main.js` **第一行** `import './polyfills'`；不要写在应用逻辑里——同一 chunk 内模块求值早于业务代码，`globalThis.Buffer = ...` 会来不及生效（T-074 事故：`Buffer is not defined`）
+- 改完必须跑 `bash scripts/check_frontend_bundle.sh`：`lint`/`vitest`/`vite build` **均不覆盖**运行时 polyfill 是否生效
+
 ### 周期回顾（每完成 5 条任务）
 
 `done` 表（按日期倒序）中**完成时间晚于 ROADMAP「上次回顾至 T-xxx（YYYY-MM-DD）」锚点任务**的条目 ≥ 5 条时，认领下一条任务前先执行周期回顾（以「完成时间」列为准，勿被倒序行序误导）：按该批任务的「回写」字段 + [AGENTS.md · 文档更新责任矩阵](../AGENTS.md#文档更新责任矩阵) 定向核查文档与代码符合度，补回填写漏；纯文档类任务（仅改文档、不涉及 `backend/`/`frontend/` 代码）跳过核查；发现偏差先输出清单报告人类、确认后再修，完成后推进锚点。完整条文见 [AGENTS.md · 会话协议 E](../AGENTS.md#会话协议)。
