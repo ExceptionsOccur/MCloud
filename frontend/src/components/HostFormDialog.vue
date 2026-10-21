@@ -459,7 +459,7 @@ import { useCloudResourceStore } from '../stores/cloudResource'
 import { getPersons, createPerson } from '../api/person'
 import { getHost } from '../api/host'
 import { ElMessage } from 'element-plus'
-import { statusOptions, envTypeOptions, assetTypeOptions, cpuArchOptions } from '../utils'
+import { statusOptions, envTypeOptions, assetTypeOptions, cpuArchOptions, formatDate } from '../utils'
 import AuditTimeline from './AuditTimeline.vue'
 
 const hostStore = useHostStore()
@@ -611,6 +611,8 @@ function resetForm() {
     if (typeof form[key] === 'boolean') form[key] = false
     else form[key] = ''
   })
+  // T-081：新建时申请时间默认当天；编辑/详情由 fillFormFromHost 覆盖为原值
+  form.apply_time = formatDate()
   relations.zeroTrusts = []
   relations.portMappings = []
 }
@@ -703,6 +705,8 @@ async function open(data) {
       editId.value = null
       form.private_ip = ''
       form.instance_id = ''
+      // T-081：复制视为新建，申请时间取当天
+      form.apply_time = formatDate()
     }
 
     // 已关联人员但申请信息为空时，从人员库回填
