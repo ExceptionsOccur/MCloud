@@ -385,7 +385,7 @@ func TestHostExternalFlag(t *testing.T) {
 	}
 }
 
-// TestHostExternalCSV T-078/T-080：CSV 27 列（末列「是否云外主机」）往返，旧 26 列默认云内
+// TestHostExternalCSV T-078/T-080/T-083：CSV 26 列（末列「是否云外主机」）往返，旧 25 列默认云内
 func TestHostExternalCSV(t *testing.T) {
 	if last := utils.CSVHeaders[len(utils.CSVHeaders)-1]; last != "是否云外主机" {
 		t.Fatalf("CSV 末列表头=%q，期望 是否云外主机", last)
@@ -397,23 +397,29 @@ func TestHostExternalCSV(t *testing.T) {
 		"华东", "i-078", "ext-host", "10.5.2.1", "否",
 		"虚拟机", "CentOS", "2", "X86", "4",
 		"40", "100", "生产", "否",
-		"运行中", "22", "", "单位", "张三", "", "", "", "", "2026-01-02", "", "600", "是",
+		"运行中", "", "单位", "张三", "", "", "", "", "2026-01-02", "", "600", "是",
 	}
 	req, err := s.ParseCSVRowToCreateHost(row)
 	if err != nil {
-		t.Fatalf("解析 27 列失败: %v", err)
+		t.Fatalf("解析 26 列失败: %v", err)
 	}
 	if req.IsExternal == nil || !*req.IsExternal {
-		t.Fatal("27 列末列「是」应解析为云外")
+		t.Fatal("26 列末列「是」应解析为云外")
+	}
+	if req.ObjectStorage != 600 {
+		t.Fatalf("对象存储应为 600，实际 %d", req.ObjectStorage)
+	}
+	if req.Tags != "" || req.ApplyUnit != "单位" || req.Applicant != "张三" || req.ApplyTime != "2026-01-02" || req.Remark != "" {
+		t.Fatalf("列位移后申请字段不符: %+v", req)
 	}
 
-	// 旧 26 列：无该列 → 默认云内
-	req, err = s.ParseCSVRowToCreateHost(row[:26])
+	// 旧 25 列：无云外列 → 默认云内
+	req, err = s.ParseCSVRowToCreateHost(row[:25])
 	if err != nil {
-		t.Fatalf("解析 27 列失败: %v", err)
+		t.Fatalf("解析 25 列失败: %v", err)
 	}
 	if req.IsExternal == nil || *req.IsExternal {
-		t.Fatal("旧 26 列应默认云内")
+		t.Fatal("旧 25 列应默认云内")
 	}
 
 	// 导出列与表头等长（先落库一台）

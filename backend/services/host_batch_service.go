@@ -55,7 +55,6 @@ type BatchCreateItem struct {
 	IsDBServer       *bool  `json:"is_db_server"`
 	IsExternal       *bool  `json:"is_external"`
 	Status           string `json:"status"`
-	OpenPorts        string `json:"open_ports"`
 	Tags             string `json:"tags"`
 	Applicant        string `json:"applicant"`
 	Project          string `json:"project"`
@@ -181,7 +180,6 @@ func (s *HostService) BatchCreate(req BatchCreateRequest, op Operator, requestID
 			IsDBServer:       item.IsDBServer,
 			IsExternal:       item.IsExternal,
 			Status:           item.Status,
-			OpenPorts:        item.OpenPorts,
 			Tags:             item.Tags,
 			Applicant:        item.Applicant,
 			Project:          item.Project,

@@ -21,7 +21,6 @@ type Host struct {
 	EnvType       string    `json:"env_type" gorm:"type:varchar(16)"`
 	IsDBServer    bool      `json:"is_db_server" gorm:"default:false"`
 	Status        string    `json:"status" gorm:"type:varchar(32)"`
-	OpenPorts     string    `json:"open_ports" gorm:"type:text"`
 	Tags          string    `json:"tags" gorm:"type:text"`
 	PersonID      *uint     `json:"person_id" gorm:"index"`
 	CreatedAt     time.Time `json:"created_at" gorm:"autoCreateTime"`

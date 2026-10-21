@@ -23,7 +23,6 @@ func hostSnapshot(h models.Host, app *models.HostApplication) map[string]interfa
 		"env_type":       h.EnvType,
 		"is_db_server":   h.IsDBServer,
 		"status":         h.Status,
-		"open_ports":     h.OpenPorts,
 		"tags":           h.Tags,
 		"person_id":      personIDValue(h.PersonID),
 	}

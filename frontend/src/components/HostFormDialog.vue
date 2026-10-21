@@ -260,7 +260,7 @@
                 />
               </el-form-item>
             </el-col>
-            <el-col :span="6">
+            <el-col :span="12">
               <el-form-item label="对象存储(GB)">
                 <el-input
                   v-model="form.object_storage"
@@ -278,8 +278,6 @@
                 <el-switch v-model="form.is_external" />
               </el-form-item>
             </el-col>
-          </el-row>
-          <el-row :gutter="16">
             <el-col :span="12">
               <el-form-item label="环境类型">
                 <el-select
@@ -296,6 +294,8 @@
                 </el-select>
               </el-form-item>
             </el-col>
+          </el-row>
+          <el-row :gutter="16">
             <el-col :span="12">
               <el-form-item label="状态">
                 <el-select
@@ -312,19 +312,15 @@
                 </el-select>
               </el-form-item>
             </el-col>
+            <el-col :span="12">
+              <el-form-item label="标签">
+                <el-input
+                  v-model="form.tags"
+                  placeholder="标签，逗号分隔"
+                />
+              </el-form-item>
+            </el-col>
           </el-row>
-          <el-form-item label="开放端口">
-            <el-input
-              v-model="form.open_ports"
-              placeholder="如: 80,443,22/tcp"
-            />
-          </el-form-item>
-          <el-form-item label="标签">
-            <el-input
-              v-model="form.tags"
-              placeholder="标签，逗号分隔"
-            />
-          </el-form-item>
         </el-tab-pane>
         <el-tab-pane
           v-if="mode === 'view'"
@@ -477,7 +473,7 @@ const form = reactive({
   region: '', name: '', instance_id: '', private_ip: '', ip_mapped: false,
   asset_type: '', os: '', cpu: '', cpu_arch: '', memory: '', object_storage: '',
   system_disk: '', data_disk: '', env_type: '', is_db_server: false, is_external: false,
-  status: '', open_ports: '', tags: '', person_id: '',
+  status: '', tags: '', person_id: '',
   apply_unit: '', applicant: '', applicant_contact: '', project: '',
   apply_reason: '', apply_config: '', apply_time: '', remark: ''
 })
@@ -633,7 +629,6 @@ function fillFormFromHost(h) {
   form.is_db_server = h.is_db_server || false
   form.is_external = h.is_external || false
   form.status = h.status || ''
-  form.open_ports = h.open_ports || ''
   form.tags = h.tags || ''
   form.person_id = h.person_id ?? ''
   editId.value = h.id

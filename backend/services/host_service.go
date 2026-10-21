@@ -212,7 +212,6 @@ type CreateHostRequest struct {
 	IsDBServer    *bool        `json:"is_db_server"`
 	IsExternal    *bool        `json:"is_external"`
 	Status        string       `json:"status"`
-	OpenPorts     string       `json:"open_ports"`
 	Tags          string       `json:"tags"`
 	PersonID      OptionalUint `json:"person_id"`
 
@@ -256,7 +255,6 @@ func (s *HostService) Create(req CreateHostRequest, op Operator, requestID strin
 		DataDisk:      req.DataDisk,
 		EnvType:       req.EnvType,
 		Status:        req.Status,
-		OpenPorts:     req.OpenPorts,
 		Tags:          req.Tags,
 	}
 
@@ -320,7 +318,6 @@ type UpdateHostRequest struct {
 	IsDBServer    *bool        `json:"is_db_server"`
 	IsExternal    *bool        `json:"is_external"`
 	Status        string       `json:"status"`
-	OpenPorts     string       `json:"open_ports"`
 	Tags          string       `json:"tags"`
 	PersonID      OptionalUint `json:"person_id"`
 
@@ -415,9 +412,6 @@ func (s *HostService) Update(id uint, req UpdateHostRequest, op Operator, reques
 	}
 	if req.Status != "" {
 		updates["status"] = req.Status
-	}
-	if req.OpenPorts != "" {
-		updates["open_ports"] = req.OpenPorts
 	}
 	if req.Tags != "" {
 		updates["tags"] = req.Tags

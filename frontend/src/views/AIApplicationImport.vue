@@ -357,7 +357,6 @@ const hostFields = [
   { key: 'is_db_server', label: '是否数据库服务器', hint: 'true/false' },
   { key: 'is_external', label: '是否云外主机', hint: 'true/false，默认 false' },
   { key: 'status', label: '状态' },
-  { key: 'open_ports', label: '开放端口' },
   { key: 'tags', label: '标签' },
   { key: 'apply_unit', label: '申请单位' },
   { key: 'applicant', label: '申请人' },

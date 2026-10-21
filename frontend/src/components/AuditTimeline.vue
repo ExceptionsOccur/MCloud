@@ -103,7 +103,6 @@ const FIELD_LABELS = {
   is_db_server: '数据库服务器',
   is_external: '云外主机',
   status: '状态',
-  open_ports: '开放端口',
   tags: '标签',
   person_id: '关联人员',
   apply_unit: '申请单位',

@@ -46,24 +46,24 @@ func atoiOrZero(s string) int {
 }
 
 func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, error) {
-	if len(row) < 25 {
-		return CreateHostRequest{}, fmt.Errorf("列数不足，至少25列，实际%d列", len(row))
+	if len(row) < 24 {
+		return CreateHostRequest{}, fmt.Errorf("列数不足，至少24列，实际%d列", len(row))
 	}
 
 	cpu := atoiOrZero(row[7])
 	memory := atoiOrZero(row[9])
 	systemDisk := atoiOrZero(row[10])
 	dataDisk := atoiOrZero(row[11])
-	// T-080：申请信息不再有「对象存储大小」列，基础 25 列 + 可选尾列「对象存储(GB)」「是否云外主机」
+	// T-080/T-083：基础 24 列（已删「对象存储大小」「开放端口」）+ 可选尾列「对象存储(GB)」「是否云外主机」
 	// 对象存储为可选尾列（T-050/T-072）；旧文件无该列，保持 0
 	objectStorage := 0
-	if len(row) >= 26 {
-		objectStorage = atoiOrZero(row[25])
+	if len(row) >= 25 {
+		objectStorage = atoiOrZero(row[24])
 	}
 	// 是否云外主机为可选尾列（T-078）；旧文件无该列，默认云内
 	isExternal := false
-	if len(row) >= 27 {
-		v := strings.TrimSpace(row[26])
+	if len(row) >= 26 {
+		v := strings.TrimSpace(row[25])
 		isExternal = v == "是" || v == "true" || v == "1"
 	}
 
@@ -86,16 +86,15 @@ func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, 
 		IsDBServer:       &isDB,
 		IsExternal:       &isExternal,
 		Status:           strings.TrimSpace(row[14]),
-		OpenPorts:        strings.TrimSpace(row[15]),
-		Tags:             strings.TrimSpace(row[16]),
-		ApplyUnit:        strings.TrimSpace(row[17]),
-		Applicant:        strings.TrimSpace(row[18]),
-		ApplicantContact: strings.TrimSpace(row[19]),
-		Project:          strings.TrimSpace(row[20]),
-		ApplyReason:      strings.TrimSpace(row[21]),
-		ApplyConfig:      strings.TrimSpace(row[22]),
-		ApplyTime:        strings.TrimSpace(row[23]),
-		Remark:           strings.TrimSpace(row[24]),
+		Tags:             strings.TrimSpace(row[15]),
+		ApplyUnit:        strings.TrimSpace(row[16]),
+		Applicant:        strings.TrimSpace(row[17]),
+		ApplicantContact: strings.TrimSpace(row[18]),
+		Project:          strings.TrimSpace(row[19]),
+		ApplyReason:      strings.TrimSpace(row[20]),
+		ApplyConfig:      strings.TrimSpace(row[21]),
+		ApplyTime:        strings.TrimSpace(row[22]),
+		Remark:           strings.TrimSpace(row[23]),
 	}, nil
 }
 
@@ -170,7 +169,7 @@ func (s *HostService) ExportToCSVRows(hosts []models.Host) [][]string {
 			h.Region, h.InstanceID, h.Name, h.PrivateIP, ipMapped,
 			h.AssetType, h.OS, strconv.Itoa(h.CPU), h.CPUArch, strconv.Itoa(h.Memory),
 			strconv.Itoa(h.SystemDisk), strconv.Itoa(h.DataDisk), h.EnvType, isDB,
-			h.Status, h.OpenPorts, h.Tags,
+			h.Status, h.Tags,
 		}
 		if h.Application != nil {
 			row = append(row,

@@ -45,7 +45,6 @@ var hostApplyFields = []AIField{
 	{Key: "is_db_server", Label: "是否数据库服务器", Hint: "true/false"},
 	{Key: "is_external", Label: "是否云外主机", Hint: "默认 false（云内）；true 表示云外服务器"},
 	{Key: "status", Label: "状态", Hint: "运行中/已停止/已关机/待确认"},
-	{Key: "open_ports", Label: "开放端口"},
 	{Key: "tags", Label: "标签"},
 	{Key: "apply_unit", Label: "申请单位"},
 	{Key: "applicant", Label: "申请人"},

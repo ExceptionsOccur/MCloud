@@ -299,7 +299,6 @@ go/
 | 环境类型 | `env_type` | VARCHAR(16) | 可选值：测试、生产 |
 | 是否数据库服务器 | `is_db_server` | BOOLEAN | DEFAULT FALSE |
 | 状态 | `status` | VARCHAR(32) | 可选值：运行中、已停止、已关机、待确认 |
-| 开放端口 | `open_ports` | TEXT | 如 "80,443,22/tcp" |
 | 标签 | `tags` | TEXT | |
 | 人员ID | `person_id` | BIGINT | 可空，FK → persons(id) |
 | 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |

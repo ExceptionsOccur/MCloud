@@ -608,7 +608,6 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 			cpuArch:    c.get("CPU架构"),
 			envType:    c.get("环境类型"),
 			status:     c.get("状态"),
-			openPorts:  c.get("开放端口"),
 			tags:       c.get("标签"),
 		}
 		updates := map[string]interface{}{
@@ -616,7 +615,7 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 			"asset_type": f.assetType, "os": f.os, "cpu": cpu, "cpu_arch": f.cpuArch,
 			"memory": memory, "object_storage": objectStorage, "system_disk": systemDisk, "data_disk": dataDisk,
 			"env_type": f.envType, "is_db_server": isDB, "is_external": isExternal, "status": f.status,
-			"open_ports": f.openPorts, "tags": f.tags, "person_id": personID,
+			"tags": f.tags, "person_id": personID,
 		}
 		if cur, ok := byKey[privateIP]; ok {
 			if cur.Region == f.region && cur.InstanceID == f.instanceID && cur.Name == name &&
@@ -624,7 +623,7 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 				cur.CPUArch == f.cpuArch && cur.Memory == memory && cur.ObjectStorage == objectStorage &&
 				cur.SystemDisk == systemDisk && cur.DataDisk == dataDisk &&
 				cur.EnvType == f.envType && cur.IsDBServer == isDB && cur.IsExternal == isExternal &&
-				cur.Status == f.status && cur.OpenPorts == f.openPorts && cur.Tags == f.tags &&
+				cur.Status == f.status && cur.Tags == f.tags &&
 				uintPtrEqual(cur.PersonID, personID) {
 				stat.Skipped++
 				return
@@ -640,7 +639,7 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 			Region: region, InstanceID: f.instanceID, Name: name, PrivateIP: privateIP,
 			AssetType: f.assetType, OS: f.os, CPU: cpu, CPUArch: f.cpuArch, Memory: memory,
 			ObjectStorage: objectStorage, SystemDisk: systemDisk, DataDisk: dataDisk, EnvType: f.envType,
-			IsDBServer: isDB, IsExternal: isExternal, Status: f.status, OpenPorts: f.openPorts, Tags: f.tags,
+			IsDBServer: isDB, IsExternal: isExternal, Status: f.status, Tags: f.tags,
 			PersonID: personID,
 		}
 		if err := tx.Create(&h).Error; err != nil {
