@@ -55,7 +55,7 @@
 | `controllers/host.go` | 主机 CRUD（`Filter`/`Get`/`Create`/`Update`/`Delete`） |
 | `controllers/batch.go` | 批量添加、批量编辑 |
 | `controllers/csv.go` | CSV 导入、导出、下载模板 |
-| `controllers/data_exchange.go` | 数据备份：8 表 xlsx 导出（`Export`）、导入（`Import`，20MB 限制 + 错误码映射） |
+| `controllers/data_exchange.go` | 数据备份：8 表 xlsx 导出（`Export`）、导入（`Import`，20MB 限制、仅收明文 xlsx（T-074，加密文件由前端先解密）、错误码映射） |
 | `controllers/cloud_resource.go` | 云资源列表、按区域更新 |
 | `controllers/stats.go` | IP 使用情况、单点探测、业务统计 |
 | `controllers/subnet.go` | IP 网段 CRUD |
@@ -204,7 +204,7 @@
 
 | 文件 | 职责 | 使用页面 |
 |------|------|----------|
-| `AppNav.vue` | 顶部导航 6 个 Tab（T-019 抽取，9 页共用）；`variant` prop 保留 DataBackup 历史样式变体保证视觉零变化 | 全部 9 个功能页 |
+| `AppNav.vue` | 顶部导航 6 个 Tab（T-019 抽取，11 页共用）；`variant` prop 保留 DataBackup 历史样式变体保证视觉零变化 | 全部 11 个功能页 |
 | `SearchToolbar.vue` | 搜索框、筛选下拉、操作按钮 | HostManagement |
 | `HostTable.vue` | 主机列表表格 + 分页（行操作：编辑/复制/删除；点击数据行打开只读详情，T-066） | HostManagement |
 | `HostFormDialog.vue` | 新增/编辑/复制/详情弹窗（技术+申请双 Tab；`view` 模式另有「关联台账」「变更记录」时间线 Tab，含人员选择/手输自动建人员；复制模式预填所选行、内网IP/实例ID 置空） | HostManagement |
@@ -216,7 +216,7 @@
 | `ip/SubnetManageDialog.vue` | IP 网段管理弹窗 | IpStatistics |
 | `ip/ProbePanel.vue` | 探测服务连接状态 + 「管理网段」入口（T-005） | IpStatistics |
 | `ip/SubnetCard.vue` | 单网段卡片：统计/批量进度/位图格子（T-005） | IpStatistics |
-| `ZeroTrustBatchAddDialog.vue` | 零信任批量添加弹窗（文本粘贴，10 列） | ZeroTrustLedger |
+| `ZeroTrustBatchAddDialog.vue` | 零信任批量添加弹窗（文本粘贴，11 列） | ZeroTrustLedger |
 | `MappingBatchAddDialog.vue` | 端口映射批量添加弹窗（文本粘贴，6 列） | MappingLedger |
 | `ZeroTrustDetailDialog.vue` | 零信任只读详情弹窗（申请信息 + 接入目标 + 「变更记录」时间线，点击行打开，T-066） | ZeroTrustLedger |
 | `MappingDetailDialog.vue` | 端口映射只读详情弹窗（映射信息 + 端口对 + 「变更记录」时间线，点击行打开，T-066） | MappingLedger |
@@ -340,7 +340,7 @@ GET/POST /api/zero-trusts、GET /api/zero-trusts/exit-locations、PUT/DELETE /ap
        ├─ List()（keyword 模糊 + loadZeroTrustTargetPairs 子表回填主机简要；接入地区为独立字段 T-061）
        ├─ ListExitLocations()（接入地区候选取 public_ips.exit_location 去重非空，T-061；接入地区支持多值逗号分隔，T-065）
        ├─ Create()（normalizeTargetPairs 配对校验 + 主机存在校验 + 同账户名 mergeZeroTrustInto 合并，T-058）/Update()（同前但不合并）
-       └─ BatchCreateText()（逐行 11 列：第 3 列账号姓名（T-063）、第 4 列申请人（T-060）、第 5 列账户联系方式、第 11 列接入地区（T-061）、内网IP 定位主机、IP 与端口等长配对（`;` 分组/单IP整列多端口，T-058；单端口组广播到全部 IP，T-059）、同账户名行合并、合法行全量插入）
+       └─ BatchCreateText()（逐行 11 列：第 3 列账号姓名（T-063）、第 4 列申请人（T-060）、第 5 列账户联系方式、第 11 列接入地区（T-061）、内网IP 定位主机、IP 与端口等长配对（`;` 分组/单IP整列多端口，T-058；单端口组广播到全部 IP，T-059）、申请时间第 9 列纯日期校验、同账户名行合并（复用 mergeZeroTrustInto，T-058）、合法行全量插入）
 ```
 
 ---

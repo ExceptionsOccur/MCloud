@@ -103,7 +103,7 @@ var total int64
 db.Count(&total)
 
 var hosts []models.Host
-db.Preload("Application").Offset(offset).Limit(pageSize).Order("id ASC").Find(&hosts)
+db.Preload("Application").Preload("Person").Offset(offset).Limit(pageSize).Order("id DESC").Find(&hosts)
 ```
 
 `page_size` 上限为 100（超出会被重置为默认值）。
@@ -272,7 +272,7 @@ var CSVHeaders = []string{
 | 是否映射公网 | 120px | 布尔标签 是/否 |
 | 资产类型 | min 120px | 含 CPU 架构标签 |
 | 规格 | min 90px | `4vCPU/8G/100G/50G`（CPU/内存/系统盘/数据盘），缺失显示 `-` |
-| 对象存储 | 110px | 申请信息 `host_applications.object_storage_size` 原文（如 `500GB`），空显示 `-`（T-072） |
+| 对象存储 | 90px | 申请信息 `host_applications.object_storage_size` 原文（如 `500GB`），空显示 `-`（T-072） |
 | 状态 | 90px | 颜色徽章 |
 | 项目 | min 120px | 申请信息表，tooltip |
 | 申请人 | min 100px | 申请信息表，tooltip |
