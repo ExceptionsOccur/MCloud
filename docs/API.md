@@ -144,6 +144,7 @@
 |------|------|-----------|------|
 | GET | `/api/stats/ip-usage` | `stats.IPUsage` | IP 使用情况（按网段返回已用/空记录 IP） |
 | POST | `/api/stats/probe` | `stats.Probe` | 探测单个 IP 连通性（ICMP + TCP 22/3389） |
+| GET | `/api/stats/region-usage` | `stats.RegionUsage` | 各区域资源用量聚合（运行中/已停止的 CPU/内存/存储与裸金属台数），单条 SQL，排除云外主机；资源统计页专用（T-087） |
 | GET | `/api/stats/business` | `stats.BusinessStats` | 业务统计（按项目/公司/人员聚合资源用量） |
 | GET | `/api/ws/probe` | `HandleProbeWS` | WebSocket 探测通道（token 通过 query 传递）† |
 

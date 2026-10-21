@@ -78,6 +78,7 @@
 | `services/host_csv_service.go` | 主机 CSV 导入导出流程（后缀/编码/行循环）与行映射 | `ImportCSV`、`ExportCSV`、`CSVTemplate`、`ParseCSVRowToCreateHost`、`ExportToCSVRows` |
 | `services/cloud_resource_service.go` | 云资源总览读写 | `List`、`Update`（按 region upsert） |
 | `services/stats_service.go` | IP 使用统计 + 连通性探测 | `GetIPUsage`、`Probe`、`pingICMP`、`probeTCP` |
+| `services/region_usage.go` | 区域资源用量聚合（T-087） | `RegionUsage()`（单条 SQL 按 region 分组，运行中/已停止拆分，排除云外与裸金属/物理机资源量） |
 | `services/business_stats.go` | 业务统计聚合 | `GetBusinessStats`（项目/公司/人员三维聚合；排除云外主机，T-078） |
 | `services/subnet_service.go` | IP 网段管理 | `List`/`Create`/`Update`/`Delete`、`normalizeCIDR`（/24 校验） |
 | `services/person_service.go` | 人员管理 | `List`/`Create`/`Update`/`Delete`、`normalizePerson`；删除时校验关联主机数 |
@@ -155,7 +156,7 @@
 | `api/csv.js` | `/import`、`/export`、`/template` |
 | `api/dataExchange.js` | `/export/all`（xlsx 字节，加密由前端完成，T-074）、`/import/all`（`file`，加密文件前端先解密） |
 | `api/cloud_resource.js` | `/cloud-resources` |
-| `api/stats.js` | `/stats/ip-usage`、`/stats/probe`、`/stats/business` |
+| `api/stats.js` | `/stats/ip-usage`、`/stats/probe`、`/stats/business`、`/stats/region-usage`（T-087） |
 | `api/subnet.js` | `/ip-subnets` |
 | `api/person.js` | `/persons` |
 | `api/zero_trust.js` | `/zero-trusts` |

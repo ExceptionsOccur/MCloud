@@ -11,6 +11,7 @@ func registerStats(g *gin.RouterGroup) {
 	stats := controllers.NewStatsController()
 	statsGroup := g.Group("/stats")
 	statsGroup.GET("/ip-usage", stats.IPUsage)
+	statsGroup.GET("/region-usage", stats.RegionUsage)
 	statsGroup.POST("/probe", stats.Probe)
 	statsGroup.GET("/business", stats.BusinessStats)
 }

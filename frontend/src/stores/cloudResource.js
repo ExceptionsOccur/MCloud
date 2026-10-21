@@ -1,54 +1,32 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getCloudResources } from '../api/cloud_resource'
-import { getHosts, getRegions } from '../api/host'
-import { isComputeAssetType } from '../utils'
+import { getRegions } from '../api/host'
+import { getRegionUsage } from '../api/stats'
 
-const EMPTY_STAT = { cpu: 0, memory: 0, storage: 0, bare_metal: 0 }
 
-function sumField(hosts, field) {
-  return hosts.reduce((sum, h) => sum + (h[field] || 0), 0)
-}
-
-function sumStorage(hosts) {
-  return hosts.reduce((sum, h) => sum + (h.system_disk || 0) + (h.data_disk || 0), 0)
-}
-
-async function fetchAllHostsByRegion(region) {
-  const allHosts = []
-  const pageSize = 100
-  let page = 1
-  let total = Number.POSITIVE_INFINITY
-  while (allHosts.length < total) {
-    // T-078：资源口径排除云外主机（与裸金属排除口径一致）
-    const res = await getHosts({ region, page, page_size: pageSize, is_external: '0' })
-    if (res.code !== 0) break
-    const hosts = res.data.hosts || []
-    total = res.data.total ?? allHosts.length + hosts.length
-    allHosts.push(...hosts)
-    if (hosts.length < pageSize) break
-    page++
+// T-087：区域用量由后端 GET /api/stats/region-usage 一次聚合返回，
+// 前端不再按区域分页拉取全量主机明细（原实现为「区域数 × 页数」次请求）。
+function emptyStats() {
+  return {
+    running: { cpu: 0, memory: 0, storage: 0, bare_metal: 0 },
+    stopped: { cpu: 0, memory: 0, storage: 0, bare_metal: 0 }
   }
-  return allHosts
 }
 
-function computeRegionStats(hosts) {
-  const runningHosts = hosts.filter(h => h.status === '运行中')
-  const stoppedHosts = hosts.filter(h => h.status === '已停止' || h.status === '已关机')
-  const runningVm = runningHosts.filter(h => isComputeAssetType(h.asset_type))
-  const stoppedVm = stoppedHosts.filter(h => isComputeAssetType(h.asset_type))
+function toRegionStats(u) {
   return {
     running: {
-      cpu: sumField(runningVm, 'cpu'),
-      memory: sumField(runningVm, 'memory'),
-      storage: sumStorage(runningVm),
-      bare_metal: runningHosts.filter(h => h.asset_type === '裸金属服务器').length
+      cpu: u?.running_cpu || 0,
+      memory: u?.running_memory || 0,
+      storage: u?.running_storage || 0,
+      bare_metal: u?.running_bare_metal || 0
     },
     stopped: {
-      cpu: sumField(stoppedVm, 'cpu'),
-      memory: sumField(stoppedVm, 'memory'),
-      storage: sumStorage(stoppedVm),
-      bare_metal: stoppedHosts.filter(h => h.asset_type === '裸金属服务器').length
+      cpu: u?.stopped_cpu || 0,
+      memory: u?.stopped_memory || 0,
+      storage: u?.stopped_storage || 0,
+      bare_metal: u?.stopped_bare_metal || 0
     }
   }
 }
@@ -73,11 +51,11 @@ export const useCloudResourceStore = defineStore('cloudResource', () => {
   }
 
   function getRegionRunning(region) {
-    return regionHostStats.value[region]?.running || { ...EMPTY_STAT }
+    return regionHostStats.value[region]?.running || { cpu: 0, memory: 0, storage: 0, bare_metal: 0 }
   }
 
   function getRegionStopped(region) {
-    return regionHostStats.value[region]?.stopped || { ...EMPTY_STAT }
+    return regionHostStats.value[region]?.stopped || { cpu: 0, memory: 0, storage: 0, bare_metal: 0 }
   }
 
   function getRegionUsed(region) {
@@ -105,9 +83,10 @@ export const useCloudResourceStore = defineStore('cloudResource', () => {
   async function fetchStatistics() {
     loading.value = true
     try {
-      const [cloudRes, regionsRes] = await Promise.all([
+      const [cloudRes, regionsRes, usageRes] = await Promise.all([
         getCloudResources(),
-        getRegions()
+        getRegions(),
+        getRegionUsage()
       ])
 
       if (cloudRes.code === 0) {
@@ -117,14 +96,10 @@ export const useCloudResourceStore = defineStore('cloudResource', () => {
       const dbRegions = regionsRes.code === 0 ? (regionsRes.data || []) : []
       hostRegions.value = dbRegions
 
+      const usage = usageRes.code === 0 ? (usageRes.data || {}) : {}
       const stats = {}
       for (const region of dbRegions) {
-        try {
-          const hosts = await fetchAllHostsByRegion(region)
-          stats[region] = computeRegionStats(hosts)
-        } catch {
-          stats[region] = { running: { ...EMPTY_STAT }, stopped: { ...EMPTY_STAT } }
-        }
+        stats[region] = usage[region] ? toRegionStats(usage[region]) : emptyStats()
       }
       regionHostStats.value = stats
     } finally {

@@ -294,6 +294,7 @@ var CSVHeaders = []string{
 
 ### 资源统计口径
 
+- **资源统计数据来源**：`GET /api/stats/region-usage` 一次性返回各区域聚合（T-087），前端不再按区域分页拉取全量主机明细；资源统计页固定 3 个请求（云资源、区域、聚合）
 - **资源统计只统计区域名含「云」的区域**（`utils.filterCloudRegions`，如 `南宁云`/`青年云` 计入，`青年` 不计），无匹配区域时显示空态提示（T-086）
 - 资源统计（`cloudResource` store 聚合）与业务统计（`GetBusinessStats`）**排除云外主机**，与裸金属排除口径一致（T-078）；主机管理页页脚按云内/云外分别计数
 - ECharts 图表容器必须有**确定的宽高**：`v-chart` 在挂载时即 `init`，父级高度为 0 会报 `Can't get DOM width or height`；资源统计饼图容器因此设 `min-height: 160px`（卡片 190px）兜底（T-085）

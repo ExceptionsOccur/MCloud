@@ -136,6 +136,7 @@ go/
 │   │   ├── port_mapping_service.go # 端口映射台账业务逻辑（多端口校验 + ip_mapped 重算）
 │   │   ├── public_ip_service.go   # 公网IP资源台账业务逻辑
 │   │   ├── stats_service.go       # IP 使用统计 + 连通性探测
+│   │   ├── region_usage.go        # 区域资源用量聚合（单条 SQL，T-087）
 │   │   ├── business_stats.go      # 业务统计聚合（项目/公司/人员）
 │   │   ├── subnet_service.go      # IP 网段业务逻辑（/24 校验）
 │   │   ├── audit_service.go       # 审计日志（Record/List/ListByResource，操作人快照 + request_id 聚合，T-066）

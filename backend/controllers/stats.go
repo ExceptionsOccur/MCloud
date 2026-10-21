@@ -48,3 +48,13 @@ func (ctrl *StatsController) BusinessStats(c *gin.Context) {
 	}
 	Success(c, data)
 }
+
+// RegionUsage 各区域资源用量聚合（GET /api/stats/region-usage，T-087）
+func (ctrl *StatsController) RegionUsage(c *gin.Context) {
+	usage, err := ctrl.service.RegionUsage()
+	if err != nil {
+		Error(c, 50001, "查询失败: "+err.Error())
+		return
+	}
+	Success(c, usage)
+}

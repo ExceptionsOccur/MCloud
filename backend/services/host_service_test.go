@@ -609,3 +609,53 @@ func TestHostStatsUnaffectedByFilter(t *testing.T) {
 		t.Fatalf("筛选后全库计数应不变: %+v", stats2)
 	}
 }
+
+// TestRegionUsageAggregate T-087：区域用量聚合口径（运行中/已停止拆分、排除云外与裸金属/物理机资源量）
+func TestRegionUsageAggregate(t *testing.T) {
+	newTestDB(t)
+	s := NewHostService()
+
+	mk := func(ip, region, assetType, status string, cpu, mem, sys, data int, external bool) {
+		req := baseHostReq(ip)
+		req.Region = region
+		req.AssetType = assetType
+		req.Status = status
+		req.CPU, req.Memory, req.SystemDisk, req.DataDisk = cpu, mem, sys, data
+		if external {
+			ext := true
+			req.IsExternal = &ext
+		}
+		if _, err := s.Create(req, testOp, NewRequestID()); err != nil {
+			t.Fatalf("创建主机失败: %v", err)
+		}
+	}
+
+	mk("10.8.1.1", "南宁云", "虚拟机", "运行中", 4, 8, 40, 100, false)
+	mk("10.8.1.2", "南宁云", "虚拟机", "已停止", 2, 4, 20, 0, false)
+	mk("10.8.1.3", "南宁云", "裸金属服务器", "运行中", 16, 64, 500, 0, false)
+	mk("10.8.1.4", "南宁云", "物理机", "运行中", 8, 32, 100, 0, false)
+	mk("10.8.1.5", "南宁云", "虚拟机", "运行中", 99, 99, 99, 99, true) // 云外应排除
+	mk("10.8.1.6", "华东云", "虚拟机", "已关机", 2, 2, 10, 10, false)
+
+	usage, err := NewStatsService().RegionUsage()
+	if err != nil {
+		t.Fatalf("RegionUsage 失败: %v", err)
+	}
+	n := usage["南宁云"]
+	if n.RunningCPU != 4 || n.RunningMemory != 8 || n.RunningStorage != 140 {
+		t.Fatalf("南宁云运行中不符: %+v", n)
+	}
+	if n.RunningBareMetal != 1 {
+		t.Fatalf("南宁云裸金属台数应为 1，实际 %d", n.RunningBareMetal)
+	}
+	if n.StoppedCPU != 2 || n.StoppedMemory != 4 || n.StoppedStorage != 20 {
+		t.Fatalf("南宁云已停止不符: %+v", n)
+	}
+	e := usage["华东云"]
+	if e.StoppedCPU != 2 || e.StoppedMemory != 2 || e.StoppedStorage != 20 {
+		t.Fatalf("华东云已关机应计入已停止: %+v", e)
+	}
+	if e.RunningCPU != 0 {
+		t.Fatalf("华东云无运行中主机: %+v", e)
+	}
+}
