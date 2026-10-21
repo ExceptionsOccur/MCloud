@@ -119,6 +119,16 @@ func (ctrl *HostController) Delete(c *gin.Context) {
 	Success(c, nil)
 }
 
+// Stats 全库主机计数（GET /api/hosts/stats，T-086）：不带任何筛选条件
+func (ctrl *HostController) Stats(c *gin.Context) {
+	stats, err := ctrl.service.Stats()
+	if err != nil {
+		Error(c, 50001, "查询失败: "+err.Error())
+		return
+	}
+	Success(c, stats)
+}
+
 func (ctrl *HostController) ListRegions(c *gin.Context) {
 	regions, err := ctrl.service.ListRegions()
 	if err != nil {

@@ -4,6 +4,11 @@ export function getHosts(params) {
   return api.get('/hosts', { params })
 }
 
+// 全库主机计数（不受筛选影响，T-086）
+export function getHostStats() {
+  return api.get('/hosts/stats')
+}
+
 export function getRegions() {
   return api.get('/hosts/regions')
 }

@@ -6,7 +6,8 @@ import {
   toLocalPickerValue,
   statusOptions,
   envTypeOptions,
-  assetTypeOptions
+  assetTypeOptions,
+  filterCloudRegions
 } from '../index.js'
 
 describe('utils 冒烟', () => {
@@ -40,5 +41,19 @@ describe('utils 冒烟', () => {
     expect(statusOptions.length).toBeGreaterThan(0)
     expect(envTypeOptions).toContain('生产')
     expect(assetTypeOptions.length).toBeGreaterThan(0)
+  })
+})
+
+describe('filterCloudRegions（T-086 资源统计口径）', () => {
+  it('仅保留区域名含「云」的区域', () => {
+    expect(filterCloudRegions(['南宁云', '华东云', '华南', '北京'])).toEqual(['南宁云', '华东云'])
+  })
+  it('无匹配返回空数组', () => {
+    expect(filterCloudRegions(['华南', '北京'])).toEqual([])
+  })
+  it('空输入安全', () => {
+    expect(filterCloudRegions()).toEqual([])
+    expect(filterCloudRegions([])).toEqual([])
+    expect(filterCloudRegions([null, '', '南宁云'])).toEqual(['南宁云'])
   })
 })

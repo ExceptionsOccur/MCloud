@@ -53,6 +53,13 @@ export const NON_COMPUTE_ASSET_TYPES = ['裸金属服务器', '物理机']
 export function isComputeAssetType(assetType) {
   return !NON_COMPUTE_ASSET_TYPES.includes(assetType)
 }
+
+// 资源统计口径：仅统计区域名含「云」字的区域（T-086）
+export const CLOUD_REGION_KEYWORD = '云'
+
+export function filterCloudRegions(regions = []) {
+  return (regions || []).filter(r => typeof r === 'string' && r.includes(CLOUD_REGION_KEYWORD))
+}
 export const cpuArchOptions = [
   { label: 'C86', value: 'C86' },
   { label: 'X86', value: 'X86' },

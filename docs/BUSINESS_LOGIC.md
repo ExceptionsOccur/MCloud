@@ -108,7 +108,7 @@ db.Preload("Application").Preload("Person").Offset(offset).Limit(pageSize).Order
 
 `page_size` 上限为 100（超出会被重置为默认值）。
 
-`is_external`（T-078）：`1` 仅云外主机、`0` 仅云内主机、留空不过滤；主机管理页默认传 `0`（只看云内），工具栏「主机位置」可切换。响应 `internal_count`/`external_count` 为**全库**拆分计数（不受筛选影响，T-084），页脚显示「全库共 (云内+云外) 台（云内 X 台 / 云外 Y 台）」；分页 `total` 仍为命中筛选的条数。
+`is_external`（T-078）：`1` 仅云外主机、`0` 仅云内主机、留空不过滤；主机管理页默认传 `0`（只看云内），工具栏「主机位置」可切换。页脚数字（全库共 N 台 / 云内 / 云外）改由独立接口 `GET /api/hosts/stats` 提供，**与列表筛选彻底解耦**（T-086）；分页 `total` 仍为命中筛选的条数。
 
 ## CSV 导入导出
 
@@ -294,6 +294,7 @@ var CSVHeaders = []string{
 
 ### 资源统计口径
 
+- **资源统计只统计区域名含「云」的区域**（`utils.filterCloudRegions`，如 `南宁云`/`青年云` 计入，`青年` 不计），无匹配区域时显示空态提示（T-086）
 - 资源统计（`cloudResource` store 聚合）与业务统计（`GetBusinessStats`）**排除云外主机**，与裸金属排除口径一致（T-078）；主机管理页页脚按云内/云外分别计数
 - ECharts 图表容器必须有**确定的宽高**：`v-chart` 在挂载时即 `init`，父级高度为 0 会报 `Can't get DOM width or height`；资源统计饼图容器因此设 `min-height: 160px`（卡片 190px）兜底（T-085）
 - ECharts 图表注册（`composables/useChartOption`）内置 `CanvasRenderer` 与 `GraphicComponent`，`graphic`（如饼图「暂无数据」占位文字）无需各页额外注册（T-084）

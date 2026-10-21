@@ -104,6 +104,7 @@ const cloudResourceDialog = ref(null)
 onMounted(() => {
   authStore.fetchUserInfo()
   hostStore.fetchHosts()
+  hostStore.fetchStats()
   cloudStore.fetchRegions()
 })
 

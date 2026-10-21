@@ -12,6 +12,7 @@ func registerHosts(g *gin.RouterGroup) {
 	hosts := g.Group("/hosts")
 	hosts.GET("", host.Filter)
 	hosts.GET("/regions", host.ListRegions)
+	hosts.GET("/stats", host.Stats)
 	hosts.GET("/:id", host.Get)
 	hosts.POST("", host.Create)
 	hosts.PUT("/:id", host.Update)

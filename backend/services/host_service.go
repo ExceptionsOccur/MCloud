@@ -147,6 +147,29 @@ func (s *HostService) Filter(req FilterHostRequest) (*ListHostResponse, error) {
 	}, nil
 }
 
+// HostStats 全库主机计数（T-086）：不受任何筛选条件影响，供列表页脚展示
+type HostStats struct {
+	Total         int64 `json:"total"`
+	InternalCount int64 `json:"internal_count"`
+	ExternalCount int64 `json:"external_count"`
+}
+
+// Stats 统计全库主机总数与云内/云外拆分
+func (s *HostService) Stats() (*HostStats, error) {
+	out := &HostStats{}
+	base := database.DB.Model(&models.Host{})
+	if err := base.Count(&out.Total).Error; err != nil {
+		return nil, err
+	}
+	if err := database.DB.Model(&models.Host{}).Where("is_external = ?", false).Count(&out.InternalCount).Error; err != nil {
+		return nil, err
+	}
+	if err := database.DB.Model(&models.Host{}).Where("is_external = ?", true).Count(&out.ExternalCount).Error; err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (s *HostService) ListRegions() ([]string, error) {
 	var regions []string
 	result := database.DB.Model(&models.Host{}).Distinct().Where("region != ''").Pluck("region", &regions)

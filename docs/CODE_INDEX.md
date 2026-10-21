@@ -151,7 +151,7 @@
 |------|--------------|
 | `api/index.js` | Axios 实例 + 请求/响应拦截器（注入 token、401 跳登录） |
 | `api/auth.js` | `/auth/login`、`/auth/me`、`/auth/password` |
-| `api/host.js` | `/hosts/*`、`/batch/hosts` |
+| `api/host.js` | `/hosts/*`、`/hosts/stats`（全库计数，T-086）、`/batch/hosts` |
 | `api/csv.js` | `/import`、`/export`、`/template` |
 | `api/dataExchange.js` | `/export/all`（xlsx 字节，加密由前端完成，T-074）、`/import/all`（`file`，加密文件前端先解密） |
 | `api/cloud_resource.js` | `/cloud-resources` |
@@ -169,7 +169,7 @@
 | 文件 | 职责 |
 |------|------|
 | `stores/auth.js` | token、用户信息、登录/登出 |
-| `stores/host.js` | 主机列表 CRUD + 分页态（分页/筛选通用逻辑由 `composables/usePagedTable` 提供） |
+| `stores/host.js` | 主机列表 CRUD + 分页态（分页/筛选通用逻辑由 `composables/usePagedTable` 提供）；`fetchStats` 独立拉全库计数供页脚（T-086） |
 | `stores/cloudResource.js` | 云资源 + 按区域聚合的已用/运行中/已停止统计（拉取主机时固定 `is_external=0`，排除云外，T-078） |
 | `stores/stats.js` | IP 使用情况（网段 + 已用/空记录 IP） |
 | `stores/business.js` | 业务统计数据（三维聚合结果） |

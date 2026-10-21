@@ -71,7 +71,12 @@
         class="loading-placeholder"
       ></div>
       <template v-else>
+        <el-empty
+          v-if="!regions.length"
+          description="暂无含「云」的区域（资源统计仅统计名称含「云」的区域）"
+        />
         <div
+          v-else
           class="summary-section"
           :style="{ gridTemplateColumns: gridCols }"
         >
@@ -110,6 +115,7 @@
         </div>
 
         <div
+          v-if="regions.length"
           class="chart-columns"
           :style="{ gridTemplateColumns: gridCols }"
         >
@@ -176,6 +182,7 @@ import { useCloudResourceStore } from '../stores/cloudResource'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
 import { useChartOption } from '../composables/useChartOption'
+import { filterCloudRegions } from '../utils'
 import { PieChart } from 'echarts/charts'
 import { TitleComponent, TooltipComponent, LegendComponent } from 'echarts/components'
 import AppNav from '../components/AppNav.vue'
@@ -188,7 +195,8 @@ const cloudStore = useCloudResourceStore()
 const changePasswordDialog = ref(null)
 const cloudResourceDialog = ref(null)
 
-const regions = computed(() => cloudStore.allRegions)
+// T-086：资源统计仅统计区域名含「云」的区域
+const regions = computed(() => filterCloudRegions(cloudStore.allRegions))
 const gridCols = computed(() => `repeat(${Math.max(1, Math.min(regions.value.length, 2))}, 1fr)`)
 
 const resourceRows = [

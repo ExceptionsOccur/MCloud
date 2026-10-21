@@ -568,3 +568,44 @@ func TestXLSXExternalFlagRoundtrip(t *testing.T) {
 		t.Fatal("xlsx 往返应保留云外标记")
 	}
 }
+
+// TestHostStatsUnaffectedByFilter T-086：/api/hosts/stats 返回全库计数，与任何筛选无关
+func TestHostStatsUnaffectedByFilter(t *testing.T) {
+	newTestDB(t)
+	s := NewHostService()
+
+	for i, ip := range []string{"10.7.1.1", "10.7.1.2"} {
+		req := baseHostReq(ip)
+		if i == 1 {
+			extTrue := true
+			req.IsExternal = &extTrue
+		}
+		if _, err := s.Create(req, testOp, NewRequestID()); err != nil {
+			t.Fatalf("创建主机失败: %v", err)
+		}
+	}
+
+	stats, err := s.Stats()
+	if err != nil {
+		t.Fatalf("Stats 失败: %v", err)
+	}
+	if stats.Total != 2 || stats.InternalCount != 1 || stats.ExternalCount != 1 {
+		t.Fatalf("全库计数不符: %+v", stats)
+	}
+
+	// 列表筛选不影响全库计数
+	filtered, err := s.Filter(FilterHostRequest{Page: 1, PageSize: 10, Keyword: "不存在"})
+	if err != nil {
+		t.Fatalf("Filter 失败: %v", err)
+	}
+	if filtered.Total != 0 {
+		t.Fatalf("筛选应 0 条，实际 %d", filtered.Total)
+	}
+	stats2, err := s.Stats()
+	if err != nil {
+		t.Fatalf("Stats 失败: %v", err)
+	}
+	if stats2.Total != 2 || stats2.InternalCount != 1 || stats2.ExternalCount != 1 {
+		t.Fatalf("筛选后全库计数应不变: %+v", stats2)
+	}
+}
