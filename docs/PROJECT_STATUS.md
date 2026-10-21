@@ -39,7 +39,7 @@
 
 ### 2026-10-21
 
-- `-` `refactor:` **T-089** 抽取 `AppHeader` 页头组件（logo/AppNav/用户名/设置菜单 + 内置改密与云资源弹窗），12 页去除重复模板与 scoped 样式，菜单禁用态改按路由自动判断
+- `db66452` `refactor:` **T-089** 抽取 `AppHeader` 页头组件（logo/AppNav/用户名/设置菜单 + 内置改密与云资源弹窗），12 页去除重复模板与 scoped 样式，菜单禁用态改按路由自动判断
 
 - `410e803` `feat:` **T-088** 对象存储独立台账（`object_storages` + 多主机配对子表）与 `/object-storage` 顶部 Tab 页，`hosts.has_object_storage` 改为由配对自动判别的派生标记，备份扩为 10 个 sheet
 
