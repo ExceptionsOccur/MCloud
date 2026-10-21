@@ -26,6 +26,13 @@
 
 ## in_progress
 
+- [ ] **T-089** 抽取 `AppHeader` 组件，消除 12 页重复的 header/设置菜单并统一禁用口径 ｜ 负责：opencode（deepseek-v4，2026-10-21）｜ 优先级：P1
+  - 内容：新建 `components/AppHeader.vue` 承载 `<el-header class="app-header">`（logo 区 + `AppNav`（透传 `variant`）+ 用户名 + 设置下拉菜单），并把 `handleCommand` 的「修改密码 / 云资源录入」两个弹窗内置到组件；导航类菜单项统一 `router.push`，**禁用项按当前路由自动判断**（当前页 + 数据备份页自身），移除各页手写 `:disabled`；12 个页面（含 Login 外的全部功能页）删除重复 header 模板、`AppNav`/`ChangePasswordDialog`/`CloudResourceDialog` 引入与相关 ref/`handleCommand`，改为 `<AppHeader />`；保持视觉与行为一致
+  - 验收标准：`frontend/src/views/*.vue` 中不再出现 `class="app-header"`（仅 `AppHeader.vue` 保留）、不再出现 `handleCommand`/`changePasswordDialog`/`cloudResourceDialog`；`npm run lint:check`、`npm run test`、`npm run build` 全绿；设置菜单在 12 页入口项一致（无重复/缺失的禁用态）；`bash scripts/check_docs.sh` 0 errors
+  - 定位：`frontend/src/components/AppHeader.vue`、`frontend/src/components/AppNav.vue`、`frontend/src/views/*.vue`（12 页）、`frontend/src/components/ApplyStatusBar.vue`（无）、`docs/CODE_INDEX.md`、`docs/PROJECT_STATUS.md`
+  - 分支：`refactor/app-header`
+  - 回写：`docs/CODE_INDEX.md`（组件表与功能映射）、`docs/PROJECT_STATUS.md`（技术债/变更记录）、`docs/ROADMAP.md`、`AGENTS.md`
+
 ## blocked
 
 （无。填写格式：`- [ ] **T-xxx** … ｜ blocked 原因：具体条件` —— 泛泛的"困难"不算 blocked）
