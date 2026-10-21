@@ -74,7 +74,7 @@
 | 字段 | 值 |
 |------|-----|
 | last_updated | 2026-10-20 |
-| in_progress | T-076 修复数据备份加解密浏览器运行时崩溃（AI 会话，2026-10-20） |
+| in_progress | 无 |
 | next_task | 无（todo 队列已清空） |
 | todo（P1） | 无 |
 | todo（P2） | 无 |

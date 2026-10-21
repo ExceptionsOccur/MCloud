@@ -40,7 +40,7 @@
 
 - `f07d19e` `docs:` **T-075** 周期回顾锚点口径改为按完成时间判定（三处一致），补做 T-058~T-074 回顾并修复 14 处文档偏差，锚点推进至 T-074
 
-- `-` `fix:` **T-076** 修复数据备份 xlsx 加解密在浏览器崩溃：Buffer 注入移至独立 polyfills 模块、Vite 补 crypto/buffer 真实 polyfill，新增打包产物运行时校验脚本
+- `000af81` `fix:` **T-076** 修复数据备份 xlsx 加解密在浏览器崩溃：Buffer 注入移至独立 polyfills 模块、Vite 补 crypto/buffer 真实 polyfill，新增打包产物运行时校验脚本
 
 - `f5b28ff` `fix:` **T-074** 数据备份导出改为 Excel 标准加密 .xlsx（前端 officecrypto-tool 加密，Excel 可输密码打开改后再导入），移除自定义 .mcbak 加密包与后端密码参数
 

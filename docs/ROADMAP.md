@@ -41,7 +41,7 @@
 
 | ID | 任务 | 完成时间 | 提交 | 备注 |
 |----|------|----------|------|------|
-| T-076 | 修复浏览器端数据备份加解密运行时崩溃（Buffer/randomBytes is not a function） | 2026-10-20 | `-` | 验收：Buffer 注入前置于 officecrypto；Vite 产物无空 crypto 桩；无全局 Buffer 沙箱内加解密往返成功（`scripts/check_frontend_bundle.sh`，回退修复可复现报错）；lint/test/build 全绿 |
+| T-076 | 修复浏览器端数据备份加解密运行时崩溃（Buffer/randomBytes is not a function） | 2026-10-20 | `000af81` | 验收：Buffer 注入前置于 officecrypto；Vite 产物无空 crypto 桩；无全局 Buffer 沙箱内加解密往返成功（`scripts/check_frontend_bundle.sh`，回退修复可复现报错）；lint/test/build 全绿 |
 | T-075 | 周期回顾锚点口径澄清＋补做欠账回顾 | 2026-10-20 | `f07d19e` | 验收：三处锚点口径改为按完成时间判定；补做 T-058~T-074（跳过 T-071）核查，14 处偏差经人类确认后修复；锚点推进至 T-074（2026-10-20）；check_docs 0 errors |
 | T-074 | 数据备份导出改为「标准 Office 加密的 .xlsx」（替换 T-072 `.mcbak` 加密包） | 2026-10-20 | `f5b28ff` | 验收：后端 `/api/export/all` 返回 xlsx 字节（PK 头）、`/api/import/all` 仅收明文 xlsx；前端 officecrypto 加密/解密单测（往返/错密码/明文直通）；三端门禁全绿；dev 实测加密文件可解回并导入成功 |
 | T-073 | 数据备份「零信任」sheet 改为「账户名 × 内网IP 一行」＋ tcp端口/udp端口 双列 | 2026-10-20 | `20b8d0d` | 验收：导出按账户名+内网IP 分组、tcp/udp 端口并集规整；`*`/列表/范围解析与掩码展开单测；往返不丢+二次导入幂等；旧「接入目标」列报结构错误；dev 库实测；门禁全绿 |
