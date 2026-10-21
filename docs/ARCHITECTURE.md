@@ -152,7 +152,7 @@ go/
 │   │   ├── ai_llm_client.go       # OpenAI 兼容大模型客户端（net/http，T-068）
 │   │   ├── ai_extract_service.go  # AI 提取编排（解析→LLM→归一化+暂存，T-068）
 │   │   ├── ai_file_store.go       # AI 上传文件暂存/归档（incoming/archived，防穿越，T-068）
-│   │   ├── export_service.go      # 数据备份导出（8 sheet xlsx；零信任按账户名+内网IP 聚合端口，T-073）
+│   │   ├── export_service.go      # 数据备份导出（10 sheet xlsx；零信任按账户名+内网IP 聚合端口，T-073）
 │   │   ├── port_set.go            # 端口集合解析/规整（掩码 *、列表、范围；备份零信任端口列，T-073）
 │   │   ├── import_service.go      # 数据备份导入（自然键 upsert + 单事务回滚）
 │   │   ├── testdb_test.go         # 测试基建：sqlite 内存库注入 database.DB（T-006）
@@ -167,6 +167,7 @@ go/
 │   │   ├── data_exchange_test.go  # 空库 xlsx 回灌（零信任子表/映射协议列往返）单测（T-052/T-055）
 │   │   ├── ai_setting_service_test.go # AI 配置脱敏/空 key 保留原值单测（T-067）
 │   │   ├── ai_doc_parser_test.go  # docx/xlsx 解析、提示词、代码块剥离单测（T-068）
+│   │   ├── object_storage_service_test.go # 对象存储台账 CRUD/多主机配对/自动判别/凭证脱敏/备份往返单测（T-088）
 │   │   ├── ai_file_store_test.go  # 暂存/归档、路径穿越防护、非法 token 单测（T-068）
 │   │   └── ai_extract_service_test.go # 提取编排（fake LLM 服务）单测（T-068）
 │   │
