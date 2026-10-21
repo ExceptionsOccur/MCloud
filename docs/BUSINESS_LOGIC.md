@@ -295,6 +295,7 @@ var CSVHeaders = []string{
 ### 资源统计口径
 
 - 资源统计（`cloudResource` store 聚合）与业务统计（`GetBusinessStats`）**排除云外主机**，与裸金属排除口径一致（T-078）；主机管理页页脚按云内/云外分别计数
+- ECharts 图表容器必须有**确定的宽高**：`v-chart` 在挂载时即 `init`，父级高度为 0 会报 `Can't get DOM width or height`；资源统计饼图容器因此设 `min-height: 160px`（卡片 190px）兜底（T-085）
 - ECharts 图表注册（`composables/useChartOption`）内置 `CanvasRenderer` 与 `GraphicComponent`，`graphic`（如饼图「暂无数据」占位文字）无需各页额外注册（T-084）
 - **裸金属服务器与物理机**（T-079）不计入 CPU/内存/存储 汇总（避免与云资源总量重复），主机台数仍计入
 

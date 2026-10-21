@@ -518,7 +518,8 @@ function getPieOption(region, totalField, field, label) {
   padding: 8px;
   text-align: center;
   min-width: 0;
-  min-height: 0;
+  /* T-085：与 .chart 的最小高度配合，避免 grid 行高塌陷为 0 */
+  min-height: 190px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -535,7 +536,9 @@ function getPieOption(region, totalField, field, label) {
 .chart {
   width: 100%;
   flex: 1;
-  min-height: 0;
+  /* T-085：ECharts 初始化需要容器有确定宽高，flex 在父级高度未定时会算出 0；
+     这里给出最小高度兜底，保证首帧即可测量出非 0 尺寸（父级仍有空间时会继续撑满） */
+  min-height: 160px;
 }
 
 @media (max-width: 900px) {
