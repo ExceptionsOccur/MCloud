@@ -8,6 +8,7 @@ import IpStatistics from '../views/IpStatistics.vue'
 import BusinessStatistics from '../views/BusinessStatistics.vue'
 import PersonnelManagement from '../views/PersonnelManagement.vue'
 import PublicIPManagement from '../views/PublicIPManagement.vue'
+import ObjectStorageLedger from '../views/ObjectStorageLedger.vue'
 import ZeroTrustLedger from '../views/ZeroTrustLedger.vue'
 import MappingLedger from '../views/MappingLedger.vue'
 import DataBackup from '../views/DataBackup.vue'
@@ -55,6 +56,12 @@ const routes = [
     path: '/public-ip',
     name: 'PublicIPManagement',
     component: PublicIPManagement,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/object-storage',
+    name: 'ObjectStorageLedger',
+    component: ObjectStorageLedger,
     meta: { requiresAuth: true }
   },
   {

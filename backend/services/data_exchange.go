@@ -1,9 +1,9 @@
 package services
 
-// 数据备份（T-038）：8 张业务表统一导出(xlsx)/导入(upsert)
+// 数据备份（T-038）：业务表统一导出(xlsx)/导入(upsert)
 //
 // sheet 顺序 = 导入依赖顺序：后表通过自然键引用前表
-// （人员/公网IP/云资源/网段 → 主机 → 申请信息 → 零信任 → 端口映射）。
+// （人员/公网IP/云资源/网段 → 主机 → 申请信息 → 零信任 → 端口映射 → 对象存储 → 对象存储主机）。
 
 // sheetSpec 单个工作表定义：Name 为 xlsx sheet 名（中文，导入按名匹配），Headers 为列头（导入按名匹配列）
 type sheetSpec struct {
@@ -11,7 +11,7 @@ type sheetSpec struct {
 	Headers []string
 }
 
-// dataExchangeSheets 8 表定义，顺序即导出 sheet 顺序与导入处理顺序；
+// dataExchangeSheets 10 表定义，顺序即导出 sheet 顺序与导入处理顺序；
 // T-063 起 sheet 名改为中文（人员/公网IP/云资源/网段/主机/主机申请信息/零信任/端口映射），导入按中文名匹配（不再兼容旧英文名备份）
 var dataExchangeSheets = []sheetSpec{
 	{Name: "人员", Headers: []string{"姓名", "联系方式", "单位"}},
@@ -20,7 +20,7 @@ var dataExchangeSheets = []sheetSpec{
 	{Name: "网段", Headers: []string{"网段CIDR"}},
 	{Name: "主机", Headers: []string{
 		"区域", "实例ID", "主机名称", "内网IP", "资产类型", "操作系统",
-		"CPU核数", "CPU架构", "内存", "对象存储", "系统盘", "数据盘",
+		"CPU核数", "CPU架构", "内存", "是否使用对象存储", "系统盘", "数据盘",
 		"环境类型", "是否数据库服务器", "是否云外主机", "状态", "标签",
 		"人员姓名", "人员联系方式",
 	}},
@@ -35,6 +35,9 @@ var dataExchangeSheets = []sheetSpec{
 	{Name: "端口映射", Headers: []string{
 		"公网IP", "内网IP", "外网端口", "内网端口", "外网协议", "内网协议", "域名", "备注",
 	}},
+	// T-088：「对象存储主机」为多对多配对表，用（存储桶名称 + 主机内网IP）两列表达
+	{Name: "对象存储", Headers: []string{"存储桶名称", "用途", "分配大小(GB)", "AccessKey", "SecretKey", "备注"}},
+	{Name: "对象存储主机", Headers: []string{"存储桶名称", "主机内网IP"}},
 }
 
 // RowError 导入行级错误（定位到 sheet + Excel 行号）

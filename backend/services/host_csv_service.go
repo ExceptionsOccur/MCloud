@@ -54,12 +54,8 @@ func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, 
 	memory := atoiOrZero(row[9])
 	systemDisk := atoiOrZero(row[10])
 	dataDisk := atoiOrZero(row[11])
-	// T-080/T-083：基础 24 列（已删「对象存储大小」「开放端口」）+ 可选尾列「对象存储(GB)」「是否云外主机」
-	// 对象存储为可选尾列（T-050/T-072）；旧文件无该列，保持 0
-	objectStorage := 0
-	if len(row) >= 25 {
-		objectStorage = atoiOrZero(row[24])
-	}
+	// T-080/T-083：基础 24 列（已删「对象存储大小」「开放端口」）+ 可选尾列「是否使用对象存储」「是否云外主机」
+	// T-088：第 25 列「是否使用对象存储」为派生列（由对象存储台账自动判别），导入时忽略、不回写
 	// 是否云外主机为可选尾列（T-078）；旧文件无该列，默认云内
 	isExternal := false
 	if len(row) >= 26 {
@@ -79,7 +75,6 @@ func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, 
 		CPU:              cpu,
 		CPUArch:          strings.TrimSpace(row[8]),
 		Memory:           memory,
-		ObjectStorage:    objectStorage,
 		SystemDisk:       systemDisk,
 		DataDisk:         dataDisk,
 		EnvType:          strings.TrimSpace(row[12]),
@@ -180,7 +175,11 @@ func (s *HostService) ExportToCSVRows(hosts []models.Host) [][]string {
 		} else {
 			row = append(row, "", "", "", "", "", "", "", "")
 		}
-		row = append(row, strconv.Itoa(h.ObjectStorage), isExternal)
+		hasObjectStorage := "否"
+		if h.HasObjectStorage {
+			hasObjectStorage = "是"
+		}
+		row = append(row, hasObjectStorage, isExternal)
 		rows = append(rows, row)
 	}
 	return rows

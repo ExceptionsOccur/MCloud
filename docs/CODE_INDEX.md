@@ -25,14 +25,16 @@
 | `backend/database/postgres.go` | 数据库连接与迁移 | `Connect()`、`Migrate()`（goose.Up + AutoMigrate 兜底 + seedAdmin）、`seedAdmin()` |
 | `backend/migrations/embed.go` | 迁移 SQL embed FS | `//go:embed *.sql` → `migrations.FS`，供 goose 加载 |
 | `backend/routes/routes.go` | 路由协调 | `SetupRoutes()`：CORS + JWT 受保护组统一收口 + 分发各域 |
-| `backend/routes/{auth,host,data_exchange,cloud_resource,stats,subnet,person,public_ip,zero_trust,port_mapping,audit,ai,websocket}.go` | 各域路由注册 | `registerX(g)`；公开域仅登录/登出 + WS probe |
+| `backend/routes/{auth,host,data_exchange,cloud_resource,stats,subnet,person,public_ip,object_storage,zero_trust,port_mapping,audit,ai,websocket}.go` | 各域路由注册 | `registerX(g)`；公开域仅登录/登出 + WS probe |
 
 ### 数据模型（models/）
 
 | 文件 | 模型 | 对应表 |
 |------|------|--------|
 | `backend/models/user.go` | `User` | `users` |
-| `backend/models/host.go` | `Host`（含 `Application` 关联；`object_storage` 原 `disk`，T-072） | `hosts` |
+| `backend/models/host.go` | `Host`（含 `Application` 关联；`has_object_storage` 布尔标记，T-088 由 `object_storage` 改名而来） | `hosts` |
+| `backend/models/object_storage.go` | `ObjectStorage`（存储桶名称/用途/分配大小/备注） | `object_storages`（T-088） |
+| `backend/models/object_storage_host.go` | `ObjectStorageHost`（存储桶↔主机配对，多主机共享） | `object_storage_hosts`（T-088） |
 | `backend/models/host_application.go` | `HostApplication` | `host_applications` |
 | `backend/models/cloud_resource.go` | `CloudResource` | `cloud_resources` |
 | `backend/models/ip_subnet.go` | `IPSubnet` | `ip_subnets` |
@@ -63,6 +65,7 @@
 | `controllers/zero_trust.go` | 零信任台账 CRUD |
 | `controllers/port_mapping.go` | 端口映射台账 CRUD + 整组防重判定（`ErrPortMappingExists` → `40901`） |
 | `controllers/public_ip.go` | 公网IP资源台账 CRUD + 被引用校验（改IP/删除被映射台账引用 → `40901`） |
+| `controllers/object_storage.go` | 对象存储台账 CRUD（桶名重复 → `40901`，T-088） |
 | `controllers/audit_log.go` | 审计日志查询（分页筛选 + 按资源查变更记录 `ResourceHistory`，T-066） |
 | `controllers/audit_context.go` | 审计上下文：`auditContext(c)` 取 operator + request_id |
 | `controllers/ai.go` | AI 接入配置读写（`GetSettings`/`SaveSettings`，脱敏 + 审计） |
@@ -73,7 +76,7 @@
 | 文件 | 职责 | 关键函数 |
 |------|------|----------|
 | `services/auth_service.go` | 认证逻辑、失败锁定 | `Login`（5 次失败锁定 15 分钟）、`ChangePassword` |
-| `services/host_service.go` | 主机 CRUD 与筛选 | `Filter`（列表 `id DESC` 倒序，T-072；`is_external` 筛选 + `internal_count`/`external_count` 拆分计数，T-078）、`Create`、`Update`、`Delete`、`validatePersonID` |
+| `services/host_service.go` | 主机 CRUD 与筛选 | `Filter`（列表 `id DESC` 倒序，T-072；`is_external` 筛选 + `internal_count`/`external_count` 拆分计数，T-078）、`Create`、`Update`、`Delete`（零信任/映射/对象存储引用保护）、`validatePersonID` |
 | `services/host_batch_service.go` | 主机批量增改（结构化 JSON + 纯文本行）与批量编辑 | `BatchCreate`、`BatchCreateFromText`、`BatchUpdate`、`parsePersonID` |
 | `services/host_csv_service.go` | 主机 CSV 导入导出流程（后缀/编码/行循环）与行映射 | `ImportCSV`、`ExportCSV`、`CSVTemplate`、`ParseCSVRowToCreateHost`、`ExportToCSVRows` |
 | `services/cloud_resource_service.go` | 云资源总览读写 | `List`、`Update`（按 region upsert） |
@@ -85,17 +88,18 @@
 | `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`/`ListExitLocations`（接入地区候选取 `public_ips.exit_location` 去重，T-061）；`normalizeTargetPairs`（端口表达式校验+去重，兼容旧 `port` 数字入参，T-056；协议归一化缺省 tcp，T-065）；`splitGroupProtocol`/`mergeGroupProtocols`（批量端口组 `/协议` 后缀解析与单主机多端口协议合并，T-065）；`splitPortGroups`（批量申请端口分组：`;` 分组表达多IP各自多端口，无 `;` 时顶层逗号+引号分组，T-056/T-058；无 `;` 且单端口组广播到全部 IP，T-059）；`exitLocationKey`/`zeroTrustMergeKey`/`findMergeTarget`（合并键 = 账户名 + 接入地区，地区规整去重后排序比较，T-077）、`mergeZeroTrustInto`/`unionTargetPairs`（同键新增合并：targets 并集去重+其余空字段补录，含 `account_name_zh`/`applicant`，T-058/T-060/T-061/T-063/T-065/T-077）；`loadZeroTrustTargetPairs`/`insertZeroTrustTargets`（接入目标子表读写，T-052）；`joinTargetPairs`（派生串 `host_id:ports:protocol` 以 `;` 分隔，T-056/T-065）；`HostReferencedByZeroTrust`（子表去重计数）/`ZeroTrustsByHost` |
 | `services/port_mapping_service.go` | 端口映射台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`；`parsePortExpr`/`expandPortCount`/`parseProtocols`（端口 token 含 `A-B` 范围与协议归一化、展开后配对，T-055）；`ErrPortMappingExists` 整组判重（`host_id+public_ip+external_ports+external_protocols`）；`refreshHostIPMapped` |
 | `services/public_ip_service.go` | 公网IP资源台账 | `List`/`Create`/`Update`/`Delete`、`normalizePublicIP`（IP 唯一/格式校验）、`countPublicIPRefs`/`ErrPublicIPReferenced` 引用保护 |
+| `services/object_storage_service.go` | 对象存储台账（外挂存储，多主机共享，T-088） | `List`/`Create`/`Update`/`Delete`（桶名唯一 `ErrObjectStorageBucketExists`、用途必填、主机至少 1 台、`host_ids` 全量重建配对子表）、`loadObjectStorageHosts`（回填主机简要）、`HostReferencedByObjectStorage`（删主机保护）、`ObjectStoragesByHost`、`toObjectStorageItem`（SecretKey 解密后仅回显末四位）、`refreshHostsObjectStorageFlag`（按配对重算主机派生字段 `has_object_storage`，同 `ip_mapped`） |
 | `services/audit_service.go` | 审计日志 | `Record`（写入，失败不阻断业务）、`List`（分页筛选）、`ListByResource`（按 `resource_type`+`resource_id` 取单资产变更记录，T-066）、`GetOperator`、`NewRequestID` |
-| `services/data_exchange.go` | 数据备份公共定义 | `dataExchangeSheets`（8 sheet 中文名 + 中文列头，T-063）、`ImportReport`/`SheetStat`/`RowError` |
+| `services/data_exchange.go` | 数据备份公共定义 | `dataExchangeSheets`（10 sheet 中文名 + 中文列头，T-063/T-088）、`ImportReport`/`SheetStat`/`RowError` |
 | `services/ai_setting_service.go` | AI 接入配置（单条全局，T-067） | `Get`（脱敏回显）、`Save`（api_key 空保留原值）、`GetDecrypted`（内部取明文 Key） |
 | `services/ai_doc_parser.go` | 申请表单文档解析（T-068） | `Parse`（按扩展名分派）、`parseDocx`（标准库 zip+xml 提取段落/表格）、`parseXlsx`（excelize 逐 sheet 转文本） |
 | `services/ai_schema.go` | AI 提取 schema（服务端权威，T-068） | `aiDocTypes`（host_apply/zero_trust_apply 字段清单）、`buildExtractionPrompt`（分类+提取提示词）、`docTypeByKey` |
 | `services/ai_llm_client.go` | OpenAI 兼容大模型客户端（标准库 net/http，T-068） | `Complete`（`/chat/completions`，JSON mode，60s 超时） |
 | `services/ai_extract_service.go` | AI 提取编排（T-068） | `Extract`（解析→LLM→归一化+暂存）、`Archive`（归档已入账文件）、`parseLLMOutput`/`stripCodeFence` |
 | `services/ai_file_store.go` | AI 上传文件暂存/归档（T-068） | `SaveIncoming`、`Archive`、`sanitizeFilename`/`isValidToken`（防路径穿越） |
-| `services/export_service.go` | 数据备份导出 | `Export`（8 sheet 依赖序写入）、`ExportFilename`、`groupZeroTrustTargets`/`zeroTrustRow`/`fillZeroTrustRow`（零信任按账户名+内网IP 聚合 tcp/udp 端口，T-073） |
+| `services/export_service.go` | 数据备份导出 | `Export`（10 sheet 依赖序写入；主机「是否使用对象存储」是/否、对象存储两 sheet，T-088）、`ExportFilename`、`groupZeroTrustTargets`/`zeroTrustRow`/`fillZeroTrustRow`（零信任按账户名+内网IP 聚合 tcp/udp 端口，T-073） |
 | `services/port_set.go` | 端口集合工具（T-073） | `parsePortSet`（掩码 `*`/列表/`A-B` 范围解析）、`mergePortSpans`/`formatPortSpans`（区间合并规整）、`unionPortText`、`portSetToTokens` |
-| `services/import_service.go` | 数据备份导入 | `Import`（单事务 + 回滚；非 xlsx 报结构错误，T-074）、`parseWorkbook`（结构校验）、`hostObjectStorageCell`/`sheetHasColumn`（「对象存储」列及旧列头「磁盘」兼容）、`apply*`（按自然键 upsert；`zero_trusts` 自然键=账户名+接入地区，T-058/T-077）、`zeroTrustKey` |
+| `services/import_service.go` | 数据备份导入 | `Import`（单事务 + 回滚；非 xlsx 报结构错误，T-074）、`parseWorkbook`（结构校验）、`hostObjectStorageCell`/`sheetHasColumn`（「是否使用对象存储」列及旧列头「对象存储」「磁盘」兼容）、`parseObjectStorageFlag`（布尔或旧 GB 数值）、`applyObjectStorages`/`applyObjectStorageHosts`（对象存储两 sheet 自然键 upsert，T-088）、`apply*`（按自然键 upsert；`zero_trusts` 自然键=账户名+接入地区，T-058/T-077）、`zeroTrustKey` |
 
 ### 中间件与工具
 
@@ -124,6 +128,7 @@
 | `middleware/jwt_test.go` | `ValidateToken` 表驱动：有效/过期/伪造签名/非法串/缺 user_id/none 算法（T-022） |
 | `routes/websocket_test.go` | WS 探测通道：缺失/无效 token 升级前 `40101` 拒绝 + 有效 token 建连（T-022） |
 | `controllers/csv_test.go` | CSV 导入：>16MB 超限 `40001`、未超限穿透至业务校验、缺 `file` 字段回归（T-044） |
+| `services/object_storage_service_test.go` | 对象存储 CRUD 校验（桶名/用途/主机必填、主机存在、桶名唯一）、多主机配对往返与重建、主机详情回填、删主机引用保护（T-088）；xlsx 10 sheet 往返与二次导入幂等；凭证密文落库/末四位脱敏/留空保留/审计不落明文/备份往返 |
 | `services/audit_service_test.go` | 按资源查询变更记录：精确匹配 `resource_type`+`resource_id` 且按 id 倒序、跨资源互不串、缺参报错（T-066）；主机新增/修改写入审计且修改含 before/after 字段级 diff |
 | `frontend/src/utils/__tests__/index.spec.js` | Vitest 冒烟（`npm run test`，日期格式化/常量） |
 
@@ -162,6 +167,7 @@
 | `api/zero_trust.js` | `/zero-trusts` |
 | `api/port_mapping.js` | `/port-mappings` |
 | `api/public_ip.js` | `/public-ips` |
+| `api/object_storage.js` | `/object-storages`（T-088） |
 | `api/audit.js` | `/audit-logs/resource`（按资源查变更记录，T-066） |
 | `api/ai.js` | `/ai/settings`（读写，T-069）、`/ai/extract`、`/ai/archive`（T-070 用） |
 
@@ -195,6 +201,7 @@
 | `views/BusinessStatistics.vue` | `/business-statistics` | 业务统计（概览 + 柱状图 + 表格 + 下钻弹窗） |
 | `views/PersonnelManagement.vue` | `/personnel` | 人员管理（搜索 + 新增/编辑/删除，含关联主机数校验） |
 | `views/PublicIPManagement.vue` | `/public-ip` | 公网IP资源台账（搜索 + 新增/编辑/删除，设置菜单入口） |
+| `views/ObjectStorageLedger.vue` | `/object-storage` | 对象存储台账（顶部 Tab，与主机管理同级）：搜索 + 新增/编辑/删除；表单含存储桶名称/用途/分配大小(GB)/AccessKey/SecretKey（编辑留空保留原值）/主机多选（分页拉全量）/备注；列表主机标签展示、SecretKey 末四位脱敏、合计分配大小（T-088） |
 | `views/ZeroTrustLedger.vue` | `/zero-trust` | 零信任台账（搜索 + 「申请资源」列按主机聚合、每行最多显示 3 个主机 tag（超出显示「+N 台」），点击主机 tag 用可滚动 popover 查看该主机端口/协议明细（T-065，避免行高随目标数膨胀、气泡限高可滚动、popper auto 定位+flip 自动换方向防出界）+ 配对行表单（主机/端口/协议，主机下拉分页拉全量）+ 接入地区多选下拉（候选取公网IP资源池去重，列表标签展示）+ 批量添加 + 行「复制」新增（账户名置空）；列表含账户名/账号姓名/账户联系方式，申请人列位于申请时间之后；点击数据行打开只读详情弹窗（含「变更记录」时间线，T-066）） |
 | `views/MappingLedger.vue` | `/mapping-ledger` | 端口映射台账（多端口标签 + 批量添加 + 行「复制」新增（公网IP/主机/端口置空）；点击数据行打开只读详情弹窗（含「变更记录」时间线，T-066）） |
 | `views/DataBackup.vue` | `/data-backup` | 数据备份（8 表 xlsx 导出/导入 + 导入报告展示，设置菜单入口） |
@@ -247,7 +254,7 @@
 | 功能 | 后端 | 前端 |
 |------|------|------|
 | **登录/认证** | `controllers/auth.go` `services/auth_service.go` `middleware/jwt.go` | `views/Login.vue` `stores/auth.js` `api/auth.js` |
-| **顶部导航** | —（纯前端路由） | `components/AppNav.vue`（7 Tab 10 页共用，T-019） |
+| **顶部导航** | —（纯前端路由） | `components/AppNav.vue`（7 Tab 12 页共用，T-019/T-088） |
 | **审计日志** | `controllers/audit_log.go` `services/audit_service.go` `models/audit_log.go` `routes/audit.go` | `api/audit.js`（`/audit-logs/resource`）+ `components/AuditTimeline.vue`（资产详情「变更记录」时间线，T-066） |
 | **AI 接入配置** | `controllers/ai.go`（`GetSettings`/`SaveSettings`）`services/ai_setting_service.go`（脱敏/保留原值）`models/ai_setting.go` `routes/ai.go` `utils/crypto.go`（AES-GCM） | `views/AISettings.vue`（`/ai-settings`，T-069）`api/ai.js` |
 | **AI 申请表单提取与归档** | `controllers/ai.go`（`Extract`/`Archive`）`services/ai_extract_service.go`（编排）`services/ai_doc_parser.go`（docx/xlsx 转文本）`services/ai_schema.go`（类型/字段 schema）`services/ai_llm_client.go`（大模型调用）`services/ai_file_store.go`（incoming/archived 落盘） | `views/AIApplicationImport.vue`（`/ai-import`，T-070）`api/ai.js` |
@@ -263,6 +270,7 @@
 | **IP 网段管理** | `controllers/subnet.go` `services/subnet_service.go` `models/ip_subnet.go` | `components/ip/SubnetManageDialog.vue` `api/subnet.js` |
 | **人员管理** | `controllers/person.go` `services/person_service.go` `models/person.go` | `views/PersonnelManagement.vue` `api/person.js` |
 | **公网IP资源录入** | `controllers/public_ip.go` `services/public_ip_service.go` `models/public_ip.go` | `views/PublicIPManagement.vue` `api/public_ip.js` |
+| **对象存储台账** | `controllers/object_storage.go` `services/object_storage_service.go` `models/object_storage.go` `models/object_storage_host.go` `routes/object_storage.go` | `views/ObjectStorageLedger.vue`（`/object-storage`，T-088）`api/object_storage.js` |
 | **公网IP引用保护 + 映射整组防重** | `services/public_ip_service.go` → `countPublicIPRefs`/`ErrPublicIPReferenced`（`40901`）、`services/port_mapping_service.go` → `ErrPortMappingExists`（`40901`，键含 `external_protocols`，T-055）、`migrations/20261010000004`/`20261010000006` 唯一索引 | `api/public_ip.js` `api/port_mapping.js`（错误码提示） |
 | **零信任台账** | `controllers/zero_trust.go` `services/zero_trust_service.go` `models/zero_trust.go` | `views/ZeroTrustLedger.vue` `api/zero_trust.js` `components/ZeroTrustBatchAddDialog.vue` |
 | **端口映射台账** | `controllers/port_mapping.go` `services/port_mapping_service.go` `models/port_mapping.go` | `views/MappingLedger.vue` `api/port_mapping.js` `components/MappingBatchAddDialog.vue` |
@@ -361,5 +369,7 @@ GET/POST /api/zero-trusts、GET /api/zero-trusts/exit-locations、PUT/DELETE /ap
 | `zero_trust_targets` | `models/zero_trust_target.go` | `services/zero_trust_service.go`（配对子表读写，T-052/T-056/T-065）；`services/import_service.go`/`export_service.go` 导入导出经子表 |
 | `port_mappings` | `models/port_mapping.go` | `services/port_mapping_service.go`；删除主机前经 `HostReferencedByMapping` 校验 |
 | `public_ips` | `models/public_ip.go` | `services/public_ip_service.go` |
+| `object_storages` | `models/object_storage.go` | `services/object_storage_service.go`；`services/export_service.go`/`import_service.go` 备份导入导出 |
+| `object_storage_hosts` | `models/object_storage_host.go` | `services/object_storage_service.go`（配对子表读写）；删除主机前经 `HostReferencedByObjectStorage` 校验 |
 | `audit_logs` | `models/audit_log.go` | `services/audit_service.go`；各 CUD service 方法经 `Record` 写入；`controllers/audit_log.go` 查询 |
 | `ai_settings` | `models/ai_setting.go` | `services/ai_setting_service.go`；`controllers/ai.go` 读写；API Key 经 `utils/crypto.go` AES-GCM 加解密 |

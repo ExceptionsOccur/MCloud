@@ -108,7 +108,8 @@ func (ctrl *HostController) Delete(c *gin.Context) {
 
 	op, requestID := auditContext(c)
 	if err := ctrl.service.Delete(uint(id), op, requestID); err != nil {
-		if errors.Is(err, services.ErrHostReferenced) || errors.Is(err, services.ErrHostReferencedByMapping) {
+		if errors.Is(err, services.ErrHostReferenced) || errors.Is(err, services.ErrHostReferencedByMapping) ||
+			errors.Is(err, services.ErrHostReferencedByObjectStorage) {
 			Error(c, 40901, err.Error())
 			return
 		}

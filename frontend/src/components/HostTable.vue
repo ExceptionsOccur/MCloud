@@ -98,7 +98,12 @@
         align="center"
       >
         <template #default="{ row }">
-          {{ row.object_storage ? row.object_storage + 'G' : '-' }}
+          <el-tag
+            :type="row.has_object_storage ? 'success' : 'info'"
+            size="small"
+          >
+            {{ row.has_object_storage ? '有' : '无' }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column
@@ -112,7 +117,7 @@
       </el-table-column>
       <el-table-column
         label="项目"
-        min-width="120"
+        min-width="110"
         show-overflow-tooltip
       >
         <template #default="{ row }">

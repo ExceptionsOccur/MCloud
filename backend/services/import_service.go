@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"mcloud/config"
 	"mcloud/database"
 	"mcloud/models"
 	"mcloud/utils"
@@ -49,7 +50,7 @@ func (sh *importSheet) isEmpty(row []string) bool {
 	return true
 }
 
-// parseWorkbook 结构校验：8 个 sheet 齐全且表头与定义一致（按名匹配列，位置无关）
+// parseWorkbook 结构校验：全部 sheet 齐全且表头与定义一致（按名匹配列，位置无关）
 func parseWorkbook(data []byte) (map[string]*importSheet, error) {
 	f, err := excelize.OpenReader(bytes.NewReader(data))
 	if err != nil {
@@ -96,7 +97,7 @@ func parseWorkbook(data []byte) (map[string]*importSheet, error) {
 
 // legacyColumnAliases 旧备份版本列头 → 当前列头（T-072）；仅用于缺失列判定与取值兜底
 var legacyColumnAliases = map[string]map[string]string{
-	"主机": {"对象存储": "磁盘"},
+	"主机": {"是否使用对象存储": "对象存储", "对象存储": "磁盘"},
 }
 
 // sheetHasColumn 当前列头存在，或存在其旧列头别名
@@ -112,7 +113,7 @@ func sheetHasColumn(colIdx map[string]int, sheet, header string) bool {
 	return ok
 }
 
-// Import 导入 xlsx 并按依赖序 upsert 8 表；单事务，任意行失败整体回滚
+// Import 导入 xlsx 并按依赖序 upsert 业务表（T-088 起 10 张）；单事务，任意行失败整体回滚
 func (s *DataExchangeService) Import(data []byte, op Operator, requestID string) (*ImportReport, error) {
 	if !workbookIsXLSX(data) {
 		return nil, fmt.Errorf("%w: 文件不是有效的 .xlsx（若为加密 Excel，请在导入时填写密码）", ErrImportStructure)
@@ -133,6 +134,8 @@ func (s *DataExchangeService) Import(data []byte, op Operator, requestID string)
 			s.applyHostApplications,
 			s.applyZeroTrusts,
 			s.applyPortMappings,
+			s.applyObjectStorages,
+			s.applyObjectStorageHosts,
 		}
 		for i, step := range steps {
 			if err := step(tx, sheets[dataExchangeSheets[i].Name], report); err != nil {
@@ -142,8 +145,14 @@ func (s *DataExchangeService) Import(data []byte, op Operator, requestID string)
 		if len(report.Errors) > 0 {
 			return errImportRolledBack
 		}
-		// ip_mapped 为派生列：按映射表全量重算
-		return tx.Exec("UPDATE hosts SET ip_mapped = EXISTS (SELECT 1 FROM port_mappings pm WHERE pm.host_id = hosts.id)").Error
+		// ip_mapped / has_object_storage 均为派生列：按映射表与对象存储配对表全量重算（T-088）
+		if err := tx.Exec("UPDATE hosts SET ip_mapped = EXISTS (SELECT 1 FROM port_mappings pm WHERE pm.host_id = hosts.id)").Error; err != nil {
+			return err
+		}
+		return tx.Exec(`
+			UPDATE hosts SET has_object_storage = EXISTS (
+				SELECT 1 FROM object_storage_hosts p WHERE p.host_id = hosts.id
+			)`).Error
 	})
 	if txErr != nil {
 		if errors.Is(txErr, errImportRolledBack) {
@@ -514,14 +523,6 @@ func workbookIsXLSX(data []byte) bool {
 	return len(data) >= 4 && data[0] == 'P' && data[1] == 'K' && data[2] == 3 && data[3] == 4
 }
 
-// hostObjectStorageCell 取「对象存储」列；T-072 前的旧备份列头为「磁盘」，兼容读取
-func hostObjectStorageCell(c *rowCtx) string {
-	if v := c.get("对象存储"); v != "" {
-		return v
-	}
-	return c.get("磁盘")
-}
-
 // applyHosts 自然键 private_ip；人员列按姓名(+联系方式)解析 person_id
 func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *ImportReport) error {
 	var existing []models.Host
@@ -563,11 +564,6 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 		memory, err := parseIntCell(c.get("内存"))
 		if err != nil {
 			fail(report, c, fmt.Errorf("内存: %v", err))
-			return
-		}
-		objectStorage, err := parseIntCell(hostObjectStorageCell(c))
-		if err != nil {
-			fail(report, c, fmt.Errorf("对象存储: %v", err))
 			return
 		}
 		systemDisk, err := parseIntCell(c.get("系统盘"))
@@ -613,14 +609,14 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 		updates := map[string]interface{}{
 			"region": region, "instance_id": f.instanceID, "name": name,
 			"asset_type": f.assetType, "os": f.os, "cpu": cpu, "cpu_arch": f.cpuArch,
-			"memory": memory, "object_storage": objectStorage, "system_disk": systemDisk, "data_disk": dataDisk,
+			"memory": memory, "system_disk": systemDisk, "data_disk": dataDisk,
 			"env_type": f.envType, "is_db_server": isDB, "is_external": isExternal, "status": f.status,
 			"tags": f.tags, "person_id": personID,
 		}
 		if cur, ok := byKey[privateIP]; ok {
 			if cur.Region == f.region && cur.InstanceID == f.instanceID && cur.Name == name &&
 				cur.AssetType == f.assetType && cur.OS == f.os && cur.CPU == cpu &&
-				cur.CPUArch == f.cpuArch && cur.Memory == memory && cur.ObjectStorage == objectStorage &&
+				cur.CPUArch == f.cpuArch && cur.Memory == memory &&
 				cur.SystemDisk == systemDisk && cur.DataDisk == dataDisk &&
 				cur.EnvType == f.envType && cur.IsDBServer == isDB && cur.IsExternal == isExternal &&
 				cur.Status == f.status && cur.Tags == f.tags &&
@@ -638,7 +634,7 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 		h := models.Host{
 			Region: region, InstanceID: f.instanceID, Name: name, PrivateIP: privateIP,
 			AssetType: f.assetType, OS: f.os, CPU: cpu, CPUArch: f.cpuArch, Memory: memory,
-			ObjectStorage: objectStorage, SystemDisk: systemDisk, DataDisk: dataDisk, EnvType: f.envType,
+			SystemDisk: systemDisk, DataDisk: dataDisk, EnvType: f.envType,
 			IsDBServer: isDB, IsExternal: isExternal, Status: f.status, Tags: f.tags,
 			PersonID: personID,
 		}
@@ -1038,6 +1034,152 @@ func (s *DataExchangeService) applyPortMappings(tx *gorm.DB, sh *importSheet, re
 		byKey[key] = &m
 		if domain != "" {
 			byDomain[domain] = &m
+		}
+		stat.Created++
+	})
+	return nil
+}
+
+// applyObjectStorages 自然键「存储桶名称」（T-088）；主机配对见 applyObjectStorageHosts
+func (s *DataExchangeService) applyObjectStorages(tx *gorm.DB, sh *importSheet, report *ImportReport) error {
+	var existing []models.ObjectStorage
+	if err := tx.Find(&existing).Error; err != nil {
+		return err
+	}
+	byKey := make(map[string]*models.ObjectStorage, len(existing))
+	for i := range existing {
+		byKey[existing[i].Bucket] = &existing[i]
+	}
+	seen := make(map[string]int)
+
+	iterRows(sh, report, func(c *rowCtx, stat *SheetStat) {
+		bucket := c.get("存储桶名称")
+		purpose := c.get("用途")
+		remark := c.get("备注")
+		if bucket == "" {
+			fail(report, c, errors.New("存储桶名称不能为空"))
+			return
+		}
+		if purpose == "" {
+			fail(report, c, errors.New("用途不能为空"))
+			return
+		}
+		if first, dup := seen[bucket]; dup {
+			fail(report, c, fmt.Errorf("与第 %d 行存储桶名称重复", first))
+			return
+		}
+		seen[bucket] = c.rowNum
+
+		sizeGB, err := parseIntCell(c.get("分配大小(GB)"))
+		if err != nil {
+			fail(report, c, fmt.Errorf("分配大小(GB): %v", err))
+			return
+		}
+		if sizeGB < 0 {
+			fail(report, c, errors.New("分配大小不能为负数"))
+			return
+		}
+
+		accessKey := strings.TrimSpace(c.get("AccessKey"))
+		secretKey := strings.TrimSpace(c.get("SecretKey"))
+		if cur, ok := byKey[bucket]; ok {
+			// SecretKey 为空表示保留库中原值（T-088）
+			secretEnc := cur.SecretKeyEnc
+			if secretKey != "" {
+				enc, encErr := utils.EncryptSecret(secretKey, config.AppConfig.AISecretKey)
+				if encErr != nil {
+					fail(report, c, encErr)
+					return
+				}
+				secretEnc = enc
+			}
+			if cur.Purpose == purpose && cur.SizeGB == sizeGB && cur.Remark == remark &&
+				cur.AccessKey == accessKey && secretEnc == cur.SecretKeyEnc {
+				stat.Skipped++
+				return
+			}
+			if updErr := tx.Model(&models.ObjectStorage{}).Where("id = ?", cur.ID).Updates(map[string]interface{}{
+				"purpose": purpose, "size_gb": sizeGB, "remark": remark,
+				"access_key": accessKey, "secret_key_enc": secretEnc,
+			}).Error; updErr != nil {
+				fail(report, c, updErr)
+				return
+			}
+			stat.Updated++
+			return
+		}
+		secretEnc, err := utils.EncryptSecret(secretKey, config.AppConfig.AISecretKey)
+		if err != nil {
+			fail(report, c, err)
+			return
+		}
+		r := models.ObjectStorage{
+			Bucket: bucket, Purpose: purpose, SizeGB: sizeGB, Remark: remark,
+			AccessKey: accessKey, SecretKeyEnc: secretEnc,
+		}
+		if err := tx.Create(&r).Error; err != nil {
+			fail(report, c, err)
+			return
+		}
+		byKey[bucket] = &r
+		stat.Created++
+	})
+	return nil
+}
+
+// applyObjectStorageHosts 配对行自然键（存储桶名称 + 主机内网IP）；已存在的配对跳过
+func (s *DataExchangeService) applyObjectStorageHosts(tx *gorm.DB, sh *importSheet, report *ImportReport) error {
+	var storages []models.ObjectStorage
+	if err := tx.Find(&storages).Error; err != nil {
+		return err
+	}
+	storageByBucket := make(map[string]uint, len(storages))
+	for _, r := range storages {
+		storageByBucket[r.Bucket] = r.ID
+	}
+	seen := make(map[string]int)
+
+	iterRows(sh, report, func(c *rowCtx, stat *SheetStat) {
+		bucket, hostIP := c.get("存储桶名称"), c.get("主机内网IP")
+		if bucket == "" {
+			fail(report, c, errors.New("存储桶名称不能为空"))
+			return
+		}
+		if hostIP == "" {
+			fail(report, c, errors.New("主机内网IP不能为空"))
+			return
+		}
+		storageID, ok := storageByBucket[bucket]
+		if !ok {
+			fail(report, c, fmt.Errorf("存储桶 %q 不存在", bucket))
+			return
+		}
+		hostID, err := resolveHostIP(tx, hostIP)
+		if err != nil {
+			fail(report, c, err)
+			return
+		}
+		key := bucket + "\x00" + hostIP
+		if first, dup := seen[key]; dup {
+			fail(report, c, fmt.Errorf("与第 %d 行（存储桶+主机）重复", first))
+			return
+		}
+		seen[key] = c.rowNum
+
+		var count int64
+		if err := tx.Model(&models.ObjectStorageHost{}).
+			Where("object_storage_id = ? AND host_id = ?", storageID, hostID).Count(&count).Error; err != nil {
+			fail(report, c, err)
+			return
+		}
+		if count > 0 {
+			stat.Skipped++
+			return
+		}
+		pair := models.ObjectStorageHost{ObjectStorageID: storageID, HostID: hostID}
+		if err := tx.Create(&pair).Error; err != nil {
+			fail(report, c, err)
+			return
 		}
 		stat.Created++
 	})

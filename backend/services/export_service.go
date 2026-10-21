@@ -4,16 +4,19 @@ import (
 	"fmt"
 	"time"
 
+	"mcloud/config"
 	"mcloud/database"
 	"mcloud/models"
+	"mcloud/utils"
 
 	"github.com/xuri/excelize/v2"
 )
 
-// Export 导出 8 张业务表为单个 xlsx 工作簿。
+// Export 导出业务表为单个 xlsx 工作簿（T-088 起 10 张）。
 // sheet 顺序与 dataExchangeSheets 一致（依赖序）；关联一律用自然键表达：
 // hosts 人员姓名/联系方式（非 person_id）、host_applications 内网IP（非 host_id）、
-// zero_trusts 接入目标 = 内网IP:端口（非 host_id:port）、port_mappings 内网IP（非 host_id）。
+// zero_trusts 接入目标 = 内网IP:端口（非 host_id:port）、port_mappings 内网IP（非 host_id）、
+// object_storage_hosts 存储桶名称 + 主机内网IP（非 id 配对）。
 func (s *DataExchangeService) Export() ([]byte, error) {
 	var persons []models.Person
 	if err := database.DB.Order("id ASC").Find(&persons).Error; err != nil {
@@ -50,6 +53,14 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 	var mappings []models.PortMapping
 	if err := database.DB.Preload("Host").Order("id ASC").Find(&mappings).Error; err != nil {
 		return nil, fmt.Errorf("查询端口映射失败: %w", err)
+	}
+	var storages []models.ObjectStorage
+	if err := database.DB.Order("id ASC").Find(&storages).Error; err != nil {
+		return nil, fmt.Errorf("查询对象存储失败: %w", err)
+	}
+	var storagePairs []models.ObjectStorageHost
+	if err := database.DB.Order("id ASC").Find(&storagePairs).Error; err != nil {
+		return nil, fmt.Errorf("查询对象存储主机失败: %w", err)
 	}
 
 	hostIPByID := make(map[uint]string, len(hosts))
@@ -122,9 +133,13 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 			personName = h.Person.Name
 			personContact = h.Person.Contact
 		}
+		hasObjectStorage := "否"
+		if h.HasObjectStorage {
+			hasObjectStorage = "是"
+		}
 		hostRows = append(hostRows, []interface{}{
 			h.Region, h.InstanceID, h.Name, h.PrivateIP, h.AssetType, h.OS,
-			h.CPU, h.CPUArch, h.Memory, h.ObjectStorage, h.SystemDisk, h.DataDisk,
+			h.CPU, h.CPUArch, h.Memory, hasObjectStorage, h.SystemDisk, h.DataDisk,
 			h.EnvType, isDB, isExternal, h.Status, h.Tags,
 			personName, personContact,
 		})
@@ -194,6 +209,36 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 		})
 	}
 	if err := writeSheetRows(f, "端口映射", mappingRows); err != nil {
+		return nil, err
+	}
+
+	// object_storages（T-088：独立台账，多主机共享；主机配对见下一 sheet）
+	storageRows := make([][]interface{}, 0, len(storages))
+	storageBucketByID := make(map[uint]string, len(storages))
+	for _, r := range storages {
+		storageBucketByID[r.ID] = r.Bucket
+		// 凭证导出为明文（T-088）；备份文件本身由前端密码加密保护
+		secret, err := utils.DecryptSecret(r.SecretKeyEnc, config.AppConfig.AISecretKey)
+		if err != nil {
+			secret = ""
+		}
+		storageRows = append(storageRows, []interface{}{r.Bucket, r.Purpose, r.SizeGB, r.AccessKey, secret, r.Remark})
+	}
+	if err := writeSheetRows(f, "对象存储", storageRows); err != nil {
+		return nil, err
+	}
+
+	// object_storage_hosts（存储桶名称 + 主机内网IP）
+	storageHostRows := make([][]interface{}, 0, len(storagePairs))
+	for _, p := range storagePairs {
+		bucket, ok := storageBucketByID[p.ObjectStorageID]
+		ip, okIP := hostIPByID[p.HostID]
+		if !ok || !okIP {
+			continue
+		}
+		storageHostRows = append(storageHostRows, []interface{}{bucket, ip})
+	}
+	if err := writeSheetRows(f, "对象存储主机", storageHostRows); err != nil {
 		return nil, err
 	}
 

@@ -40,7 +40,7 @@
 
 - **前端**：单页应用，`/api` 请求经 Axios，IP 探测走 WebSocket 长连接
 - **后端**：分层架构，启动时 goose 执行 `migrations/*.sql`（embed）+ AutoMigrate 兜底 + 种子数据
-- **数据库**：PostgreSQL，12 张表
+- **数据库**：PostgreSQL，14 张表
 
 ---
 
@@ -98,6 +98,8 @@ go/
 │   │   ├── zero_trust_target.go   # ZeroTrustTarget 模型（接入目标子表，T-052；端口列 ports 表达式 T-056；协议列 protocol T-065）
 │   │   ├── port_mapping.go        # PortMapping 模型（端口映射台账）
 │   │   ├── public_ip.go           # PublicIP 模型（公网IP资源台账）
+│   │   ├── object_storage.go      # ObjectStorage 模型（对象存储台账，T-088）
+│   │   ├── object_storage_host.go # ObjectStorageHost 模型（对象存储↔主机配对子表，T-088）
 │   │   ├── audit_log.go           # AuditLog 模型（审计日志）
 │   │   └── ai_setting.go          # AISetting 模型（AI 接入单条全局配置，T-067）
 │   │
@@ -113,6 +115,7 @@ go/
 │   │   ├── zero_trust.go          # 零信任台账 CRUD
 │   │   ├── port_mapping.go        # 端口映射台账 CRUD
 │   │   ├── public_ip.go           # 公网IP资源台账 CRUD
+│   │   ├── object_storage.go      # 对象存储台账 CRUD（多主机共享，T-088）
 │   │   ├── stats.go               # 统计（IP 使用、探测、业务统计）
 │   │   ├── subnet.go              # IP 网段 CRUD
 │   │   ├── audit_log.go           # 审计日志查询（分页 + 按资源查变更记录，T-066）
@@ -135,6 +138,7 @@ go/
 │   │   ├── zero_trust_service.go  # 零信任台账业务逻辑
 │   │   ├── port_mapping_service.go # 端口映射台账业务逻辑（多端口校验 + ip_mapped 重算）
 │   │   ├── public_ip_service.go   # 公网IP资源台账业务逻辑
+│   │   ├── object_storage_service.go # 对象存储台账业务逻辑（桶名唯一/主机至少1台/配对子表，T-088）
 │   │   ├── stats_service.go       # IP 使用统计 + 连通性探测
 │   │   ├── region_usage.go        # 区域资源用量聚合（单条 SQL，T-087）
 │   │   ├── business_stats.go      # 业务统计聚合（项目/公司/人员）
@@ -176,6 +180,7 @@ go/
 │   │   ├── subnet.go              # IP 网段域
 │   │   ├── person.go              # 人员域
 │   │   ├── public_ip.go           # 公网IP域
+│   │   ├── object_storage.go      # 对象存储域（T-088）
 │   │   ├── zero_trust.go          # 零信任台账域
 │   │   ├── port_mapping.go        # 端口映射台账域
 │   │   ├── audit.go               # 审计日志域（查询 + 按资源查变更记录，T-066）
@@ -215,7 +220,7 @@ go/
         │
         ├── stores/                # Pinia 状态：auth / host / cloudResource / stats / business
         ├── composables/           # 组合式函数（T-004/T-005）：useProbeWebSocket / useChartOption / usePagedTable / useProbeGrid
-        ├── api/                   # API 封装：index / auth / host / csv / dataExchange / cloud_resource / person / zero_trust / port_mapping / public_ip / stats / subnet / audit
+        ├── api/                   # API 封装：index / auth / host / csv / dataExchange / cloud_resource / person / zero_trust / port_mapping / public_ip / object_storage / stats / subnet / audit
         ├── views/                 # 页面：Login / HostManagement / ResourceStatistics / IpStatistics / BusinessStatistics / PersonnelManagement / PublicIPManagement / ZeroTrustLedger / MappingLedger / DataBackup / AISettings / AIApplicationImport
         ├── components/            # 组件：顶部导航 AppNav（T-019）/工具栏/表格/各类弹窗（含资产详情弹窗与 AuditTimeline 变更记录时间线，T-066；ip/：网段管理/探测面板/网段卡片）
         │
@@ -237,7 +242,7 @@ go/
 
 ## 数据模型
 
-数据库共 12 张表：
+数据库共 14 张表：
 
 | 表 | 模型 | 说明 |
 |----|------|------|
@@ -251,6 +256,8 @@ go/
 | `zero_trust_targets` | `models/zero_trust_target.go` | 零信任接入目标子表（一对「主机:端口表达式+协议」一行，T-052/T-056/T-065） |
 | `port_mappings` | `models/port_mapping.go` | 端口映射台账（公网IP↔内网主机多端口；域名可选） |
 | `public_ips` | `models/public_ip.go` | 公网IP资源台账（IP/运营商/出口位置/备注） |
+| `object_storages` | `models/object_storage.go` | 对象存储台账（存储桶名称唯一/用途/分配大小 GB/备注；外挂存储，不专属某主机，T-088） |
+| `object_storage_hosts` | `models/object_storage_host.go` | 对象存储↔主机配对子表（一个存储桶可挂多台主机共享访问；`(object_storage_id, host_id)` 唯一，T-088） |
 | `audit_logs` | `models/audit_log.go` | 审计日志（操作人快照/动作/资源/diff/request_id；只增不删；资产详情「变更记录」时间线按 `resource_type`+`resource_id` 查询，T-066） |
 | `ai_settings` | `models/ai_setting.go` | AI 接入配置（单条全局：API 地址/加密 Key/模型；API Key 以 AES-GCM 密文列 `api_key_enc` 存储，T-067） |
 
@@ -294,7 +301,7 @@ go/
 | CPU核数 | `cpu` | INTEGER | |
 | CPU架构 | `cpu_arch` | VARCHAR(16) | 可选值：C86、X86、ARM |
 | 内存(GB) | `memory` | INTEGER | |
-| 对象存储(GB) | `object_storage` | INTEGER | 原 `disk`（T-072 RENAME COLUMN）；非真实磁盘 |
+| 是否使用对象存储 | `has_object_storage` | BOOLEAN | NOT NULL, DEFAULT FALSE（T-088：原 `object_storage` INTEGER 改名并转布尔；**派生字段**，由 `object_storage_hosts` 配对自动重算，主机表单/CSV/批量/AI 入账均不可手填） |
 | 系统盘(GB) | `system_disk` | INTEGER | |
 | 数据盘(GB) | `data_disk` | INTEGER | |
 | 环境类型 | `env_type` | VARCHAR(16) | 可选值：测试、生产 |
@@ -429,7 +436,31 @@ go/
 | 模型 | `model` | VARCHAR(128) | NOT NULL DEFAULT '' |
 | 更新时间 | `updated_at` | TIMESTAMPTZ | NOT NULL DEFAULT NOW() |
 
-密钥由环境变量 `AI_SECRET_KEY` 经 SHA-256 派生；未配置该变量时降级明文存储并记录告警（`utils/crypto.go`，T-067）。
+密钥由环境变量 `AI_SECRET_KEY` 经 SHA-256 派生；未配置该变量时降级明文存储并记录告警（`utils/crypto.go`，T-067）。同一密钥派生口径也用于对象存储 `object_storages.secret_key_enc`（T-088，`utils.EncryptSecret`/`DecryptSecret`）。
+
+### object_storages 表（对象存储台账）
+
+| 字段 | 列名 | 类型 | 约束 |
+|------|------|------|------|
+| ID | `id` | BIGSERIAL | PRIMARY KEY |
+| 存储桶名称 | `bucket` | VARCHAR(128) | NOT NULL，唯一索引 `idx_object_storages_bucket` |
+| 用途 | `purpose` | TEXT | NOT NULL DEFAULT ''（应用层必填） |
+| 分配大小(GB) | `size_gb` | BIGINT | NOT NULL DEFAULT 0（显式列名 `size_gb`） |
+| 访问用户名 | `access_key` | VARCHAR(128) | NOT NULL DEFAULT ''（访问存储桶的 AccessKey，明文） |
+| 访问密钥密文 | `secret_key_enc` | TEXT | NOT NULL DEFAULT ''（SecretKey 的 AES-GCM 密文；密钥由 `AI_SECRET_KEY` 派生，未配置时降级明文并告警；模型字段 JSON 不序列化，T-088） |
+| 备注 | `remark` | TEXT | |
+| 创建时间 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() |
+| 更新时间 | `updated_at` | TIMESTAMPTZ | DEFAULT NOW() |
+
+### object_storage_hosts 表（对象存储↔主机配对）
+
+| 字段 | 列名 | 类型 | 约束 |
+|------|------|------|------|
+| ID | `id` | BIGSERIAL | PRIMARY KEY |
+| 对象存储ID | `object_storage_id` | BIGINT | NOT NULL，FK → object_storages(id) ON DELETE CASCADE |
+| 主机ID | `host_id` | BIGINT | NOT NULL，FK → hosts(id) ON DELETE RESTRICT |
+
+唯一索引 `idx_object_storage_hosts_pair (object_storage_id, host_id)`；普通索引 `idx_object_storage_hosts_host_id`。
 
 ### 字段约束说明
 
@@ -445,5 +476,7 @@ go/
 - `port_mappings.host_id` 外键关联 `hosts.id`；外网/内网端口**展开后**数量必须一致（`A-B` 范围按 B-A+1 计，范围可与单口混搭配对），协议列表分别与对应端口 **token** 列表等长（仅 `tcp`/`udp`，缺省补 `tcp`）；主机被映射引用时禁止删除
 - `port_mappings` 整组唯一 `(host_id, public_ip, external_ports, external_protocols)`（唯一索引 `idx_port_mappings_host_ip_ports`：`T-051` 落前三列、`T-055` 纳入外网协议列并回填存量为 tcp，迁移 `20261010000006` 幂等；应用层 Create/Update 判重返回 `40901`，同端口不同协议不互斥）
 - `hosts.ip_mapped` 由映射台账自动重算（有映射=true，无=false），主机表单不可手改
+- `hosts.has_object_storage` 同样为**派生字段**（T-088）：对象存储台账新增/编辑/删除或配对变更后，在事务提交后按 `object_storage_hosts` 重算相关主机（`refreshHostsObjectStorageFlag`）；备份导入在事务内以 `EXISTS` 全量重算（`ip_mapped` 同口径），故导入后该列值恒等于配对结果、与文件中该列无关
 - `public_ips.ip` 唯一约束，公网 IP 资源池录入；删除/修改 IP 时若被 `port_mappings` 引用（应用层值引用校验）返回 `40901`（`T-051`；零信任 `T-061` 起不再关联公网IP）
-- **GORM 列名陷阱**：`CIDR` 字段默认会被命名为 `c_id_r`，模型已显式指定 `gorm:"column:cidr"`
+- `object_storages.bucket` 全局唯一（应用层 Create/Update 判重返回 `40901`）；一个存储桶至少挂 1 台主机（应用层校验）；主机被存储桶引用时禁止删除（`HostReferencedByObjectStorage` 计数，返回 `40901`）；删除存储桶级联清空配对行，主机不受影响（T-088）
+- **GORM 列名陷阱**：`CIDR` 字段默认会被命名为 `c_id_r`，模型已显式指定 `gorm:"column:cidr"`；`has_object_storage` 同理需显式 `gorm:"column:has_object_storage"`（T-088）

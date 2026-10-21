@@ -96,7 +96,6 @@ const FIELD_LABELS = {
   cpu: 'CPU核数',
   cpu_arch: 'CPU架构',
   memory: '内存(GB)',
-  object_storage: '对象存储(GB)',
   system_disk: '系统盘(GB)',
   data_disk: '数据盘(GB)',
   env_type: '环境类型',

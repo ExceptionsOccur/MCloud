@@ -64,6 +64,8 @@ func Migrate() {
 		&models.PublicIP{},
 		&models.AuditLog{},
 		&models.AISetting{},
+		&models.ObjectStorage{},
+		&models.ObjectStorageHost{},
 	)
 	if err != nil {
 		log.Fatalf("数据库迁移失败: %v", err)

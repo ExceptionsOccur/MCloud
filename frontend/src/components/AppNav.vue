@@ -27,6 +27,7 @@ defineProps({
 
 const navItems = [
   { to: '/', label: '主机管理' },
+  { to: '/object-storage', label: '对象存储' },
   { to: '/statistics', label: '资源统计' },
   { to: '/ip-statistics', label: 'IP统计' },
   { to: '/business-statistics', label: '业务统计' },

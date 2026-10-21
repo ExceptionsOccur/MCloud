@@ -80,7 +80,7 @@
 | todo（P2） | 无 |
 | blocked | 无 |
 | 回顾锚点 | 上次回顾至 `T-074（2026-10-20）`（批次 T-058~T-074 共 17 条核查，跳过纯文档 T-071，修复 14 处文档偏差后人类确认推进；口径改为按完成时间判定，2026-10-20） |
-| 功能完成度 | 功能模块 19 项：19 完成 / 0 待开发；技术债 2 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
+| 功能完成度 | 功能模块 20 项：20 完成 / 0 待开发；技术债 2 项（详见 [PROJECT_STATUS · 功能完成度](./docs/PROJECT_STATUS.md#功能完成度)） |
 | 已知风险 | 无（WS 探测 token 校验漏洞已由 `T-022` 关闭；余项见 [PROJECT_STATUS](./docs/PROJECT_STATUS.md#已知问题--技术债)） |
 
 > T-036~T-041 各批次均已合并 main（提交号见 ROADMAP done 表）；全量回顾偏差修复与锚点推进见 ROADMAP「回顾锚点」。
@@ -97,13 +97,13 @@ MCloud 是云平台主机资产信息管理系统：**Go (Gin) 后端 + Vue 3 SP
 
 **分层（红线 1，不可破坏）**：`routes`（注册+JWT）→ `controllers`（仅绑定参数、调 service、`Success/Error` 响应）→ `services`（全部业务逻辑）→ `models`（GORM）。
 
-**前端结构**：`api/`（Axios 封装）→ `stores/`（Pinia）→ `views/`（11 个功能页：6 顶部 Tab + 5 设置菜单页）→ `components/`。
+**前端结构**：`api/`（Axios 封装）→ `stores/`（Pinia）→ `views/`（12 个功能页：7 顶部 Tab + 5 设置菜单页）→ `components/`。
 
 | 关键事实 | 值 |
 |----------|-----|
 | 开发端口 | 前端 5173（Vite，`/api` 代理到 `backend:5677`）、后端 5677、Postgres 5432、生产 5678 |
 | 默认账号 | `admin` / `Pass4MCloud`（种子见 `backend/database/postgres.go` 的 `seedAdmin()`） |
-| 数据库表 | 12 张：`users` / `hosts` / `host_applications` / `persons` / `cloud_resources` / `ip_subnets` / `zero_trusts` / `zero_trust_targets` / `port_mappings` / `public_ips` / `audit_logs` / `ai_settings` |
+| 数据库表 | 14 张：`users` / `hosts` / `host_applications` / `persons` / `cloud_resources` / `ip_subnets` / `zero_trusts` / `zero_trust_targets` / `port_mappings` / `public_ips` / `object_storages` / `object_storage_hosts` / `audit_logs` / `ai_settings` |
 | 开发环境 | `cd docker && cp .env.example .env && docker-compose -f docker-compose.dev.yml up -d` |
 
 ## 核心约定（红线）
@@ -197,7 +197,7 @@ cd backend && go build ./...   # 确认模型可编译 + 迁移 SQL 文件已按
 | [README.md](./README.md) | 功能特性、快速开始（面向人类） | 需要产品视角 / 部署说明 |
 | [docs/ROADMAP.md](./docs/ROADMAP.md) | **任务队列（唯一事实来源）** | 领任务、回写状态 |
 | [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md) | 完成度、变更记录、技术债、注意事项 | 判断某功能是否已存在、避坑 |
-| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 目录结构、分层、12 张表模型 | 定位模块、改模型 |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 目录结构、分层、14 张表模型 | 定位模块、改模型 |
 | [docs/API.md](./docs/API.md) | 响应格式、错误码、全部路由与参数 | 增改/调用接口 |
 | [docs/BUSINESS_LOGIC.md](./docs/BUSINESS_LOGIC.md) | 认证、搜索、CSV、IP 探测状态机、统计口径 | 改业务逻辑 |
 | [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) | 编码规范、提交规范、测试、安全 | 写代码时的细则 |
@@ -212,6 +212,7 @@ cd backend && go build ./...   # 确认模型可编译 + 迁移 SQL 文件已按
 | 人员 person | `persons` 表，经 `hosts.person_id` 关联主机 |
 | 零信任台账 | `zero_trusts` 表，申请单位/账户名/接入目标(`zero_trust_targets` 子表配对行，API `targets` 为 host_id:port 多组)/公网IP入口(接入地区由资源池带出)/时间/备注；主机被引用禁止删除 |
 | 域名台账 | 已升级为端口映射台账 `port_mappings`（T-034）：公网IP↔内网主机多端口映射，域名可选 |
+| 对象存储台账 | `object_storages` 表，外挂存储不专属某主机：存储桶名称(唯一)/用途/分配大小(GB)/备注；`object_storage_hosts` 配对多台主机共享（T-088）；`hosts.has_object_storage` 仅标记是否使用 |
 | `is_db_server` | BOOLEAN，API 统一返回 `true/false` |
 | 云资源总览 | `cloud_resources`，按区域手工录入的总量资源 |
 | 裸金属 | 物理服务器，**资源统计一律排除**（避免重复计算） |

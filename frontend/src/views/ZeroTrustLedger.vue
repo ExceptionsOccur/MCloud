@@ -877,6 +877,9 @@ function handleCommand(command) {
 
 .loc-tag {
   max-width: 100%;
+  color: #409eff;
+  border: 1px solid #d9ecff;
+  background: #ecf5ff;
 }
 
 .target-rows {

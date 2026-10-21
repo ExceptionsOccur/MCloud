@@ -11,8 +11,8 @@ import (
 	"strings"
 )
 
-// AI API Key 加密：AES-256-GCM，密钥由环境变量 AI_SECRET_KEY 经 SHA-256 派生（定长 32 字节）。
-// 未配置 AI_SECRET_KEY 时降级明文存储并告警（不阻断功能，T-067）。
+// 凭证类字段加密（AI API Key、对象存储访问密钥）：AES-256-GCM，密钥由环境变量 AI_SECRET_KEY 经 SHA-256 派生（定长 32 字节）。
+// 未配置 AI_SECRET_KEY 时降级明文存储并告警（不阻断功能，T-067/T-088）。
 
 // deriveAESKey 将任意长度密钥经 SHA-256 派生为 32 字节 AES-256 密钥
 func deriveAESKey(secret string) [32]byte {
@@ -104,4 +104,18 @@ func EncryptAPIKeyWithWarning(plain, secret string) (string, error) {
 		log.Println("[warn] 未配置 AI_SECRET_KEY，API Key 将以明文存储")
 	}
 	return EncryptAPIKey(plain, secret)
+}
+
+// EncryptSecret 对象存储访问密钥加密（同 AI API Key 口径，T-088）
+func EncryptSecret(plain, secret string) (string, error) {
+	return EncryptAPIKey(plain, secret)
+}
+
+// DecryptSecret 对象存储访问密钥解密（同 AI API Key 口径，T-088）
+func DecryptSecret(enc, secret string) (string, error) {
+	plain, err := DecryptAPIKey(enc, secret)
+	if err != nil {
+		return "", errors.New("访问密钥解密失败")
+	}
+	return plain, nil
 }

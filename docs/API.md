@@ -80,7 +80,7 @@
 | GET | `/api/hosts/:id` | `host.Get` | 单条详情 |
 | POST | `/api/hosts` | `host.Create` | 新增主机 |
 | PUT | `/api/hosts/:id` | `host.Update` | 编辑主机 |
-| DELETE | `/api/hosts/:id` | `host.Delete` | 删除主机 |
+| DELETE | `/api/hosts/:id` | `host.Delete` | 删除主机；被零信任/映射/对象存储台账引用时返回 `40901` |
 
 ### 批量操作（需 JWT）
 
@@ -177,6 +177,19 @@
 | PUT | `/api/public-ips/:id` | `publicIP.Update` | 修改公网IP记录；**修改 IP 值**且该 IP 已被映射台账引用时返回 `40901` |
 | DELETE | `/api/public-ips/:id` | `publicIP.Delete` | 删除公网IP记录；被 `port_mappings` 引用时返回 `40901`（`T-051`；零信任 `T-061` 起不再关联公网IP） |
 
+### 对象存储台账（需 JWT）
+
+对象存储为**外挂存储**，不专属某台主机，一个存储桶可被多台主机共享访问（`T-088`）；`hosts.has_object_storage` 为**派生字段**：由本台账的主机配对自动判别（同 `ip_mapped`），主机新增/编辑接口不接受该字段，存储桶增删改后自动重算。
+
+| 方法 | 路由 | Controller | 说明 |
+|------|------|-----------|------|
+| GET | `/api/object-storages` | `objectStorage.List` | 对象存储列表，`keyword` 模糊匹配存储桶名称/用途/备注；每项含 `access_key`、`secret_key_mask`（末四位脱敏）/`secret_key_set` 与 `hosts[]` 配对主机（`host_id` + `host{name,private_ip}`）；**绝不返回 SecretKey 明文** |
+| POST | `/api/object-storages` | `objectStorage.Create` | 新增（`bucket` 必填且全局唯一、`purpose` 必填、`size_gb` 非负整数 GB、`host_ids` 至少 1 台且主机须存在、`access_key`/`secret_key` 访问凭证选填、`remark` 选填）；桶名重复返回 `40901`；SecretKey 以 AES-GCM 密文落库 |
+| PUT | `/api/object-storages/:id` | `objectStorage.Update` | 修改记录；`host_ids` 为全量配对（与请求一致重建）；`secret_key` 留空表示保留原值；桶名与他人重复返回 `40901` |
+| DELETE | `/api/object-storages/:id` | `objectStorage.Delete` | 删除存储桶并级联清空配对行（主机本身不删除） |
+
+> 访问凭证（T-088）：`access_key` 明文存储、接口明文回显；`secret_key` 以 AES-GCM 密文列 `secret_key_enc` 存储（密钥由 `AI_SECRET_KEY` 经 SHA-256 派生，未配置时降级明文并告警），接口仅回显 `****` + 末四位，审计快照同样脱敏。
+
 ### 零信任台账（需 JWT）
 
 | 方法 | 路由 | Controller | 说明 |
@@ -272,7 +285,7 @@ POST /api/batch/hosts
       "env_type": "生产",
       "cpu": 4,
       "memory": 8,
-      "object_storage": 500,
+      "has_object_storage": true,
       "system_disk": 50,
       "data_disk": 100,
       "is_external": false,
@@ -431,16 +444,17 @@ POST /api/port-mappings/batch
 
 ## 数据备份 xlsx 导出/导入
 
-`GET /api/export/all` 返回单文件 8 个工作表（T-063 起为中文名，顺序即导入依赖顺序）的 xlsx 附件（`Content-Disposition: attachment`，文件名 `mcloud_backup_YYYY-MM-DD.xlsx`）；前端拿到字节后用密码加密为 Excel 标准加密 `.xlsx` 再下载（T-074）：
+`GET /api/export/all` 返回单文件 10 个工作表（T-063 起为中文名，顺序即导入依赖顺序；T-088 新增对象存储两张表）的 xlsx 附件（`Content-Disposition: attachment`，文件名 `mcloud_backup_YYYY-MM-DD.xlsx`）；前端拿到字节后用密码加密为 Excel 标准加密 `.xlsx` 再下载（T-074）：
 
-`人员` → `公网IP` → `云资源` → `网段` → `主机` → `主机申请信息` → `零信任` → `端口映射`
+`人员` → `公网IP` → `云资源` → `网段` → `主机` → `主机申请信息` → `零信任` → `端口映射` → `对象存储` → `对象存储主机`
 
 - 工作表按中文名匹配：导入要求工作表名与上表一致（**不兼容旧英文名 persons/hosts/… 备份**）
 - 不含 `users`，不含自增 id/时间戳列；关联一律用自然键表达：`主机` 用「人员姓名/人员联系方式」列、`主机申请信息` 与 `端口映射` 用宿主「内网IP」、`零信任` 按「账户名 + 内网IP」一行导出，端口分列 `内网IP`/`tcp端口`/`udp端口`（T-073：端口列支持掩码 `*`、逗号列表与 `A-B` 范围并可混用；`*` 表示全端口 1-65535）
 - **`零信任` 按「账户名 + 接入地区 + 内网IP 一行」导出（T-073/T-077）**：同一账户名、同一接入地区下同一主机的 tcp/udp 端口分别并集到 `tcp端口`/`udp端口` 两列（同协议多目标合并、区间规整）；不同接入地区或不同内网IP 各占一行、其余字段取首条非空；无接入目标时「内网IP/端口」列为空。列头：`申请单位,账户名,账号姓名,申请人,账户联系方式,接入地区,内网IP,tcp端口,udp端口,系统名称,申请时间,备注`（**T-073 起删除旧「接入目标」列，不兼容旧备份**）。导入按「账户名 + 接入地区」合并、接入目标并集去重；`内网IP` 列沿用 `;` 分组广播语义，不做 CIDR 展开；两端口列均空视为行错误
-- `主机` sheet 含「是否云外主机」列（T-078，是/否，旧备份无该列按云内）；「对象存储」列为 `hosts.object_storage`（T-072，原「磁盘」列，旧备份列头「磁盘」导入时兼容读取）；主机列表「对象存储」列同样展示 `hosts.object_storage`（T-080 起申请信息不再有该字段）
-- `主机.ip_mapped` 为派生列不导出（导入后由后端重算）；`端口映射` 无运营商/出口位置列（`T-049` 起派生字段，库中不存），从资源池带出；`端口映射` 含「外网协议/内网协议」列（T-055，旧备份文件缺列时导入默认 tcp）；`零信任` 的「接入地区」列为独立存储字段（T-061，替代原「公网IP」列；T-065 支持多值，逗号分隔）
-- 导入按各表复合自然键 upsert：`人员`=姓名+联系方式、`公网IP`=公网IP、`云资源`=区域、`网段`=网段CIDR、`主机`=内网IP、`主机申请信息`=宿主内网IP、`零信任`=账户名+接入地区（T-058/T-077 合并语义：同键才合并，接入目标并集、空字段补录、非空保留；同文件多行同键同样合并，不同地区各自独立）、`端口映射`=公网IP+宿主内网IP+外网端口+外网协议
+- `主机` sheet 含「是否云外主机」列（T-078，是/否，旧备份无该列按云内）；「是否使用对象存储」列为**导出用的派生列**（T-088，是/否）：导入后由对象存储配对全量重算，不按文件值写入（旧备份列头「对象存储」「磁盘」仅用于结构校验兼容）
+- `对象存储` sheet 列头 `存储桶名称,用途,分配大小(GB),AccessKey,SecretKey,备注`（凭证导出为明文，T-088；导入时 SecretKey 为空保留库中原值）；`对象存储主机` sheet 列头 `存储桶名称,主机内网IP`（多对多配对，用自然键表达，T-088；导入依赖前一 sheet，故位于最后）
+- `主机.ip_mapped`、`主机.has_object_storage` 均为派生列（由台账重算，导入不写入）；`端口映射` 无运营商/出口位置列（`T-049` 起派生字段，库中不存），从资源池带出；`端口映射` 含「外网协议/内网协议」列（T-055，旧备份文件缺列时导入默认 tcp）；`零信任` 的「接入地区」列为独立存储字段（T-061，替代原「公网IP」列；T-065 支持多值，逗号分隔）
+- 导入按各表复合自然键 upsert：`人员`=姓名+联系方式、`公网IP`=公网IP、`云资源`=区域、`网段`=网段CIDR、`主机`=内网IP、`主机申请信息`=宿主内网IP、`零信任`=账户名+接入地区（T-058/T-077 合并语义：同键才合并，接入目标并集、空字段补录、非空保留；同文件多行同键同样合并，不同地区各自独立）、`端口映射`=公网IP+宿主内网IP+外网端口+外网协议、`对象存储`=存储桶名称、`对象存储主机`=存储桶名称+主机内网IP
 - 语义：**仅新增与更新，不删除**已有数据；sheet 与列头按名匹配（列顺序可变），全空行跳过
 - `POST /api/import/all`：`multipart/form-data`，字段 `file`，仅 `.xlsx`，≤ 20MB；**加密 Excel 由前端凭密码解密后再上传**（T-074，后端只接收明文 xlsx；上传未解密的加密文件返回 `40001`「文件不是有效的 .xlsx（若为加密 Excel，请在导入时填写密码）」）
 

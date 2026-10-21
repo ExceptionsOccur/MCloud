@@ -52,6 +52,8 @@ func openTestDB(t *testing.T, name string) *gorm.DB {
 		&models.PublicIP{},
 		&models.AuditLog{},
 		&models.AISetting{},
+		&models.ObjectStorage{},
+		&models.ObjectStorageHost{},
 	); err != nil {
 		t.Fatalf("AutoMigrate 失败: %v", err)
 	}

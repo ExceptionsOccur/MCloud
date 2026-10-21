@@ -297,14 +297,12 @@ func TestHostFilterOrderDesc(t *testing.T) {
 	}
 }
 
-// TestHostObjectStorageField T-072：对象存储字段（原 disk）创建/更新/查询往返
+// TestHostObjectStorageField T-088：`has_object_storage` 为派生字段，默认 false 且主机接口不接受手填
 func TestHostObjectStorageField(t *testing.T) {
 	newTestDB(t)
 	s := NewHostService()
 
-	req := baseHostReq("10.4.2.1")
-	req.ObjectStorage = 500
-	id, err := s.Create(req, testOp, NewRequestID())
+	id, err := s.Create(baseHostReq("10.4.2.1"), testOp, NewRequestID())
 	if err != nil {
 		t.Fatalf("Create 失败: %v", err)
 	}
@@ -312,19 +310,20 @@ func TestHostObjectStorageField(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID 失败: %v", err)
 	}
-	if host.ObjectStorage != 500 {
-		t.Fatalf("object_storage=%d，期望 500", host.ObjectStorage)
+	if host.HasObjectStorage {
+		t.Fatal("新建主机 has_object_storage 应为 false（无存储桶配对）")
 	}
 
-	if err = s.Update(id, UpdateHostRequest{ObjectStorage: 1024}, testOp, NewRequestID()); err != nil {
+	// 更新主机不应改变该字段（由对象存储台账重算）
+	if err = s.Update(id, UpdateHostRequest{Name: "renamed"}, testOp, NewRequestID()); err != nil {
 		t.Fatalf("Update 失败: %v", err)
 	}
 	host, err = s.GetByID(id)
 	if err != nil {
 		t.Fatalf("GetByID 失败: %v", err)
 	}
-	if host.ObjectStorage != 1024 {
-		t.Fatalf("更新后 object_storage=%d，期望 1024", host.ObjectStorage)
+	if host.HasObjectStorage {
+		t.Fatal("更新主机不应手写 has_object_storage")
 	}
 }
 
@@ -416,7 +415,7 @@ func TestHostExternalCSV(t *testing.T) {
 		"华东", "i-078", "ext-host", "10.5.2.1", "否",
 		"虚拟机", "CentOS", "2", "X86", "4",
 		"40", "100", "生产", "否",
-		"运行中", "", "单位", "张三", "", "", "", "", "2026-01-02", "", "600", "是",
+		"运行中", "", "单位", "张三", "", "", "", "", "2026-01-02", "", "是", "是",
 	}
 	req, err := s.ParseCSVRowToCreateHost(row)
 	if err != nil {
@@ -424,9 +423,6 @@ func TestHostExternalCSV(t *testing.T) {
 	}
 	if req.IsExternal == nil || !*req.IsExternal {
 		t.Fatal("26 列末列「是」应解析为云外")
-	}
-	if req.ObjectStorage != 600 {
-		t.Fatalf("对象存储应为 600，实际 %d", req.ObjectStorage)
 	}
 	if req.Tags != "" || req.ApplyUnit != "单位" || req.Applicant != "张三" || req.ApplyTime != "2026-01-02" || req.Remark != "" {
 		t.Fatalf("列位移后申请字段不符: %+v", req)

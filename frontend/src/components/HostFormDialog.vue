@@ -260,14 +260,22 @@
                 />
               </el-form-item>
             </el-col>
-            <el-col :span="12">
-              <el-form-item label="对象存储(GB)">
-                <el-input
-                  v-model="form.object_storage"
-                  placeholder="请输入对象存储"
-                />
+            <el-col :span="6">
+              <el-form-item label="对象存储">
+                <el-tooltip
+                  content="由「对象存储」台账的共享主机自动判别，不可手改"
+                  placement="top"
+                >
+                  <el-tag
+                    :type="form.has_object_storage ? 'success' : 'info'"
+                    size="small"
+                  >
+                    {{ form.has_object_storage ? '有' : '无' }}
+                  </el-tag>
+                </el-tooltip>
               </el-form-item>
             </el-col>
+            <el-col :span="6" />
             <el-col :span="6">
               <el-form-item label="数据库服务器">
                 <el-switch v-model="form.is_db_server" />
@@ -471,7 +479,7 @@ const formRef = ref(null)
 
 const form = reactive({
   region: '', name: '', instance_id: '', private_ip: '', ip_mapped: false,
-  asset_type: '', os: '', cpu: '', cpu_arch: '', memory: '', object_storage: '',
+  asset_type: '', os: '', cpu: '', cpu_arch: '', memory: '', has_object_storage: false,
   system_disk: '', data_disk: '', env_type: '', is_db_server: false, is_external: false,
   status: '', tags: '', person_id: '',
   apply_unit: '', applicant: '', applicant_contact: '', project: '',
@@ -590,7 +598,6 @@ const rules = {
   private_ip: [{ required: true, message: '请输入内网IP', trigger: 'blur' }],
   cpu: [{ pattern: /^\d*$/, message: '请输入数字', trigger: 'blur' }],
   memory: [{ pattern: /^\d*$/, message: '请输入数字', trigger: 'blur' }],
-  object_storage: [{ pattern: /^\d*$/, message: '请输入数字', trigger: 'blur' }],
   system_disk: [{ pattern: /^\d*$/, message: '请输入数字', trigger: 'blur' }],
   data_disk: [{ pattern: /^\d*$/, message: '请输入数字', trigger: 'blur' }]
 }
@@ -622,7 +629,7 @@ function fillFormFromHost(h) {
   form.cpu = h.cpu ?? ''
   form.cpu_arch = h.cpu_arch || ''
   form.memory = h.memory ?? ''
-  form.object_storage = h.object_storage ?? ''
+  form.has_object_storage = h.has_object_storage || false
   form.system_disk = h.system_disk ?? ''
   form.data_disk = h.data_disk ?? ''
   form.env_type = h.env_type || ''
@@ -732,8 +739,10 @@ async function handleSubmit() {
 
     const payload = { ...form }
     payload.person_id = personId || null
+    // 派生字段：ip_mapped 由映射台账、has_object_storage 由对象存储台账自动重算
     delete payload.ip_mapped
-    ;['cpu', 'memory', 'object_storage', 'system_disk', 'data_disk'].forEach(key => {
+    delete payload.has_object_storage
+    ;['cpu', 'memory', 'system_disk', 'data_disk'].forEach(key => {
       payload[key] = Number(payload[key]) || 0
     })
     let success

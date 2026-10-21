@@ -6,7 +6,7 @@
 
 ## 功能完成度
 
-> 计数（2026-10-10）：功能模块 **19** 项（**19** 完成 / **0** 待开发）；技术债 **2** 项。
+> 计数（2026-10-21）：功能模块 **20** 项（**20** 完成 / **0** 待开发）；技术债 **2** 项。
 
 | 模块 | 状态 | 说明 |
 |------|------|------|
@@ -27,6 +27,7 @@
 | 自动化测试 | ✅ 完成 | `T-006` 测试骨架：后端 services 表驱动单测（主机 CRUD/登录锁定，sqlite 内存库注入 `database.DB`）+ utils 密码；前端 Vitest 冒烟（`npm run test`） |
 | Goose 迁移执行器 | ✅ 完成 | `T-016` 启动时 goose 执行 `migrations/*.sql`（embed），AutoMigrate 兜底；存量 dev 库首跑+幂等已实测 |
 | 公网 IP 资源录入 | ✅ 完成 | `T-031` `public_ips` 资源池（IP/运营商/备注），设置菜单 + `/public-ip` 独立页 |
+| 对象存储台账 | ✅ 完成 | `T-088` 对象存储独立成表（存储桶名称/用途/分配大小 GB/AccessKey/SecretKey 凭证/主机/备注，多主机共享，SecretKey 密文存储）+ `/object-storage` 顶部 Tab 独立统计表格；`hosts.object_storage` 改名并转派生布尔 `has_object_storage`（由存储桶共享关系自动判别，同 `ip_mapped`）；主机被存储桶引用时禁止删除；备份新增两张对象存储 sheet（凭证明文导出） |
 | 数据备份 | ✅ 完成 | `T-038` 8 个业务 sheet 导出为单个 xlsx / 导入自然键 upsert（单事务失败整体回滚）；`T-072` 导出强制密码加密（自定义 `.mcbak`，已由 T-074 移除）、`T-074` 改为前端标准 Office 加密 xlsx（Excel 可打开改后再导入，导入填密码即解密）；`T-073` 零信任 sheet 按账户名+内网IP 一行、tcp/udp 双端口列（支持 `*` 掩码/列表/范围） |
 | 审计日志 | ✅ 完成 | `T-047` `audit_logs` 全资源 CUD/导入审计（操作人快照/diff/request_id）+ `GET /api/audit-logs`；`T-066` 改为资产变更记录：移除独立审计页，主机/零信任/映射详情弹窗「变更记录」时间线（`GET /api/audit-logs/resource`），点击资产行打开只读详情 |
 | AI 接入配置 | ✅ 完成 | `T-067` 后端地基：`ai_settings` 单条全局配置（API 地址/加密 Key/模型）+ `GET/PUT /api/ai/settings`（Key 回显脱敏、空值保留原值、变更写审计）；`T-069` 前端 `/ai-settings` 设置页（API 地址/API Key 脱敏/模型名，设置菜单入口）；API Key 以 AES-GCM 密文存储（`AI_SECRET_KEY` 派生密钥，缺失降级明文并告警） |
@@ -37,6 +38,8 @@
 > 按日期倒序，保留最近 3 个月；每条注明提交号，完整历史用 `git log --oneline`。文风：每条 ≤ 120 字一行摘要，禁止枚举（见 [DEVELOPMENT.md](./DEVELOPMENT.md) 文档回写文风）。
 
 ### 2026-10-21
+
+- `-` `feat:` **T-088** 对象存储独立台账（`object_storages` + 多主机配对子表）与 `/object-storage` 顶部 Tab 页，`hosts.has_object_storage` 改为由配对自动判别的派生标记，备份扩为 10 个 sheet
 
 - `810e2b8` `perf:` **T-087** 新增 `/api/stats/region-usage` 单条 SQL 聚合区域用量，资源统计请求数从「区域数×页数」降为 3 个，接口耗时 5ms
 
