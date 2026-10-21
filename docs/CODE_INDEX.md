@@ -73,12 +73,12 @@
 | 文件 | 职责 | 关键函数 |
 |------|------|----------|
 | `services/auth_service.go` | 认证逻辑、失败锁定 | `Login`（5 次失败锁定 15 分钟）、`ChangePassword` |
-| `services/host_service.go` | 主机 CRUD 与筛选 | `Filter`（列表 `id DESC` 倒序，T-072）、`Create`、`Update`、`Delete`、`validatePersonID` |
+| `services/host_service.go` | 主机 CRUD 与筛选 | `Filter`（列表 `id DESC` 倒序，T-072；`is_external` 筛选 + `internal_count`/`external_count` 拆分计数，T-078）、`Create`、`Update`、`Delete`、`validatePersonID` |
 | `services/host_batch_service.go` | 主机批量增改（结构化 JSON + 纯文本行）与批量编辑 | `BatchCreate`、`BatchCreateFromText`、`BatchUpdate`、`parsePersonID` |
 | `services/host_csv_service.go` | 主机 CSV 导入导出流程（后缀/编码/行循环）与行映射 | `ImportCSV`、`ExportCSV`、`CSVTemplate`、`ParseCSVRowToCreateHost`、`ExportToCSVRows` |
 | `services/cloud_resource_service.go` | 云资源总览读写 | `List`、`Update`（按 region upsert） |
 | `services/stats_service.go` | IP 使用统计 + 连通性探测 | `GetIPUsage`、`Probe`、`pingICMP`、`probeTCP` |
-| `services/business_stats.go` | 业务统计聚合 | `GetBusinessStats`（项目/公司/人员三维聚合） |
+| `services/business_stats.go` | 业务统计聚合 | `GetBusinessStats`（项目/公司/人员三维聚合；排除云外主机，T-078） |
 | `services/subnet_service.go` | IP 网段管理 | `List`/`Create`/`Update`/`Delete`、`normalizeCIDR`（/24 校验） |
 | `services/person_service.go` | 人员管理 | `List`/`Create`/`Update`/`Delete`、`normalizePerson`；删除时校验关联主机数 |
 | `services/zero_trust_service.go` | 零信任台账 | `List`/`Create`/`Update`/`Delete`/`BatchCreateText`/`ListExitLocations`（接入地区候选取 `public_ips.exit_location` 去重，T-061）；`normalizeTargetPairs`（端口表达式校验+去重，兼容旧 `port` 数字入参，T-056；协议归一化缺省 tcp，T-065）；`splitGroupProtocol`/`mergeGroupProtocols`（批量端口组 `/协议` 后缀解析与单主机多端口协议合并，T-065）；`splitPortGroups`（批量申请端口分组：`;` 分组表达多IP各自多端口，无 `;` 时顶层逗号+引号分组，T-056/T-058；无 `;` 且单端口组广播到全部 IP，T-059）；`exitLocationKey`/`zeroTrustMergeKey`/`findMergeTarget`（合并键 = 账户名 + 接入地区，地区规整去重后排序比较，T-077）、`mergeZeroTrustInto`/`unionTargetPairs`（同键新增合并：targets 并集去重+其余空字段补录，含 `account_name_zh`/`applicant`，T-058/T-060/T-061/T-063/T-065/T-077）；`loadZeroTrustTargetPairs`/`insertZeroTrustTargets`（接入目标子表读写，T-052）；`joinTargetPairs`（派生串 `host_id:ports:protocol` 以 `;` 分隔，T-056/T-065）；`HostReferencedByZeroTrust`（子表去重计数）/`ZeroTrustsByHost` |
@@ -170,7 +170,7 @@
 |------|------|
 | `stores/auth.js` | token、用户信息、登录/登出 |
 | `stores/host.js` | 主机列表 CRUD + 分页态（分页/筛选通用逻辑由 `composables/usePagedTable` 提供） |
-| `stores/cloudResource.js` | 云资源 + 按区域聚合的已用/运行中/已停止统计 |
+| `stores/cloudResource.js` | 云资源 + 按区域聚合的已用/运行中/已停止统计（拉取主机时固定 `is_external=0`，排除云外，T-078） |
 | `stores/stats.js` | IP 使用情况（网段 + 已用/空记录 IP） |
 | `stores/business.js` | 业务统计数据（三维聚合结果） |
 

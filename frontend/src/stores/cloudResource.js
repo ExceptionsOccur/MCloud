@@ -19,7 +19,8 @@ async function fetchAllHostsByRegion(region) {
   let page = 1
   let total = Number.POSITIVE_INFINITY
   while (allHosts.length < total) {
-    const res = await getHosts({ region, page, page_size: pageSize })
+    // T-078：资源口径排除云外主机（与裸金属排除口径一致）
+    const res = await getHosts({ region, page, page_size: pageSize, is_external: '0' })
     if (res.code !== 0) break
     const hosts = res.data.hosts || []
     total = res.data.total ?? allHosts.length + hosts.length

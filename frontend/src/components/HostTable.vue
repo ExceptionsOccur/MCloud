@@ -44,6 +44,10 @@
               v-if="row.is_db_server"
               class="db-tag"
             >DB</span>
+            <span
+              v-if="row.is_external"
+              class="external-tag"
+            >云外</span>
           </div>
         </template>
       </el-table-column>
@@ -164,12 +168,18 @@
       </el-table-column>
     </el-table>
 
+    <div class="table-footer">
+      <span class="host-counts">
+        共 {{ hostStore.total }} 台（云内 {{ internalCount }} 台 / 云外 {{ externalCount }} 台）
+      </span>
+    </div>
+
     <div class="pagination">
       <el-pagination
         v-model:current-page="hostStore.currentPage"
         :page-size="hostStore.pageSize"
         :total="hostStore.total"
-        layout="total, prev, pager, next, sizes"
+        layout="prev, pager, next, sizes"
         :page-sizes="[20, 50, 100]"
         @current-change="hostStore.setPage"
         @size-change="handleSizeChange"
@@ -180,6 +190,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useHostStore } from '../stores/host'
 import { ElMessage } from 'element-plus'
 
@@ -187,6 +198,8 @@ const hostStore = useHostStore()
 const emit = defineEmits(['selection-change'])
 
 const selectedIds = ref([])
+
+const { internalCount, externalCount } = storeToRefs(hostStore)
 
 function handleSelectionChange(selection) {
   selectedIds.value = selection.map(row => row.id)
@@ -248,10 +261,26 @@ onUnmounted(() => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
+.table-footer {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #606266;
+}
+
 .pagination {
-  margin-top: 16px;
+  margin-top: 8px;
   display: flex;
   justify-content: flex-end;
+}
+
+.external-tag {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  flex-shrink: 0;
+  color: #b88230;
+  border: 1px solid #faecd8;
+  background: #fdf6ec;
 }
 
 .name-cell {

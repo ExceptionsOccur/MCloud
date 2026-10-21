@@ -43,6 +43,7 @@ var hostApplyFields = []AIField{
 	{Key: "data_disk", Label: "数据盘(GB)", Hint: "整数"},
 	{Key: "env_type", Label: "环境类型", Hint: "测试/生产"},
 	{Key: "is_db_server", Label: "是否数据库服务器", Hint: "true/false"},
+	{Key: "is_external", Label: "是否云外主机", Hint: "默认 false（云内）；true 表示云外服务器"},
 	{Key: "status", Label: "状态", Hint: "运行中/已停止/已关机/待确认"},
 	{Key: "open_ports", Label: "开放端口"},
 	{Key: "tags", Label: "标签"},

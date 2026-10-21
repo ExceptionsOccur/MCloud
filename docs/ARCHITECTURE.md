@@ -287,6 +287,7 @@ go/
 | 主机名称 | `name` | VARCHAR(128) | NOT NULL |
 | 内网IP | `private_ip` | VARCHAR(45) | NOT NULL, UNIQUE |
 | 是否映射公网 | `ip_mapped` | BOOLEAN | NOT NULL, DEFAULT FALSE |
+| 是否云外主机 | `is_external` | BOOLEAN | NOT NULL, DEFAULT FALSE（T-078，存量全为云内；云外主机同样录入主机记录，零信任可引用） |
 | 资产类型 | `asset_type` | VARCHAR(32) | 可选值：虚拟机、裸金属服务器 |
 | 操作系统 | `os` | VARCHAR(64) | |
 | CPU核数 | `cpu` | INTEGER | |

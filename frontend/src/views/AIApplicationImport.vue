@@ -355,6 +355,7 @@ const hostFields = [
   { key: 'data_disk', label: '数据盘(GB)' },
   { key: 'env_type', label: '环境类型', hint: '测试/生产' },
   { key: 'is_db_server', label: '是否数据库服务器', hint: 'true/false' },
+  { key: 'is_external', label: '是否云外主机', hint: 'true/false，默认 false' },
   { key: 'status', label: '状态' },
   { key: 'open_ports', label: '开放端口' },
   { key: 'tags', label: '标签' },
@@ -481,7 +482,7 @@ function buildHostPayload() {
     if (numericKeys.includes(f.key)) {
       const n = parseInt(v, 10)
       if (!Number.isNaN(n)) payload[f.key] = n
-    } else if (f.key === 'is_db_server') {
+    } else if (f.key === 'is_db_server' || f.key === 'is_external') {
       payload[f.key] = v === 'true' || v === '1' || v === '是'
     } else {
       payload[f.key] = v

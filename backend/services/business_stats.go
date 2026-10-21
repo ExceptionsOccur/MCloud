@@ -115,8 +115,9 @@ func normKey(s string) string {
 }
 
 func (s *StatsService) GetBusinessStats() (*BusinessStatsResponse, error) {
+	// T-078：业务统计排除云外主机（与云资源统计口径一致）
 	var hosts []models.Host
-	if err := database.DB.Preload("Application").Find(&hosts).Error; err != nil {
+	if err := database.DB.Preload("Application").Where("is_external = ?", false).Find(&hosts).Error; err != nil {
 		return nil, err
 	}
 

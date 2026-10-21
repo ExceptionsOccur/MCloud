@@ -59,6 +59,12 @@ func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, 
 	if len(row) >= 27 {
 		objectStorage = atoiOrZero(row[26])
 	}
+	// 是否云外主机为 28 列新文件可选尾列（T-078）；旧文件无该列，默认云内
+	isExternal := false
+	if len(row) >= 28 {
+		v := strings.TrimSpace(row[27])
+		isExternal = v == "是" || v == "true" || v == "1"
+	}
 
 	isDB := strings.TrimSpace(row[13]) == "是" || strings.TrimSpace(row[13]) == "true" || strings.TrimSpace(row[13]) == "1"
 
@@ -77,6 +83,7 @@ func (s *HostService) ParseCSVRowToCreateHost(row []string) (CreateHostRequest, 
 		DataDisk:          dataDisk,
 		EnvType:           strings.TrimSpace(row[12]),
 		IsDBServer:        &isDB,
+		IsExternal:        &isExternal,
 		Status:            strings.TrimSpace(row[14]),
 		OpenPorts:         strings.TrimSpace(row[15]),
 		Tags:              strings.TrimSpace(row[16]),
@@ -155,6 +162,10 @@ func (s *HostService) ExportToCSVRows(hosts []models.Host) [][]string {
 		if h.IPMapped {
 			ipMapped = "是"
 		}
+		isExternal := "否"
+		if h.IsExternal {
+			isExternal = "是"
+		}
 		row := []string{
 			h.Region, h.InstanceID, h.Name, h.PrivateIP, ipMapped,
 			h.AssetType, h.OS, strconv.Itoa(h.CPU), h.CPUArch, strconv.Itoa(h.Memory),
@@ -170,7 +181,7 @@ func (s *HostService) ExportToCSVRows(hosts []models.Host) [][]string {
 		} else {
 			row = append(row, "", "", "", "", "", "", "", "", "")
 		}
-		row = append(row, strconv.Itoa(h.ObjectStorage))
+		row = append(row, strconv.Itoa(h.ObjectStorage), isExternal)
 		rows = append(rows, row)
 	}
 	return rows

@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
 import { getHosts, createHost, updateHost, deleteHost } from '../api/host'
 import { usePagedTable } from '../composables/usePagedTable'
 
@@ -8,12 +9,16 @@ const DEFAULT_FILTERS = {
   asset_type: '',
   cpu_arch: '',
   is_db_server: '',
+  is_external: '0',
   status: '',
   region: '',
   applicant_empty: ''
 }
 
 export const useHostStore = defineStore('host', () => {
+  const internalCount = ref(0)
+  const externalCount = ref(0)
+
   const {
     items: hosts, total, loading, currentPage, pageSize, filters,
     fetchPage, setFilter, setPage, resetFilters
@@ -22,6 +27,9 @@ export const useHostStore = defineStore('host', () => {
     fetcher: async (params) => {
       const res = await getHosts(params)
       if (res.code === 0) {
+        // T-078：页脚云内/云外计数（后端按命中筛选的全量统计）
+        internalCount.value = res.data.internal_count ?? 0
+        externalCount.value = res.data.external_count ?? 0
         return {
           items: res.data.hosts || [],
           total: res.data.total || 0
@@ -63,7 +71,7 @@ export const useHostStore = defineStore('host', () => {
   }
 
   return {
-    hosts, total, loading, currentPage, pageSize, filters,
+    hosts, total, internalCount, externalCount, loading, currentPage, pageSize, filters,
     fetchHosts, create, update, remove, setFilter, setPage, resetFilters
   }
 })

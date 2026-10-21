@@ -101,6 +101,7 @@ const FIELD_LABELS = {
   data_disk: '数据盘(GB)',
   env_type: '环境类型',
   is_db_server: '数据库服务器',
+  is_external: '云外主机',
   status: '状态',
   open_ports: '开放端口',
   tags: '标签',

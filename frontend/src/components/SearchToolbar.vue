@@ -119,6 +119,22 @@
         />
       </el-select>
       <el-select
+        v-model="filters.is_external"
+        placeholder="主机位置"
+        clearable
+        style="width: 130px"
+        @change="v => hostStore.setFilter('is_external', v)"
+      >
+        <el-option
+          label="云内主机"
+          value="0"
+        />
+        <el-option
+          label="云外主机"
+          value="1"
+        />
+      </el-select>
+      <el-select
         v-model="filters.status"
         placeholder="状态"
         clearable
@@ -176,6 +192,7 @@ const filters = reactive({
   asset_type: '',
   cpu_arch: '',
   is_db_server: '',
+  is_external: '0',
   status: '',
   applicant_empty: ''
 })
@@ -187,6 +204,8 @@ function handleSearch() {
 function resetLocalFilters() {
   keyword.value = ''
   Object.keys(filters).forEach(k => filters[k] = '')
+  // T-078：重置后仍默认只看云内主机
+  filters.is_external = '0'
 }
 
 function openCreateDialog() {

@@ -53,6 +53,7 @@ type BatchCreateItem struct {
 	DataDisk          int    `json:"data_disk"`
 	EnvType           string `json:"env_type"`
 	IsDBServer        *bool  `json:"is_db_server"`
+	IsExternal        *bool  `json:"is_external"`
 	Status            string `json:"status"`
 	OpenPorts         string `json:"open_ports"`
 	Tags              string `json:"tags"`
@@ -179,6 +180,7 @@ func (s *HostService) BatchCreate(req BatchCreateRequest, op Operator, requestID
 			DataDisk:          item.DataDisk,
 			EnvType:           item.EnvType,
 			IsDBServer:        item.IsDBServer,
+			IsExternal:        item.IsExternal,
 			Status:            item.Status,
 			OpenPorts:         item.OpenPorts,
 			Tags:              item.Tags,

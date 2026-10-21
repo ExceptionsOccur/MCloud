@@ -7,6 +7,7 @@ import (
 
 	"mcloud/database"
 	"mcloud/models"
+	"mcloud/utils"
 )
 
 func baseHostReq(ip string) CreateHostRequest {
@@ -324,5 +325,176 @@ func TestHostObjectStorageField(t *testing.T) {
 	}
 	if host.ObjectStorage != 1024 {
 		t.Fatalf("更新后 object_storage=%d，期望 1024", host.ObjectStorage)
+	}
+}
+
+// TestHostExternalFlag T-078：云外主机标记的筛选、计数与 CSV 往返
+func TestHostExternalFlag(t *testing.T) {
+	newTestDB(t)
+	s := NewHostService()
+
+	k8s := true
+	in1, err := s.Create(baseHostReq("10.5.1.1"), testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("创建云内主机失败: %v", err)
+	}
+	extReq := baseHostReq("10.5.1.2")
+	extReq.IsExternal = &k8s
+	ext2, err := s.Create(extReq, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("创建云外主机失败: %v", err)
+	}
+	_ = in1
+
+	// 默认（不传 is_external）不过滤
+	all, err := s.Filter(FilterHostRequest{Page: 1, PageSize: 10})
+	if err != nil {
+		t.Fatalf("Filter 失败: %v", err)
+	}
+	if all.Total != 2 || all.InternalCount != 1 || all.ExternalCount != 1 {
+		t.Fatalf("全量计数不符: total=%d internal=%d external=%d", all.Total, all.InternalCount, all.ExternalCount)
+	}
+
+	onlyInternal, err := s.Filter(FilterHostRequest{Page: 1, PageSize: 10, IsExternal: "0"})
+	if err != nil {
+		t.Fatalf("Filter 云内失败: %v", err)
+	}
+	if onlyInternal.Total != 1 || onlyInternal.Hosts[0].ID == ext2 || onlyInternal.Hosts[0].IsExternal {
+		t.Fatalf("云内筛选不符: %+v", onlyInternal.Hosts)
+	}
+
+	onlyExternal, err := s.Filter(FilterHostRequest{Page: 1, PageSize: 10, IsExternal: "1"})
+	if err != nil {
+		t.Fatalf("Filter 云外失败: %v", err)
+	}
+	if onlyExternal.Total != 1 || onlyExternal.Hosts[0].ID != ext2 || !onlyExternal.Hosts[0].IsExternal {
+		t.Fatalf("云外筛选不符: %+v", onlyExternal.Hosts)
+	}
+
+	// 更新为云内
+	notExternal := false
+	if err = s.Update(ext2, UpdateHostRequest{IsExternal: &notExternal}, testOp, NewRequestID()); err != nil {
+		t.Fatalf("更新失败: %v", err)
+	}
+	onlyExternal, err = s.Filter(FilterHostRequest{Page: 1, PageSize: 10, IsExternal: "1"})
+	if err != nil {
+		t.Fatalf("Filter 失败: %v", err)
+	}
+	if onlyExternal.Total != 0 {
+		t.Fatalf("更新后云外应为 0，实际 %d", onlyExternal.Total)
+	}
+}
+
+// TestHostExternalCSV T-078：CSV 28 列（末列「是否云外主机」）往返，旧 27 列默认云内
+func TestHostExternalCSV(t *testing.T) {
+	if last := utils.CSVHeaders[len(utils.CSVHeaders)-1]; last != "是否云外主机" {
+		t.Fatalf("CSV 末列表头=%q，期望 是否云外主机", last)
+	}
+	newTestDB(t)
+	s := NewHostService()
+
+	row := []string{
+		"华东", "i-078", "ext-host", "10.5.2.1", "否",
+		"虚拟机", "CentOS", "2", "X86", "4",
+		"40", "100", "生产", "否",
+		"运行中", "22", "", "单位", "张三", "", "", "", "", "2026-01-02", "", "", "600", "是",
+	}
+	req, err := s.ParseCSVRowToCreateHost(row)
+	if err != nil {
+		t.Fatalf("解析 28 列失败: %v", err)
+	}
+	if req.IsExternal == nil || !*req.IsExternal {
+		t.Fatal("28 列末列「是」应解析为云外")
+	}
+
+	// 旧 27 列：无该列 → 默认云内
+	req, err = s.ParseCSVRowToCreateHost(row[:27])
+	if err != nil {
+		t.Fatalf("解析 27 列失败: %v", err)
+	}
+	if req.IsExternal == nil || *req.IsExternal {
+		t.Fatal("旧 27 列应默认云内")
+	}
+
+	// 导出列与表头等长（先落库一台）
+	createReq := baseHostReq("10.5.3.1")
+	extTrue := true
+	createReq.IsExternal = &extTrue
+	if _, err = s.Create(createReq, testOp, NewRequestID()); err != nil {
+		t.Fatalf("创建主机失败: %v", err)
+	}
+	hosts, err := s.Filter(FilterHostRequest{Page: 1, PageSize: 10})
+	if err != nil {
+		t.Fatalf("Filter 失败: %v", err)
+	}
+	rows := s.ExportToCSVRows(hosts.Hosts)
+	if len(rows) != 1 {
+		t.Fatalf("导出应 1 行，实际 %d", len(rows))
+	}
+	if len(rows[0]) != len(utils.CSVHeaders) {
+		t.Fatalf("导出行 %d 列，期望 %d 列", len(rows[0]), len(utils.CSVHeaders))
+	}
+}
+
+// TestBusinessStatsExcludeExternal T-078：业务统计排除云外主机
+func TestBusinessStatsExcludeExternal(t *testing.T) {
+	newTestDB(t)
+	s := NewHostService()
+
+	for _, ip := range []string{"10.5.4.1", "10.5.4.2"} {
+		req := baseHostReq(ip)
+		req.Applicant = "统计人"
+		req.Project = "统计项目"
+		if _, err := s.Create(req, testOp, NewRequestID()); err != nil {
+			t.Fatalf("创建主机失败: %v", err)
+		}
+	}
+	extReq := baseHostReq("10.5.4.3")
+	extReq.Applicant = "统计人"
+	extReq.Project = "统计项目"
+	extTrue := true
+	extReq.IsExternal = &extTrue
+	if _, err := s.Create(extReq, testOp, NewRequestID()); err != nil {
+		t.Fatalf("创建云外主机失败: %v", err)
+	}
+
+	stats, err := NewStatsService().GetBusinessStats()
+	if err != nil {
+		t.Fatalf("业务统计失败: %v", err)
+	}
+	if stats.Summary.HostCount != 2 {
+		t.Fatalf("业务统计应排除云外主机（期望 2），实际 %d", stats.Summary.HostCount)
+	}
+}
+
+// TestXLSXExternalFlagRoundtrip T-078：xlsx 备份「是否云外主机」列往返
+func TestXLSXExternalFlagRoundtrip(t *testing.T) {
+	newTestDB(t)
+	s := NewHostService()
+	req := baseHostReq("10.5.5.1")
+	extTrue := true
+	req.IsExternal = &extTrue
+	if _, err := s.Create(req, testOp, NewRequestID()); err != nil {
+		t.Fatalf("创建云外主机失败: %v", err)
+	}
+	data, err := NewDataExchangeService().Export()
+	if err != nil {
+		t.Fatalf("导出失败: %v", err)
+	}
+
+	openTestDB(t, t.Name()+"_target")
+	report, err := NewDataExchangeService().Import(data, testOp, NewRequestID())
+	if err != nil {
+		t.Fatalf("导入失败: %v", err)
+	}
+	if !report.Committed || len(report.Errors) != 0 {
+		t.Fatalf("导入异常: committed=%v errors=%+v", report.Committed, report.Errors)
+	}
+	var host models.Host
+	if err = database.DB.Where("private_ip = ?", "10.5.5.1").First(&host).Error; err != nil {
+		t.Fatalf("目标库缺主机: %v", err)
+	}
+	if !host.IsExternal {
+		t.Fatal("xlsx 往返应保留云外标记")
 	}
 }

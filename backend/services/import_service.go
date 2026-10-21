@@ -585,6 +585,12 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 			fail(report, c, err)
 			return
 		}
+		// T-078：是否云外主机（旧备份无该列 → 空值视为云内）
+		isExternal, err := parseBoolCell(c.get("是否云外主机"))
+		if err != nil {
+			fail(report, c, err)
+			return
+		}
 		personID, err := resolvePerson(tx, c.get("人员姓名"), c.get("人员联系方式"))
 		if err != nil {
 			fail(report, c, err)
@@ -609,7 +615,7 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 			"region": region, "instance_id": f.instanceID, "name": name,
 			"asset_type": f.assetType, "os": f.os, "cpu": cpu, "cpu_arch": f.cpuArch,
 			"memory": memory, "object_storage": objectStorage, "system_disk": systemDisk, "data_disk": dataDisk,
-			"env_type": f.envType, "is_db_server": isDB, "status": f.status,
+			"env_type": f.envType, "is_db_server": isDB, "is_external": isExternal, "status": f.status,
 			"open_ports": f.openPorts, "tags": f.tags, "person_id": personID,
 		}
 		if cur, ok := byKey[privateIP]; ok {
@@ -617,7 +623,7 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 				cur.AssetType == f.assetType && cur.OS == f.os && cur.CPU == cpu &&
 				cur.CPUArch == f.cpuArch && cur.Memory == memory && cur.ObjectStorage == objectStorage &&
 				cur.SystemDisk == systemDisk && cur.DataDisk == dataDisk &&
-				cur.EnvType == f.envType && cur.IsDBServer == isDB &&
+				cur.EnvType == f.envType && cur.IsDBServer == isDB && cur.IsExternal == isExternal &&
 				cur.Status == f.status && cur.OpenPorts == f.openPorts && cur.Tags == f.tags &&
 				uintPtrEqual(cur.PersonID, personID) {
 				stat.Skipped++
@@ -634,7 +640,7 @@ func (s *DataExchangeService) applyHosts(tx *gorm.DB, sh *importSheet, report *I
 			Region: region, InstanceID: f.instanceID, Name: name, PrivateIP: privateIP,
 			AssetType: f.assetType, OS: f.os, CPU: cpu, CPUArch: f.cpuArch, Memory: memory,
 			ObjectStorage: objectStorage, SystemDisk: systemDisk, DataDisk: dataDisk, EnvType: f.envType,
-			IsDBServer: isDB, Status: f.status, OpenPorts: f.openPorts, Tags: f.tags,
+			IsDBServer: isDB, IsExternal: isExternal, Status: f.status, OpenPorts: f.openPorts, Tags: f.tags,
 			PersonID: personID,
 		}
 		if err := tx.Create(&h).Error; err != nil {

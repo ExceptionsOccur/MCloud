@@ -270,6 +270,14 @@
                 <el-switch v-model="form.is_db_server" />
               </el-form-item>
             </el-col>
+            <el-col :span="6">
+              <el-form-item label="云外主机">
+                <el-switch v-model="form.is_external" />
+                <div class="muted-tip">
+                  云外服务器（如 VPN 可访问的外部机器），默认云内
+                </div>
+              </el-form-item>
+            </el-col>
           </el-row>
           <el-row :gutter="16">
             <el-col :span="12">
@@ -468,7 +476,7 @@ const formRef = ref(null)
 const form = reactive({
   region: '', name: '', instance_id: '', private_ip: '', ip_mapped: false,
   asset_type: '', os: '', cpu: '', cpu_arch: '', memory: '', object_storage: '',
-  system_disk: '', data_disk: '', env_type: '', is_db_server: false,
+  system_disk: '', data_disk: '', env_type: '', is_db_server: false, is_external: false,
   status: '', open_ports: '', tags: '', person_id: '',
   apply_unit: '', applicant: '', applicant_contact: '', project: '',
   apply_reason: '', apply_config: '', apply_time: '', object_storage_size: '', remark: ''
@@ -623,6 +631,7 @@ function fillFormFromHost(h) {
   form.data_disk = h.data_disk ?? ''
   form.env_type = h.env_type || ''
   form.is_db_server = h.is_db_server || false
+  form.is_external = h.is_external || false
   form.status = h.status || ''
   form.open_ports = h.open_ports || ''
   form.tags = h.tags || ''

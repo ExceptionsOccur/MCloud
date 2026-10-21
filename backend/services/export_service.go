@@ -113,6 +113,10 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 		if h.IsDBServer {
 			isDB = "是"
 		}
+		isExternal := "否"
+		if h.IsExternal {
+			isExternal = "是"
+		}
 		personName, personContact := "", ""
 		if h.Person != nil {
 			personName = h.Person.Name
@@ -121,7 +125,7 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 		hostRows = append(hostRows, []interface{}{
 			h.Region, h.InstanceID, h.Name, h.PrivateIP, h.AssetType, h.OS,
 			h.CPU, h.CPUArch, h.Memory, h.ObjectStorage, h.SystemDisk, h.DataDisk,
-			h.EnvType, isDB, h.Status, h.OpenPorts, h.Tags,
+			h.EnvType, isDB, isExternal, h.Status, h.OpenPorts, h.Tags,
 			personName, personContact,
 		})
 	}

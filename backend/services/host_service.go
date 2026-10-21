@@ -37,6 +37,9 @@ type ListHostResponse struct {
 	Total int64         `json:"total"`
 	Page  int           `json:"page"`
 	Size  int           `json:"page_size"`
+	// T-078：全量（命中筛选后）云内/云外汇总计数，供列表页脚分开显示
+	InternalCount int64 `json:"internal_count"`
+	ExternalCount int64 `json:"external_count"`
 }
 
 type FilterHostRequest struct {
@@ -47,6 +50,7 @@ type FilterHostRequest struct {
 	AssetType      string `form:"asset_type"`
 	CPUArch        string `form:"cpu_arch"`
 	IsDBServer     string `form:"is_db_server"`
+	IsExternal     string `form:"is_external"`
 	Status         string `form:"status"`
 	Region         string `form:"region"`
 	ApplicantEmpty string `form:"applicant_empty"`
@@ -83,6 +87,10 @@ func applyHostFilter(db *gorm.DB, req FilterHostRequest) *gorm.DB {
 			db = db.Where("is_db_server = ?", false)
 		}
 	}
+	// T-078：是否云外主机（1 云外 / 0 云内 / 空=不过滤）
+	if req.IsExternal != "" {
+		db = db.Where("is_external = ?", req.IsExternal == "1")
+	}
 	if req.Status != "" {
 		db = db.Where("status = ?", req.Status)
 	}
@@ -116,7 +124,12 @@ func (s *HostService) Filter(req FilterHostRequest) (*ListHostResponse, error) {
 	db := applyHostFilter(database.DB.Model(&models.Host{}), req)
 
 	var total int64
-	db.Count(&total)
+	// T-078：页脚分开统计云内/云外；用独立 Session 避免 Count 条件串联到后续查询
+	base := db.Session(&gorm.Session{})
+	base.Count(&total)
+	var internalCount, externalCount int64
+	base.Where("is_external = ?", false).Count(&internalCount)
+	base.Where("is_external = ?", true).Count(&externalCount)
 
 	var hosts []models.Host
 	offset := (req.Page - 1) * req.PageSize
@@ -126,10 +139,12 @@ func (s *HostService) Filter(req FilterHostRequest) (*ListHostResponse, error) {
 	}
 
 	return &ListHostResponse{
-		Hosts: hosts,
-		Total: total,
-		Page:  req.Page,
-		Size:  req.PageSize,
+		Hosts:         hosts,
+		Total:         total,
+		Page:          req.Page,
+		Size:          req.PageSize,
+		InternalCount: internalCount,
+		ExternalCount: externalCount,
 	}, nil
 }
 
@@ -195,6 +210,7 @@ type CreateHostRequest struct {
 	DataDisk      int          `json:"data_disk"`
 	EnvType       string       `json:"env_type"`
 	IsDBServer    *bool        `json:"is_db_server"`
+	IsExternal    *bool        `json:"is_external"`
 	Status        string       `json:"status"`
 	OpenPorts     string       `json:"open_ports"`
 	Tags          string       `json:"tags"`
@@ -247,6 +263,9 @@ func (s *HostService) Create(req CreateHostRequest, op Operator, requestID strin
 
 	if req.IsDBServer != nil {
 		host.IsDBServer = *req.IsDBServer
+	}
+	if req.IsExternal != nil {
+		host.IsExternal = *req.IsExternal
 	}
 
 	if req.PersonID.Present {
@@ -301,6 +320,7 @@ type UpdateHostRequest struct {
 	DataDisk      int          `json:"data_disk"`
 	EnvType       string       `json:"env_type"`
 	IsDBServer    *bool        `json:"is_db_server"`
+	IsExternal    *bool        `json:"is_external"`
 	Status        string       `json:"status"`
 	OpenPorts     string       `json:"open_ports"`
 	Tags          string       `json:"tags"`
@@ -392,6 +412,9 @@ func (s *HostService) Update(id uint, req UpdateHostRequest, op Operator, reques
 	}
 	if req.IsDBServer != nil {
 		updates["is_db_server"] = *req.IsDBServer
+	}
+	if req.IsExternal != nil {
+		updates["is_external"] = *req.IsExternal
 	}
 	if req.Status != "" {
 		updates["status"] = req.Status

@@ -9,6 +9,7 @@ type Host struct {
 	Name          string    `json:"name" gorm:"type:varchar(128);not null"`
 	PrivateIP     string    `json:"private_ip" gorm:"type:varchar(45);not null;uniqueIndex"`
 	IPMapped      bool      `json:"ip_mapped" gorm:"default:false"`
+	IsExternal    bool      `json:"is_external" gorm:"default:false"`
 	AssetType     string    `json:"asset_type" gorm:"type:varchar(32)"`
 	OS            string    `json:"os" gorm:"type:varchar(64)"`
 	CPU           int       `json:"cpu" gorm:"type:integer"`
