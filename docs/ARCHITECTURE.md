@@ -146,7 +146,8 @@ go/
 │   │   ├── ai_llm_client.go       # OpenAI 兼容大模型客户端（net/http，T-068）
 │   │   ├── ai_extract_service.go  # AI 提取编排（解析→LLM→归一化+暂存，T-068）
 │   │   ├── ai_file_store.go       # AI 上传文件暂存/归档（incoming/archived，防穿越，T-068）
-│   │   ├── export_service.go      # 数据备份导出（8 sheet xlsx）
+│   │   ├── export_service.go      # 数据备份导出（8 sheet xlsx；零信任按账户名+内网IP 聚合端口，T-073）
+│   │   ├── port_set.go            # 端口集合解析/规整（掩码 *、列表、范围；备份零信任端口列，T-073）
 │   │   ├── import_service.go      # 数据备份导入（自然键 upsert + 单事务回滚）
 │   │   ├── backup_crypto.go       # 备份加密包：PBKDF2-SHA256 + AES-256-GCM（T-072）
 │   │   ├── testdb_test.go         # 测试基建：sqlite 内存库注入 database.DB（T-006）
@@ -158,6 +159,7 @@ go/
 │   │   ├── zero_trust_service_test.go # 接入目标子表 CRUD/按主机搜索/多端口表达式/批量端口组单测（T-052/T-056）
 │   │   ├── port_mapping_service_test.go # 端口协议/范围归一化、展开配对、整组判重单测（T-055）
 │   │   ├── backup_crypto_test.go  # 备份加解密/错密码/对象存储列头往返单测（T-072）
+│   │   ├── port_set_test.go       # 端口集合解析与零信任备份端口列往返/掩码展开单测（T-073）
 │   │   ├── data_exchange_test.go  # 空库 xlsx 回灌（零信任子表/映射协议列往返）单测（T-052/T-055）
 │   │   ├── ai_setting_service_test.go # AI 配置脱敏/空 key 保留原值单测（T-067）
 │   │   ├── ai_doc_parser_test.go  # docx/xlsx 解析、提示词、代码块剥离单测（T-068）

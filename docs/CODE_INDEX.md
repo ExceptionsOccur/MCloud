@@ -92,7 +92,8 @@
 | `services/ai_llm_client.go` | OpenAI 兼容大模型客户端（标准库 net/http，T-068） | `Complete`（`/chat/completions`，JSON mode，60s 超时） |
 | `services/ai_extract_service.go` | AI 提取编排（T-068） | `Extract`（解析→LLM→归一化+暂存）、`Archive`（归档已入账文件）、`parseLLMOutput`/`stripCodeFence` |
 | `services/ai_file_store.go` | AI 上传文件暂存/归档（T-068） | `SaveIncoming`、`Archive`、`sanitizeFilename`/`isValidToken`（防路径穿越） |
-| `services/export_service.go` | 数据备份导出 | `Export`（8 sheet 依赖序写入）、`ExportFilename` |
+| `services/export_service.go` | 数据备份导出 | `Export`（8 sheet 依赖序写入）、`ExportFilename`、`groupZeroTrustTargets`/`zeroTrustRow`/`fillZeroTrustRow`（零信任按账户名+内网IP 聚合 tcp/udp 端口，T-073） |
+| `services/port_set.go` | 端口集合工具（T-073） | `parsePortSet`（掩码 `*`/列表/`A-B` 范围解析）、`mergePortSpans`/`formatPortSpans`（区间合并规整）、`unionPortText`、`portSetToTokens` |
 | `services/backup_crypto.go` | 备份加密包（T-072） | `EncryptBackup`（密码必填）、`DecryptBackup`（加密包/明文自动识别）、`IsEncryptedBackup`、`EncryptBackupExt`、PBKDF2-SHA256 + AES-256-GCM |
 | `services/import_service.go` | 数据备份导入 | `ImportWithPassword`（加密包解密，T-072）、`Import`（单事务 + 回滚）、`parseWorkbook`（结构校验）、`hostObjectStorageCell`/`sheetHasColumn`（「对象存储」列及旧列头「磁盘」兼容）、`apply*`（按自然键 upsert；`zero_trusts` 自然键=账户名合并，T-058）、`zeroTrustKey` |
 
@@ -116,6 +117,7 @@
 | `services/stats_service_test.go` | 探测颜色状态机（dead/alive 分支）、`probeTCP` 开/闭端口、ICMP 回环/不可达（环境无 ICMP socket 时跳过，T-011） |
 | `services/zero_trust_service_test.go` | 接入目标子表 CRUD/替换/反查、`zero_trusts` 无 `targets` 列、按主机名/内网IP 搜索（sqlite ILIKE 降级，T-052）；多端口表达式/旧 port 兼容/批量端口组（T-056）；`;` 分号分组/单IP整列多端口、按账户名合并（并集/补录/接入地区规则/批量合并，T-058/T-061）；单端口组广播/重复分组/`;` 按位回归（T-059）；申请人字段独立存储/合并补录保留/批量第 4 列（T-060）；账号姓名字段独立存储/合并补录保留/搜索命中（T-063）；接入目标协议（udp/缺省 tcp/非法报错/派生串/批量 `/协议`，T-065）；`zero_trusts` 无 `public_ip` 列/有 `exit_location` 列、地区候选去重、接入地区落库回显与搜索（T-061）；接入地区多值（逗号/顿号规整去重、多值回显、任一地区搜索命中、合并并集，T-065） |
 | `services/port_mapping_service_test.go` | 端口协议归一化（缺省补 tcp/大小写/数量不一致/非法值）+ 范围 token（规范化、展开配对、非法范围）+ 整组判重含外网协议维度（同端口不同协议放行，T-055） |
+| `services/port_set_test.go` | 端口集合解析（掩码/列表/范围/越界）与零信任备份端口列导出分组、掩码展开导入、旧列头报错单测（T-073） |
 | `services/backup_crypto_test.go` | 备份加密往返/空密码拒绝/错密码与篡改报错/加密包与明文导入、CSV 与 xlsx「对象存储」列头往返及旧列头兼容（T-072） |
 | `services/data_exchange_test.go` | 空库 xlsx 回灌：零信任字段+子表往返、二次导入幂等 skip（T-052）；端口映射协议列往返+含协议自然键 skip（T-055）；零信任同账户名合并（字段补录+targets 并集，T-058） |
 | `utils/password_test.go` | bcrypt 往返、旧 `salt$hash` 兼容、非法存储拒绝、盐唯一性 |

@@ -24,8 +24,8 @@ func TestZeroTrustXLSXRoundtrip(t *testing.T) {
 		ExitLocation: "上海",
 		SystemName:   "rt-sys", Remark: "回灌备注",
 		ApplyTime: "2026-01-02",
-		// T-056：hostA 为多端口表达式（导出 ip:22,1000-10005，导入按「无冒号续接前组」解析）；
-		// T-065：hostB 为 udp 协议（导出 ip:3389/udp）
+		// T-073：hostA 为 tcp 多端口表达式（导出「tcp端口」列 22,1000-10005），
+		// hostB 为 udp（导出「udp端口」列 3389）
 		Targets: []ZeroTrustTarget{{HostID: hostA, Ports: "22,1000-10005"}, {HostID: hostB, Ports: "3389", Protocol: "udp"}},
 	}, testOp, NewRequestID())
 	if seedErr != nil {

@@ -145,33 +145,31 @@ func (s *DataExchangeService) Export() ([]byte, error) {
 		return nil, err
 	}
 
-	// zero_trusts（接入目标取子表配对 host_id → 内网IP:端口表达式/协议；T-056 起端口可为范围/列表，
-	// T-065 起追加 /协议；按「每个接入目标一行」导出，表头字段逐行重复，导入按账户名合并、接入目标并集去重（T-058）故往返不丢；
-	// 导入按「带冒号开组、无冒号续接」+ `/协议` 解析）
+	// zero_trusts（T-073：按「账户名 + 内网IP」一行导出，同一主机的端口按协议分别并集到
+	// 「tcp端口」「udp端口」两列；同账户名不同内网IP 各占一行，其余字段取首条非空）
 	ztRows := make([][]interface{}, 0, len(zeroTrusts))
+	rowIdx := make(map[string]int, len(zeroTrusts))
 	for _, z := range zeroTrusts {
-		pairs := ztPairs[z.ID]
-		if len(pairs) == 0 {
-			ztRows = append(ztRows, []interface{}{
-				z.ApplyUnit, z.AccountName, z.AccountNameZh, z.Applicant, z.Contact, z.ExitLocation,
-				"", z.SystemName, z.ApplyTime, z.Remark,
-			})
-			continue
-		}
-		for _, p := range pairs {
-			ip, ok := hostIPByID[p.HostID]
-			if !ok {
+		groups := groupZeroTrustTargets(ztPairs[z.ID], hostIPByID)
+		if len(groups) == 0 {
+			key := z.AccountName + "|"
+			if idx, ok := rowIdx[key]; ok {
+				ztRows[idx] = fillZeroTrustRow(ztRows[idx], zeroTrustRow(z, "", "", ""))
 				continue
 			}
-			proto := p.Protocol
-			if proto == "" {
-				proto = "tcp"
+			rowIdx[key] = len(ztRows)
+			ztRows = append(ztRows, zeroTrustRow(z, "", "", ""))
+			continue
+		}
+		for _, g := range groups {
+			key := z.AccountName + "|" + g.IP
+			row := zeroTrustRow(z, g.IP, g.TCP, g.UDP)
+			if idx, ok := rowIdx[key]; ok {
+				ztRows[idx] = fillZeroTrustRow(ztRows[idx], row)
+				continue
 			}
-			ztRows = append(ztRows, []interface{}{
-				z.ApplyUnit, z.AccountName, z.AccountNameZh, z.Applicant, z.Contact, z.ExitLocation,
-				fmt.Sprintf("%s:%s/%s", ip, p.Ports, proto), z.SystemName,
-				z.ApplyTime, z.Remark,
-			})
+			rowIdx[key] = len(ztRows)
+			ztRows = append(ztRows, row)
 		}
 	}
 	if err := writeSheetRows(f, "零信任", ztRows); err != nil {
@@ -238,4 +236,94 @@ func sheetSpecFor(name string) sheetSpec {
 // ExportFilename 导出文件名 mcloud_backup_YYYY-MM-DD.xlsx（日期统一 YYYY-MM-DD）
 func ExportFilename() string {
 	return "mcloud_backup_" + time.Now().Format("2006-01-02") + ".xlsx"
+}
+
+// zeroTrustGroup 单主机（内网IP）的 tcp/udp 端口并集（导出用）
+type zeroTrustGroup struct {
+	IP  string
+	TCP string
+	UDP string
+}
+
+// groupZeroTrustTargets 接入目标按内网IP 聚合：各协议端口取并集后规范化为文本；
+// 同组内 tcp/udp 分别合并（`*` 与其他区间混用时归一）；主机不存在（无内网IP）的目标跳过
+func groupZeroTrustTargets(pairs []ZeroTrustTarget, hostIPByID map[uint]string) []zeroTrustGroup {
+	order := make([]string, 0, len(pairs))
+	tcpRaw := make(map[string][]string, len(pairs))
+	udpRaw := make(map[string][]string, len(pairs))
+	for _, p := range pairs {
+		ip, ok := hostIPByID[p.HostID]
+		if !ok {
+			continue
+		}
+		if _, seen := tcpRaw[ip]; !seen {
+			if _, seenUDP := udpRaw[ip]; !seenUDP {
+				order = append(order, ip)
+			}
+		}
+		proto := p.Protocol
+		if proto == "" {
+			proto = "tcp"
+		}
+		if proto == "udp" {
+			udpRaw[ip] = append(udpRaw[ip], p.Ports)
+			continue
+		}
+		tcpRaw[ip] = append(tcpRaw[ip], p.Ports)
+	}
+
+	groups := make([]zeroTrustGroup, 0, len(order))
+	for _, ip := range order {
+		g := zeroTrustGroup{IP: ip}
+		if len(tcpRaw[ip]) > 0 {
+			if v, err := unionPortText("tcp端口", tcpRaw[ip]...); err == nil {
+				g.TCP = v
+			}
+		}
+		if len(udpRaw[ip]) > 0 {
+			if v, err := unionPortText("udp端口", udpRaw[ip]...); err == nil {
+				g.UDP = v
+			}
+		}
+		groups = append(groups, g)
+	}
+	return groups
+}
+
+// 「零信任」sheet 端口列下标（列序见 dataExchangeSheets，T-073）
+const (
+	zeroTrustIPCol  = 6
+	zeroTrustTCPCol = 7
+	zeroTrustUDPCol = 8
+)
+
+// zeroTrustRow 组装「零信任」sheet 单行（列序见 dataExchangeSheets）
+func zeroTrustRow(z models.ZeroTrust, ip, tcpPorts, udpPorts string) []interface{} {
+	return []interface{}{
+		z.ApplyUnit, z.AccountName, z.AccountNameZh, z.Applicant, z.Contact, z.ExitLocation,
+		ip, tcpPorts, udpPorts, z.SystemName, z.ApplyTime, z.Remark,
+	}
+}
+
+// fillZeroTrustRow 同账户名 + 内网IP 多行合并：端口取并集，其余字段空位由新行补录
+func fillZeroTrustRow(oldRow, newRow []interface{}) []interface{} {
+	merged := make([]interface{}, len(oldRow))
+	copy(merged, oldRow)
+	for i := range merged {
+		ov, _ := merged[i].(string)
+		nv, _ := newRow[i].(string)
+		if nv == "" {
+			continue
+		}
+		if i == zeroTrustTCPCol || i == zeroTrustUDPCol {
+			if v, err := unionPortText("端口", ov, nv); err == nil {
+				merged[i] = v
+			}
+			continue
+		}
+		if ov == "" {
+			merged[i] = nv
+		}
+	}
+	return merged
 }

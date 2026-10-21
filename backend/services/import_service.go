@@ -725,7 +725,8 @@ func (s *DataExchangeService) applyHostApplications(tx *gorm.DB, sh *importSheet
 }
 
 // applyZeroTrusts 自然键 = 账户名（T-058）；同账户名合并：接入目标并集去重、
-// 空字段补录、非空保留（申请时间保留已有）；接入目标 = 内网IP:端口（导入解析回 host_id，写 zero_trust_targets 子表），
+// 空字段补录、非空保留（申请时间保留已有）；T-073 起接入目标由「内网IP + tcp端口 + udp端口」三列表达
+// （内网IP 解析回 host_id，端口按协议各写 zero_trust_targets 一行）；
 // 接入地区为独立字段（T-061，值取自公网IP资源池去重，不做强制校验）
 func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, report *ImportReport) error {
 	var existing []models.ZeroTrust
@@ -766,50 +767,49 @@ func (s *DataExchangeService) applyZeroTrusts(tx *gorm.DB, sh *importSheet, repo
 		exitLocation := c.get("接入地区")
 		remark := c.get("备注")
 
-		targetsRaw := c.get("接入目标")
-		if targetsRaw == "" {
-			fail(report, c, errors.New("接入目标不能为空"))
+		// T-073：接入目标改「内网IP + tcp端口 + udp端口」三列（不再有旧「接入目标」列，不兼容旧备份）。
+		// 内网IP 列沿用旧语义：支持 `;` 分组广播（首段为 IP，后续段仅为该 IP 的端口组），不做 CIDR 展开；
+		// 端口列支持掩码 `*`、逗号列表与 `A-B` 范围（可混用），两侧任一为空即该协议无端口。
+		ipRaw := c.get("内网IP")
+		tcpRaw := c.get("tcp端口")
+		udpRaw := c.get("udp端口")
+		if ipRaw == "" {
+			fail(report, c, errors.New("内网IP不能为空"))
 			return
 		}
-		// T-056：带冒号的段开新组（内网IP:端口表达式），纯端口段续接前组（逗号内多端口），
-		// 旧文件每段均带冒号 → 每段独立成组，兼容；T-065：段尾可带 `/协议`（作用于该组整行）
-		parts := make([]ZeroTrustTarget, 0)
-		for _, seg := range strings.Split(targetsRaw, ",") {
-			seg = strings.TrimSpace(seg)
-			if seg == "" {
-				continue
+		tcpSets, err := parsePortSet("tcp端口", tcpRaw)
+		if err != nil {
+			fail(report, c, err)
+			return
+		}
+		udpSets, err := parsePortSet("udp端口", udpRaw)
+		if err != nil {
+			fail(report, c, err)
+			return
+		}
+		if len(tcpSets) == 0 && len(udpSets) == 0 {
+			fail(report, c, errors.New("tcp端口与udp端口不能同时为空"))
+			return
+		}
+		parts := make([]ZeroTrustTarget, 0, 2)
+		for _, seg := range strings.Split(ipRaw, ";") {
+			ip := strings.TrimSpace(seg)
+			if ip == "" {
+				fail(report, c, errors.New("内网IP不能为空"))
+				return
 			}
-			proto := ""
-			if i := strings.LastIndexByte(seg, '/'); i >= 0 && !strings.Contains(seg[i+1:], ":") {
-				p, perr := normalizeTargetProtocol(seg[i+1:])
-				if perr != nil {
-					fail(report, c, perr)
-					return
-				}
-				proto = p
-				seg = strings.TrimSpace(seg[:i])
-			}
-			ip, portsPart, ok := strings.Cut(seg, ":")
-			if !ok {
-				if len(parts) == 0 {
-					fail(report, c, fmt.Errorf("接入目标格式错误 %q（应为 内网IP:端口，首段须带冒号）", seg))
-					return
-				}
-				parts[len(parts)-1].Ports += "," + seg
-				if proto != "" {
-					parts[len(parts)-1].Protocol = proto
-				}
-				continue
-			}
-			hostID, err := resolveHostIP(tx, strings.TrimSpace(ip))
+			var hostID uint
+			hostID, err = resolveHostIP(tx, ip)
 			if err != nil {
 				fail(report, c, err)
 				return
 			}
-			if proto == "" {
-				proto = "tcp"
+			if len(tcpSets) > 0 {
+				parts = append(parts, ZeroTrustTarget{HostID: hostID, Ports: strings.Join(portSetToTokens(tcpSets), ","), Protocol: "tcp"})
 			}
-			parts = append(parts, ZeroTrustTarget{HostID: hostID, Ports: strings.TrimSpace(portsPart), Protocol: proto})
+			if len(udpSets) > 0 {
+				parts = append(parts, ZeroTrustTarget{HostID: hostID, Ports: strings.Join(portSetToTokens(udpSets), ","), Protocol: "udp"})
+			}
 		}
 		normalized, err := normalizeTargetPairs(parts)
 		if err != nil {
