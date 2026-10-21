@@ -38,7 +38,7 @@
 
 ### 2026-10-20
 
-- `-` `fix:` **T-074** 数据备份导出改为 Excel 标准加密 .xlsx（前端 officecrypto-tool 加密，Excel 可输密码打开改后再导入），移除自定义 .mcbak 加密包与后端密码参数
+- `f5b28ff` `fix:` **T-074** 数据备份导出改为 Excel 标准加密 .xlsx（前端 officecrypto-tool 加密，Excel 可输密码打开改后再导入），移除自定义 .mcbak 加密包与后端密码参数
 
 - `20b8d0d` `feat:` **T-073** 数据备份零信任 sheet 改「账户名+内网IP 一行」：tcp/udp 端口分列并集，端口支持 `*` 掩码/列表/`A-B` 范围，删除旧「接入目标」列不兼容旧备份
 
