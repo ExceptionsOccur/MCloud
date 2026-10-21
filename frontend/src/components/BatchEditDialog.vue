@@ -15,6 +15,7 @@
             <el-select
               v-model="data.region"
               clearable
+              filterable
               placeholder="不修改"
               style="width: 100%"
             >
@@ -289,7 +290,7 @@ async function open(ids) {
   selectedIds.value = ids || []
   Object.keys(data).forEach(k => { data[k] = '' })
   applicantQuery.value = ''
-  await loadPersons()
+  await Promise.all([loadPersons(), cloudStore.fetchRegions()])
   visible.value = true
 }
 

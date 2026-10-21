@@ -345,7 +345,7 @@ const hostFields = [
   { key: 'name', label: '主机名', hint: '必填' },
   { key: 'private_ip', label: '内网IP', hint: '必填' },
   { key: 'instance_id', label: '实例ID' },
-  { key: 'asset_type', label: '资产类型', hint: '虚拟机/裸金属服务器' },
+  { key: 'asset_type', label: '资产类型', hint: '虚拟机/裸金属服务器/物理机' },
   { key: 'os', label: '操作系统' },
   { key: 'cpu', label: 'CPU核数' },
   { key: 'cpu_arch', label: 'CPU架构', hint: 'C86/X86/ARM' },

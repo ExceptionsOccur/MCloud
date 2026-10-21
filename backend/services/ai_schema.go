@@ -33,7 +33,7 @@ var hostApplyFields = []AIField{
 	{Key: "name", Label: "主机名", Hint: "必填"},
 	{Key: "private_ip", Label: "内网IP", Hint: "必填，IPv4"},
 	{Key: "instance_id", Label: "实例ID"},
-	{Key: "asset_type", Label: "资产类型", Hint: "虚拟机/裸金属服务器"},
+	{Key: "asset_type", Label: "资产类型", Hint: "虚拟机/裸金属服务器/物理机"},
 	{Key: "os", Label: "操作系统"},
 	{Key: "cpu", Label: "CPU核数", Hint: "整数"},
 	{Key: "cpu_arch", Label: "CPU架构", Hint: "C86/X86/ARM"},

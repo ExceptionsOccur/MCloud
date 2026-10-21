@@ -207,7 +207,7 @@
 | `AppNav.vue` | 顶部导航 6 个 Tab（T-019 抽取，11 页共用）；`variant` prop 保留 DataBackup 历史样式变体保证视觉零变化 | 全部 11 个功能页 |
 | `SearchToolbar.vue` | 搜索框、筛选下拉、操作按钮 | HostManagement |
 | `HostTable.vue` | 主机列表表格 + 分页（行操作：编辑/复制/删除；点击数据行打开只读详情，T-066） | HostManagement |
-| `HostFormDialog.vue` | 新增/编辑/复制/详情弹窗（技术+申请双 Tab；`view` 模式另有「关联台账」「变更记录」时间线 Tab，含人员选择/手输自动建人员；复制模式预填所选行、内网IP/实例ID 置空） | HostManagement |
+| `HostFormDialog.vue` | 新增/编辑/复制/详情弹窗（技术+申请双 Tab；「区域」可创建下拉、选项取数据库已有区域（T-079）；`view` 模式另有「关联台账」「变更记录」时间线 Tab，含人员选择/手输自动建人员；复制模式预填所选行、内网IP/实例ID 置空） | HostManagement |
 | `BatchAddDialog.vue` | 批量添加弹窗 | HostManagement |
 | `BatchEditDialog.vue` | 批量编辑弹窗（含人员选择/手输自动建人员） | HostManagement |
 | `ImportDialog.vue` | CSV 导入弹窗 | HostManagement |
@@ -226,7 +226,7 @@
 
 | 文件 | 职责 |
 |------|------|
-| `utils/index.js` | `downloadBlob`、`formatTime`、各下拉选项常量 |
+| `utils/index.js` | `downloadBlob`、`formatTime`、各下拉选项常量；`assetTypeOptions`（虚拟机/裸金属服务器/物理机）、`NON_COMPUTE_ASSET_TYPES`/`isComputeAssetType`（不计入资源汇总的类型，T-079） |
 | `utils/xlsxCrypto.js` | 数据备份 xlsx 标准 Office 加密解密（T-074）：`isEncryptedXlsx`（OLE magic 判断）、`encryptXlsx`、`decryptXlsx`（Agile 解密为异步）；浏览器依赖 `polyfills.js` + Vite polyfill（T-076） |
 | `styles/global.css` | 全局样式、状态/标签 CSS class |
 

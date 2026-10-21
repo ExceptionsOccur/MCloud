@@ -119,7 +119,10 @@
               >
                 <el-select
                   v-model="form.region"
-                  placeholder="请选择区域"
+                  placeholder="选择已有区域或直接输入新区域"
+                  filterable
+                  allow-create
+                  default-first-option
                   style="width: 100%"
                 >
                   <el-option
@@ -685,7 +688,7 @@ async function open(data) {
   editId.value = null
   activeTab.value = 'apply'
   applicantQuery.value = ''
-  await loadPersons()
+  await Promise.all([loadPersons(), cloudStore.fetchRegions()])
 
   if (data?.data) {
     let h = data.data
@@ -747,6 +750,8 @@ async function handleSubmit() {
     }
     if (success) {
       ElMessage.success(mode.value === 'edit' ? '更新成功' : '创建成功')
+      // 区域选项取自数据库已有数据，创建/修改后刷新候选（T-079）
+      cloudStore.fetchRegions()
       visible.value = false
     }
   } finally {

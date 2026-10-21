@@ -75,7 +75,7 @@
 | 方法 | 路由 | Controller | 说明 |
 |------|------|-----------|------|
 | GET | `/api/hosts` | `host.Filter` | 分页 + 搜索 + 筛选列表，按创建时间倒序（`id DESC`，最新创建在前，T-072）；响应含 `internal_count`/`external_count` 云内/云外汇总计数（T-078） |
-| GET | `/api/hosts/regions` | `host.ListRegions` | 区域列表（hosts 中非空 region 去重） |
+| GET | `/api/hosts/regions` | `host.ListRegions` | 区域候选值：hosts 中非空 `region` 去重（T-079 起表单/筛选的「区域」下拉只从这里取值 + 允许表单手输新区域） |
 | GET | `/api/hosts/:id` | `host.Get` | 单条详情 |
 | POST | `/api/hosts` | `host.Create` | 新增主机 |
 | PUT | `/api/hosts/:id` | `host.Update` | 编辑主机 |

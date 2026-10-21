@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getCloudResources } from '../api/cloud_resource'
 import { getHosts, getRegions } from '../api/host'
+import { isComputeAssetType } from '../utils'
 
 const EMPTY_STAT = { cpu: 0, memory: 0, storage: 0, bare_metal: 0 }
 
@@ -34,8 +35,8 @@ async function fetchAllHostsByRegion(region) {
 function computeRegionStats(hosts) {
   const runningHosts = hosts.filter(h => h.status === '运行中')
   const stoppedHosts = hosts.filter(h => h.status === '已停止' || h.status === '已关机')
-  const runningVm = runningHosts.filter(h => h.asset_type !== '裸金属服务器')
-  const stoppedVm = stoppedHosts.filter(h => h.asset_type !== '裸金属服务器')
+  const runningVm = runningHosts.filter(h => isComputeAssetType(h.asset_type))
+  const stoppedVm = stoppedHosts.filter(h => isComputeAssetType(h.asset_type))
   return {
     running: {
       cpu: sumField(runningVm, 'cpu'),

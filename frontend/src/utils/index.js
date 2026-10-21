@@ -45,7 +45,14 @@ export function toRFC3339(localNaive) {
 
 export const statusOptions = ['运行中', '已停止', '已关机', '待确认']
 export const envTypeOptions = ['测试', '生产']
-export const assetTypeOptions = ['虚拟机', '裸金属服务器']
+export const assetTypeOptions = ['虚拟机', '裸金属服务器', '物理机']
+
+// 不计入 CPU/内存/存储 汇总的资产类型（裸金属与物理机不计入，避免与云资源总量重复，T-079）
+export const NON_COMPUTE_ASSET_TYPES = ['裸金属服务器', '物理机']
+
+export function isComputeAssetType(assetType) {
+  return !NON_COMPUTE_ASSET_TYPES.includes(assetType)
+}
 export const cpuArchOptions = [
   { label: 'C86', value: 'C86' },
   { label: 'X86', value: 'X86' },

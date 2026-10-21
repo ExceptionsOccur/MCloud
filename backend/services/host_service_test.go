@@ -467,6 +467,51 @@ func TestBusinessStatsExcludeExternal(t *testing.T) {
 	}
 }
 
+// TestBusinessStatsExcludePhysicalMachine T-079：物理机与裸金属一样不计入 CPU/内存/存储汇总
+func TestBusinessStatsExcludePhysicalMachine(t *testing.T) {
+	newTestDB(t)
+	s := NewHostService()
+
+	vmReq := baseHostReq("10.6.1.1")
+	vmReq.CPU = 4
+	vmReq.Memory = 8
+	vmReq.SystemDisk = 40
+	vmReq.Applicant = "物理统计"
+	if _, err := s.Create(vmReq, testOp, NewRequestID()); err != nil {
+		t.Fatalf("创建虚拟机失败: %v", err)
+	}
+	for i, ip := range []string{"10.6.1.2", "10.6.1.3"} {
+		req := baseHostReq(ip)
+		req.CPU = 16
+		req.Memory = 64
+		req.Applicant = "物理统计"
+		if i == 0 {
+			req.AssetType = "裸金属服务器"
+		} else {
+			req.AssetType = "物理机"
+		}
+		if _, err := s.Create(req, testOp, NewRequestID()); err != nil {
+			t.Fatalf("创建物理机/裸金属失败: %v", err)
+		}
+	}
+
+	stats, err := NewStatsService().GetBusinessStats()
+	if err != nil {
+		t.Fatalf("业务统计失败: %v", err)
+	}
+	if stats.Summary.HostCount != 3 {
+		t.Fatalf("主机台数应含物理机（期望 3），实际 %d", stats.Summary.HostCount)
+	}
+	for _, g := range stats.ByProject {
+		if g.Key != "物理统计" {
+			continue
+		}
+		if g.CPU != 4 || g.Memory != 8 || g.Storage != 40 {
+			t.Fatalf("物理机/裸金属不应计入汇总，实际 cpu=%d mem=%d storage=%d", g.CPU, g.Memory, g.Storage)
+		}
+	}
+}
+
 // TestXLSXExternalFlagRoundtrip T-078：xlsx 备份「是否云外主机」列往返
 func TestXLSXExternalFlagRoundtrip(t *testing.T) {
 	newTestDB(t)

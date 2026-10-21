@@ -62,7 +62,8 @@ func newBusinessAgg(key string) *businessAgg {
 
 func (a *businessAgg) add(h models.Host, project, company, applicant string) {
 	a.group.HostCount++
-	if h.AssetType != "裸金属服务器" {
+	// 裸金属服务器与物理机不计入 CPU/内存/存储 汇总（避免与云资源总量重复，T-079）
+	if h.AssetType != "裸金属服务器" && h.AssetType != "物理机" {
 		a.group.CPU += h.CPU
 		a.group.Memory += h.Memory
 		a.group.Storage += h.SystemDisk + h.DataDisk

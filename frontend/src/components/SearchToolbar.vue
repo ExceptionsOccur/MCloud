@@ -50,6 +50,7 @@
         v-model="filters.region"
         placeholder="区域"
         clearable
+        filterable
         style="width: 120px"
         @change="v => hostStore.setFilter('region', v)"
       >
