@@ -530,7 +530,6 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { getZeroTrusts, getZeroTrustExitLocations, createZeroTrust, updateZeroTrust, deleteZeroTrust } from '../api/zero_trust'
 import { getHosts } from '../api/host'
-import { formatDate } from '../utils'
 import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 import CloudResourceDialog from '../components/CloudResourceDialog.vue'
 import ZeroTrustBatchAddDialog from '../components/ZeroTrustBatchAddDialog.vue'
@@ -711,8 +710,7 @@ function openDialog(row, copy = false) {
   if (!form.targets.length) form.targets = [{ host_id: null, ports: '22' }]
   form.system_name = row?.system_name || ''
   form.exit_location = splitLocations(row?.exit_location)
-  // T-081：新增/复制模式申请时间默认当天；编辑保留原值
-  form.apply_time = editId.value ? (row?.apply_time || '') : formatDate()
+  form.apply_time = row?.apply_time || ''
   form.remark = row?.remark || ''
   dialogVisible.value = true
   formRef.value?.clearValidate()
